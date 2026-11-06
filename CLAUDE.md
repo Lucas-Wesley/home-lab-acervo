@@ -41,6 +41,8 @@ disponível pra inferência local (Whisper) quando precisar.
 - **Internet só em "Mais informações"** (D26) **e na escrita de uma pesquisa com "Sites"** (D27): as
   outras etapas continuam sem `WebSearch`/`WebFetch`. A coleta do Pesquisador (livros, Wikipédia,
   YouTube) é feita pelo servidor, sem a IA.
+- **Flashcards** (D28): o Acervo só manda o texto ao app Flashcards (`FLASHCARDS_URL`); a IA e as regras dos
+  cartões ficam lá (`flashcards/regras/gerar-do-texto.md`).
 - **As instruções em vigor podem estar editadas no app** (D25). Antes de mudar `regras/`, ler as
   versões do servidor (`GET https://192.168.1.20:8444/api/instrucoes/<arquivo>`, com
   `--cacert ../certs/homelab-ca.crt`). Se uma estiver editada, levar a edição para `regras/` e só

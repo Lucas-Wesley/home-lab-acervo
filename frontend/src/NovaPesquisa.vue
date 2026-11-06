@@ -21,15 +21,16 @@ const tema = ref('')
 const fontes = ref(salvas.fontes ?? ['livros', 'wikipedia'])
 const profundidade = ref(salvas.profundidade ?? 'rapida')
 const revisarEsboco = ref(salvas.revisar_esboco ?? false)
+const flashcards = ref(salvas.flashcards ?? false)
 const enviando = ref(false)
 const erro = ref('')
 
 const semFontes = computed(() => fontes.value.length === 0)
 const explicacao = computed(() => PROFUNDIDADES.find((p) => p.chave === profundidade.value)?.explicacao)
 
-watch([fontes, profundidade, revisarEsboco], () => {
+watch([fontes, profundidade, revisarEsboco, flashcards], () => {
   try {
-    localStorage.setItem(CHAVE, JSON.stringify({ fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value }))
+    localStorage.setItem(CHAVE, JSON.stringify({ fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value, flashcards: flashcards.value }))
   } catch {
     // Sem espaço no aparelho, só não lembra as escolhas.
   }
@@ -45,7 +46,7 @@ async function pesquisar() {
   try {
     const ref_ = await api('/api/pesquisas', {
       metodo: 'POST',
-      corpo: { tema: tema.value, fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value && !semFontes.value },
+      corpo: { tema: tema.value, fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value && !semFontes.value, flashcards: flashcards.value },
     })
     location.hash = `#/referencia/${ref_.id}`
   } catch (e) {
@@ -82,6 +83,11 @@ async function pesquisar() {
     <label v-if="!semFontes" class="marcar">
       <input v-model="revisarEsboco" type="checkbox" />
       <span>Revisar o esboço antes de buscar <span class="suave">— a pesquisa para nas perguntas, e você ajusta antes de ela buscar.</span></span>
+    </label>
+
+    <label class="marcar">
+      <input v-model="flashcards" type="checkbox" />
+      <span>Gerar flashcards do resultado <span class="suave">— pronta a pesquisa, a IA propõe os cartões, e você aprova junto com o texto.</span></span>
     </label>
 
     <div v-if="erro" class="aviso erro">{{ erro }}</div>

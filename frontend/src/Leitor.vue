@@ -31,6 +31,9 @@ const marcaBaixados = ref(0) // o localStorage não é reativo; isto força reca
 const introEl = ref(null)
 const corpoEl = ref(null)
 const detalhes = usarDetalhes(() => caminhoArquivo)
+// Flashcards (D28): o texto vai para o app Flashcards, que monta a proposta; a revisão é lá.
+const flashcards = ref({ disponivel: false, link: '', envios: [] })
+const linkDosCartoes = ref('')
 
 const CHAVE_ANCORA = 'acervo-ancora'
 
@@ -177,6 +180,45 @@ function eAtual(capitulo) {
 function voltar() {
   if (podeVoltar()) history.back()
   else location.hash = migalhas.value.length ? `#/ler/${migalhas.value.at(-1).caminho}/indice.md` : '#/'
+}
+
+// ---------- Flashcards ----------
+
+async function carregarFlashcards() {
+  try {
+    flashcards.value = await api('/api/flashcards')
+  } catch {
+    // Fora da rede ou sem o Flashcards: o botão só não aparece.
+  }
+}
+
+// O último envio deste texto (o Tema inteiro, ou um capítulo).
+function ultimoEnvio(capitulo) {
+  const alvo = `arquivo:${caminhoArquivo}${capitulo ? `#${capitulo}` : ''}`
+  return flashcards.value.envios.find((e) => e.alvo === alvo && e.geracao_id)
+}
+
+const quando = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+
+async function gerarFlashcards(capitulo) {
+  menu.value = null
+  const deOnde = capitulo ? `do capítulo "${capitulo}"` : eIndice.value ? 'do Tema inteiro' : 'deste capítulo'
+  const antes = ultimoEnvio(capitulo)
+  const aviso = antes ? `\n\nJá foi enviado em ${quando(antes.criado_em)}; os cartões de mesma pergunta são atualizados, não repetidos.` : ''
+  if (!confirm(`Gerar flashcards ${deOnde}?\n\nA IA monta os cartões no Flashcards, em segundo plano; você revisa e aprova lá, em Pedidos à IA.${aviso}`)) return
+  ocupado.value = true
+  mensagem.value = ''
+  linkDosCartoes.value = ''
+  try {
+    const e = await api('/api/flashcards', { metodo: 'POST', corpo: { arquivo: caminhoArquivo, capitulo: capitulo ?? '' }, tempo: 30000 })
+    mensagem.value = 'Enviado ao Flashcards. A IA está montando os cartões; a proposta fica em Pedidos à IA, para você aprovar.'
+    linkDosCartoes.value = `${flashcards.value.link}/#/geracao/${e.geracao_id}`
+    carregarFlashcards()
+  } catch (e) {
+    mensagem.value = e.status === 0 ? 'Gerar flashcards só funciona na rede de casa.' : e.message
+  } finally {
+    ocupado.value = false
+  }
 }
 
 // ---------- Edição ----------
@@ -373,6 +415,7 @@ function abrirLista() {
 
 onMounted(() => {
   carregar()
+  carregarFlashcards()
   if (modo.value === 'editar' || eIndice.value) carregarTemas()
   window.addEventListener('scroll', aoRolar, { passive: true })
 })
@@ -397,6 +440,9 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <button v-if="temaRaiz" class="botao icone" :title="temaBaixado ? 'Baixado neste aparelho' : 'Baixar o Tema para ler fora da rede'" :disabled="baixando" @click="baixar">
           <Icone :nome="temaBaixado ? 'baixado' : 'baixar'" />
         </button>
+        <button v-if="flashcards.disponivel && arquivo.tema" class="botao icone" :disabled="ocupado" :aria-label="eIndice ? 'Gerar flashcards do Tema inteiro' : 'Gerar flashcards deste capítulo'" :title="eIndice ? 'Gerar flashcards do Tema inteiro' : 'Gerar flashcards deste capítulo'" @click="gerarFlashcards()">
+          <Icone nome="cartoes" />
+        </button>
         <button class="botao" @click="editar"><Icone nome="nota" /> Editar</button>
       </div>
     </header>
@@ -419,7 +465,10 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
 
     <div class="pagina-leitura">
       <div v-if="erro" class="aviso erro">{{ erro }}</div>
-      <div v-if="mensagem" class="aviso" :class="{ ok: mensagem === 'Salvo.' || mensagem.includes('baixado') || mensagem.includes('página') }">{{ mensagem }}</div>
+      <div v-if="mensagem" class="aviso" :class="{ ok: mensagem === 'Salvo.' || mensagem.includes('baixado') || mensagem.includes('página') || !!linkDosCartoes }">
+        {{ mensagem }}
+        <a v-if="linkDosCartoes" :href="linkDosCartoes" target="_blank" rel="noopener">Abrir no Flashcards</a>
+      </div>
 
       <section v-if="conflito" class="conflito">
         <div class="aviso erro">Este arquivo mudou no servidor depois da sua edição. Escolha qual versão fica.</div>
@@ -523,6 +572,10 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <template v-else>
           <button class="botao" @click="editarCapitulo(menu)">Editar capítulo</button>
           <button v-if="!menu.apendice" class="botao" :disabled="ocupado" @click="mudarCapitulo('separar', menu)">Separar em página própria</button>
+          <button v-if="flashcards.disponivel && !menu.apendice" class="botao" :disabled="ocupado" @click="gerarFlashcards(menu.titulo)">
+            <Icone nome="cartoes" /> Gerar flashcards
+            <span v-if="ultimoEnvio(menu.titulo)" class="suave">· enviado em {{ quando(ultimoEnvio(menu.titulo).criado_em) }}</span>
+          </button>
         </template>
         <button class="botao" @click="menu = null">Cancelar</button>
       </div>

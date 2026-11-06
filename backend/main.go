@@ -181,4 +181,14 @@ CREATE TABLE IF NOT EXISTS detalhes (
 	atualizado_em TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS detalhes_local ON detalhes (local);
+-- Textos mandados ao Flashcards (D28): alvo = "arquivo:<caminho>[#<capítulo>]" ou "referencia:<id>".
+CREATE TABLE IF NOT EXISTS flashcards (
+	id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	alvo       TEXT NOT NULL,
+	titulo     TEXT NOT NULL,
+	geracao_id INTEGER NOT NULL DEFAULT 0, -- o pedido no Flashcards; 0 = não chegou lá
+	erro       TEXT NOT NULL DEFAULT '',
+	criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS flashcards_alvo ON flashcards (alvo);
 `

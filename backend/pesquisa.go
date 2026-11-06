@@ -58,6 +58,7 @@ type pedidoPesquisa struct {
 	Fontes        []string   `json:"fontes"`
 	Profundidade  string     `json:"profundidade"`
 	RevisarEsboco bool       `json:"revisar_esboco"`
+	Flashcards    bool       `json:"flashcards"` // pronta a pesquisa, o texto vai para o Flashcards (D28)
 	Esboco        []pergunta `json:"esboco"`
 	Coleta        []coletado `json:"coleta"`
 }
@@ -127,6 +128,10 @@ func (a *app) handleCriarPesquisa(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.Fontes = fontes
+	if p.Flashcards && a.cfg.flashcards == "" {
+		erroJSON(w, http.StatusBadRequest, "O Flashcards não está configurado neste servidor (FLASHCARDS_URL).")
+		return
+	}
 	if p.usa(fonteLivros) && a.cfg.biblioteca == "" {
 		erroJSON(w, http.StatusBadRequest, "A busca nos livros não está configurada neste servidor (BIBLIOTECA_URL).")
 		return
@@ -399,6 +404,7 @@ func (a *app) pesquisaPronta(ctx context.Context, id string) error {
 	if err := a.mudarEstado(ctx, id, "organizado"); err != nil {
 		return err
 	}
+	a.cartoesDaPesquisa(ctx, id)
 	_, err := a.fila.enfileirar(ctx, id, "sugerir", nil)
 	return err
 }

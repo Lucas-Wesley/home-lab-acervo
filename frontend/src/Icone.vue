@@ -46,6 +46,10 @@ defineProps({ nome: { type: String, required: true } })
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7.5v8M8.5 12.5l3.5 3.5 3.5-3.5" />
     </template>
+    <template v-else-if="nome === 'cartoes'">
+      <rect x="8" y="4" width="12" height="14" rx="1.5" />
+      <path d="M5 7.5v11A1.5 1.5 0 006.5 20H16" />
+    </template>
     <template v-else-if="nome === 'baixado'">
       <circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" />
       <path d="M8 12.5l2.7 2.7L16 9.5" stroke="var(--fundo)" />

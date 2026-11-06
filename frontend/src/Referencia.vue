@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api, NOMES_ESTADO_TAREFA, NOMES_TAREFA, nomeDoEstado, situacao } from './api.js'
 import CamadaDetalhes from './CamadaDetalhes.vue'
+import CartoesDaReferencia from './CartoesDaReferencia.vue'
 import EsbocoPesquisa from './EsbocoPesquisa.vue'
 import { descreverPesquisa } from './pesquisa.js'
 import { marcar, usarDetalhes } from './detalhes.js'
@@ -174,6 +175,8 @@ onBeforeUnmount(() => clearInterval(relogio))
         </ul>
         <div><button class="botao" :disabled="andando" @click="usarSugestao">Usar sugestão</button></div>
       </section>
+
+      <CartoesDaReferencia :referencia="ref_" />
 
       <div class="linha-acoes barra-acoes">
         <template v-if="ref_.estado === 'erro' || (!pronta && !andando && ref_.estado !== 'descartado' && ref_.estado !== 'esboco')">

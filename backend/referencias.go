@@ -241,6 +241,9 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 		err = a.mudarEstado(ctx, ref.ID, "validado")
 	case "descartar":
 		err = a.mudarEstado(ctx, ref.ID, "descartado")
+		if err == nil {
+			a.descartarCartoes(ctx, ref.ID)
+		}
 	case "reprocessar":
 		if ref.Estado == "esboco" {
 			erroJSON(w, http.StatusConflict, "Aprove o esboço para a pesquisa continuar.")

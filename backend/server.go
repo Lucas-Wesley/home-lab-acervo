@@ -45,6 +45,11 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("POST /api/detalhes/{id}/refazer", a.handleRefazerDetalhe)
 	mux.HandleFunc("DELETE /api/detalhes/{id}", a.handleApagarDetalhe)
 
+	mux.HandleFunc("GET /api/flashcards", a.handleListarFlashcards)
+	mux.HandleFunc("POST /api/flashcards", a.handleEnviarFlashcards)
+	mux.HandleFunc("GET /api/flashcards/{geracao}", a.handleProposta)
+	mux.HandleFunc("POST /api/flashcards/{geracao}/{acao}", a.handleDecidirProposta)
+
 	mux.HandleFunc("GET /api/sugestoes", a.handleSugestoes)
 	mux.HandleFunc("PUT /api/sugestoes/{id}", a.handleGuardarSugestao)
 	mux.HandleFunc("PATCH /api/sugestoes/{id}", a.handleMarcarSugestao)
