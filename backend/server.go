@@ -23,6 +23,7 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("POST /api/pesquisas", a.handleCriarPesquisa)
 	mux.HandleFunc("GET /api/livros", a.handleLivros)
 	mux.HandleFunc("GET /api/livros/{id}", a.handleCapitulos)
+	mux.HandleFunc("GET /api/livros/{id}/capa", a.handleCapaDoLivro)
 	mux.HandleFunc("POST /api/livros", a.handleCriarResumo)
 
 	mux.HandleFunc("GET /api/temas", a.handleTemas)

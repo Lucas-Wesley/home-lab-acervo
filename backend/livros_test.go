@@ -14,10 +14,13 @@ import (
 func bibliotecaDeLivros(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/api/books":
-		writeJSON(w, http.StatusOK, []map[string]string{
-			{"id": "livro1", "title": "Frutas do Brasil", "author": "Autora", "format": "epub"},
-			{"id": "escaneado", "title": "Escaneado", "author": "", "format": "pdf"},
+		writeJSON(w, http.StatusOK, []map[string]any{
+			{"id": "livro1", "title": "Frutas do Brasil", "author": "Autora", "format": "epub", "has_cover": true, "percent": 0.4, "read_at": "2026-11-05T10:00:00Z"},
+			{"id": "escaneado", "title": "Escaneado", "author": "", "format": "pdf", "has_cover": false},
 		})
+	case "/api/books/livro1/cover":
+		w.Header().Set("Content-Type", "image/png")
+		w.Write([]byte("\x89PNG capa"))
 	case "/api/books/livro1/chapters":
 		writeJSON(w, http.StatusOK, map[string]any{"id": "livro1", "title": "Frutas do Brasil", "author": "Autora", "format": "epub",
 			"indexed": true, "pages": 9, "chapters": []map[string]any{
@@ -47,9 +50,15 @@ func TestResumoDeUmCapitulo(t *testing.T) {
 	e := novoAmbiente(t)
 	(&fontesFalsas{}).ligar(e)
 
-	var livros []map[string]string
-	if s := e.pedir("GET", "/api/livros", nil, &livros); s != http.StatusOK || len(livros) != 2 {
+	var livros []map[string]any
+	if s := e.pedir("GET", "/api/livros", nil, &livros); s != http.StatusOK || len(livros) != 2 || livros[0]["has_cover"] != true || livros[0]["read_at"] == nil {
 		t.Fatalf("livros: %d %v", s, livros)
+	}
+	if s := e.pedir("GET", "/api/livros/livro1/capa", nil, nil); s != http.StatusOK {
+		t.Errorf("capa: %d", s)
+	}
+	if s := e.pedir("GET", "/api/livros/escaneado/capa", nil, nil); s != http.StatusNotFound {
+		t.Errorf("sem capa: %d", s)
 	}
 	var sumario sumarioDoLivro
 	if s := e.pedir("GET", "/api/livros/livro1", nil, &sumario); s != http.StatusOK || len(sumario.Chapters) != 2 {

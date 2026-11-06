@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api, nomeDoEstado, situacao } from './api.js'
 import Icone from './Icone.vue'
 import NovaPesquisa from './NovaPesquisa.vue'
-import NovoResumo from './NovoResumo.vue'
 import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 
 const referencias = ref([])
@@ -12,7 +11,7 @@ const link = ref('')
 const enviando = ref(false)
 const erro = ref('')
 const filtro = ref('todas')
-const novo = ref('') // 'pesquisa' | 'resumo'
+const novo = ref('') // 'pesquisa'
 
 const FILTROS = {
   todas: () => true,
@@ -69,12 +68,11 @@ onBeforeUnmount(() => clearInterval(relogio))
       <h1>Referências</h1>
       <div v-if="!novo" class="linha-acoes">
         <button type="button" class="botao" @click="novo = 'pesquisa'"><Icone nome="pesquisar" /> Pesquisar um tema</button>
-        <button type="button" class="botao" @click="novo = 'resumo'"><Icone nome="livro" /> Resumir capítulos</button>
+        <a href="#/resumir" class="botao"><Icone nome="livro" /> Resumir capítulos</a>
       </div>
     </div>
 
     <NovaPesquisa v-if="novo === 'pesquisa'" @fechar="novo = ''" />
-    <NovoResumo v-if="novo === 'resumo'" @fechar="novo = ''" />
 
     <form class="adicionar" @submit.prevent="adicionar">
       <input v-model="link" class="campo" type="url" inputmode="url" placeholder="Cole o link de um vídeo do YouTube" aria-label="Link do vídeo" />

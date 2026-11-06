@@ -75,16 +75,19 @@ test('aprofunda uma pesquisa pronta, e o texto de antes fica na Versão anterior
   await expect(page.getByText('O texto antes de aprofundar a pesquisa')).toBeVisible()
 })
 
-// Resumo de capítulos (D30): escolher o livro e os capítulos; a IA resume e sugere o Tema.
+// Resumo de capítulos (D30, D32): escolher o livro na lista e os capítulos; a IA resume e sugere o Tema.
 test('resume dois capítulos de um livro da Biblioteca', async ({ page }) => {
   await page.goto('/#/referencias')
-  await page.getByRole('button', { name: 'Resumir capítulos' }).click()
-  await page.getByLabel('Livro').selectOption({ label: 'Pães de Fermentação Natural — Autora' })
-  await expect(page.getByText('O levain · p. 1–12 · ≈ 12 páginas')).toBeVisible()
+  await page.getByRole('link', { name: 'Resumir capítulos' }).click()
+  await expect(page).toHaveURL(/#\/resumir$/)
+  await expect(page.locator('.livro', { hasText: 'Pães de Fermentação Natural' })).toContainText('EPUB')
+  await page.getByRole('link', { name: /Pães de Fermentação Natural/ }).first().click()
+  await expect(page.getByText('O levain')).toBeVisible()
+  await expect(page.getByText('p. 1–12 · ≈ 12 páginas')).toBeVisible()
   await page.getByLabel(/O levain/).check()
   await page.getByLabel(/^A farinha/).check()
-  await expect(page.getByText('Escolhido: ≈ 20 páginas.')).toBeVisible()
-  await page.getByLabel('O que mais te interessa nestes capítulos?').fill('a hidratação da massa')
+  await expect(page.getByText('2 capítulos · ≈ 20 páginas')).toBeVisible()
+  await page.getByLabel('O que mais te interessa?').fill('a hidratação da massa')
   await page.getByRole('button', { name: 'Resumir' }).click()
 
   await expect(page.getByRole('heading', { name: 'Pães de Fermentação Natural: 2 capítulos' })).toBeVisible()

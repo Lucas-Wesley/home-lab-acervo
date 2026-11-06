@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -74,16 +75,48 @@ func (a *app) handleLivros(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var livros []struct {
-		ID     string `json:"id"`
-		Title  string `json:"title"`
-		Author string `json:"author"`
-		Format string `json:"format"`
+		ID       string  `json:"id"`
+		Title    string  `json:"title"`
+		Author   string  `json:"author"`
+		Format   string  `json:"format"`
+		HasCover bool    `json:"has_cover"`
+		Percent  float64 `json:"percent"`
+		ReadAt   string  `json:"read_at,omitempty"`
 	}
 	if err := buscarJSON(r.Context(), a.cfg.biblioteca+"/api/books", &livros); err != nil {
 		erroJSON(w, http.StatusBadGateway, "A Biblioteca não respondeu: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, livros)
+}
+
+// handleCapaDoLivro: GET /api/livros/{id}/capa, a capa que a Biblioteca guarda, repassada para a
+// lista de livros (a Biblioteca fica em outro endereço, com outro certificado).
+func (a *app) handleCapaDoLivro(w http.ResponseWriter, r *http.Request) {
+	if a.semBiblioteca(w) {
+		return
+	}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet,
+		a.cfg.biblioteca+"/api/books/"+url.PathEscape(r.PathValue("id"))+"/cover", nil)
+	if err != nil {
+		falha(w, err)
+		return
+	}
+	resp, err := clienteDaColeta.Do(req)
+	if err != nil {
+		erroJSON(w, http.StatusBadGateway, "A Biblioteca não respondeu: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	tipo := resp.Header.Get("Content-Type")
+	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(tipo, "image/") {
+		erroJSON(w, http.StatusNotFound, "Capa não encontrada.")
+		return
+	}
+	w.Header().Set("Content-Type", tipo)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+	io.Copy(w, io.LimitReader(resp.Body, 10<<20))
 }
 
 func (a *app) sumario(ctx context.Context, id string) (sumarioDoLivro, error) {

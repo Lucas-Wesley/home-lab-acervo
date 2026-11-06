@@ -8,6 +8,7 @@ import Instrucao from './Instrucao.vue'
 import Leitor from './Leitor.vue'
 import Referencia from './Referencia.vue'
 import Referencias from './Referencias.vue'
+import Resumir from './Resumir.vue'
 import Revisoes from './Revisoes.vue'
 import { api } from './api.js'
 import { conflitos, pendentes, sincronizar } from './offline.js'
@@ -39,7 +40,7 @@ const MENU = [
 const secao = computed(() => {
   const n = rota.value.nome
   if (n === 'ler') return 'acervo'
-  if (n === 'referencia') return 'referencias'
+  if (n === 'referencia' || n === 'resumir') return 'referencias'
   if (n === 'revisao') return 'revisoes'
   return n
 })
@@ -175,6 +176,7 @@ onBeforeUnmount(() => {
       <Leitor v-if="rota.nome === 'ler'" :key="rota.param" :caminho="rota.param" />
       <Referencias v-else-if="rota.nome === 'referencias'" />
       <Referencia v-else-if="rota.nome === 'referencia'" :key="rota.param" :id="rota.param" />
+      <Resumir v-else-if="rota.nome === 'resumir'" :livro="rota.param" />
       <Fila v-else-if="rota.nome === 'fila'" />
       <Instrucao v-else-if="rota.nome === 'ajustes' && rota.param.startsWith('instrucoes/')" :key="rota.param" :arquivo="rota.param.slice('instrucoes/'.length)" />
       <Ajustes v-else-if="rota.nome === 'ajustes'" :tela="telaAnterior" />
