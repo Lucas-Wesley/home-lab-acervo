@@ -1,8 +1,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import CamadaDetalhes from './CamadaDetalhes.vue'
 import Icone from './Icone.vue'
 import { api } from './api.js'
 import { capitulos, eLinkInterno, inserirCapitulo, relativo, renderizar, resolver, tituloDoTexto, trocarCapitulo } from './markdown.js'
+import { marcar, usarDetalhes } from './detalhes.js'
 import { baixarTema, Conflito, descartarPendente, estaBaixado, lerArquivo, salvar } from './offline.js'
 import { guardarPosicao, podeVoltar, posicaoGuardada, trocarEndereco, voltandoNoHistorico } from './rolagem.js'
 
@@ -26,6 +28,9 @@ const ocupado = ref(false)
 const baixando = ref(false)
 const editor = ref(null)
 const marcaBaixados = ref(0) // o localStorage não é reativo; isto força recalcular
+const introEl = ref(null)
+const corpoEl = ref(null)
+const detalhes = usarDetalhes(() => caminhoArquivo)
 
 const CHAVE_ANCORA = 'acervo-ancora'
 
@@ -34,12 +39,14 @@ const lista = computed(() => (arquivo.value ? capitulos(arquivo.value.conteudo) 
 const capitulosDaPagina = computed(() => lista.value.filter((c) => !c.apendice))
 const podeMexerNosCapitulos = computed(() => eIndice.value && !!arquivo.value?.tema && modo.value === 'ler')
 // A página se divide em introdução (até o primeiro capítulo) e corpo, com o sumário entre os dois.
+// Os trechos com "Mais informações" saem sublinhados nos dois.
 const partes = computed(() => {
-  if (!arquivo.value) return { intro: '', corpo: '' }
+  if (!arquivo.value) return { intro: '', corpo: '', semLugar: [] }
   const opcoes = { fontes: arquivo.value.fontes }
   const conteudo = arquivo.value.conteudo
   const corte = lista.value[0]?.ini ?? conteudo.length
-  return { intro: renderizar(conteudo.slice(0, corte), opcoes), corpo: comAcoes(renderizar(conteudo.slice(corte), opcoes)) }
+  const { htmls, semLugar } = marcar([renderizar(conteudo.slice(0, corte), opcoes), comAcoes(renderizar(conteudo.slice(corte), opcoes))], detalhes.lista.value)
+  return { intro: htmls[0], corpo: htmls[1], semLugar }
 })
 // Lista do botão "Capítulos" no cabeçalho: os da página ou, num capítulo separado, os do Tema.
 const listaDoCabecalho = computed(() => (eIndice.value ? lista.value : capitulosDoTema.value))
@@ -116,6 +123,7 @@ async function carregarTemas() {
 }
 
 function aoClicarNoTexto(evento) {
+  if (detalhes.aoClicar(evento)) return
   const botao = evento.target.closest('.acao-capitulo')
   if (botao) {
     menu.value = lista.value.find((c) => c.titulo === botao.dataset.titulo) ?? null
@@ -446,7 +454,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
       </template>
 
       <template v-else-if="arquivo">
-        <article class="texto" @click="aoClicarNoTexto" v-html="partes.intro" />
+        <article ref="introEl" class="texto" @click="aoClicarNoTexto" v-html="partes.intro" />
 
         <nav v-if="eIndice && capitulosDaPagina.length > 1" class="sumario" aria-label="Capítulos">
           <h3>Capítulos</h3>
@@ -461,7 +469,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
           </div>
         </nav>
 
-        <article class="texto" :class="{ 'com-acoes': podeMexerNosCapitulos }" @click="aoClicarNoTexto" v-html="partes.corpo" />
+        <article ref="corpoEl" class="texto" :class="{ 'com-acoes': podeMexerNosCapitulos }" @click="aoClicarNoTexto" v-html="partes.corpo" />
+        <CamadaDetalhes :detalhes="detalhes" :raizes="() => [introEl, corpoEl]" :titulo="tituloAtual" :sem-lugar="partes.semLugar" />
 
         <nav v-if="vizinhos.anterior || vizinhos.proximo" class="vizinhos">
           <a v-if="vizinhos.anterior" href="#" class="cartao" @click.prevent="abrirCapituloDoTema(vizinhos.anterior)">

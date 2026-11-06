@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # claude falso para os testes: faz o mínimo que cada regra pede, na pasta atual.
 prompt=""
+ferramentas=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -p) prompt="$2"; shift 2 ;;
+    --allowedTools) ferramentas="$2"; shift 2 ;;
     *) shift ;;
   esac
 done
@@ -26,6 +28,10 @@ case "$prompt" in
   *"integrá-la ao Tema"*)
     [ -n "$CLAUDE_FALSO_NADA" ] && { ok "nada novo"; exit 0; }
     printf '\nParágrafo integrado.\n' >> "$(pasta)/indice.md"; ok ;;
+  *"selecionou um trecho"*)
+    [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
+    sleep "${CLAUDE_FALSO_ESPERA:-0}"
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"explicacao":"**Explicação de teste.** Ferramentas: %s.","fontes":[{"titulo":"Fonte A","url":"https://exemplo.com/a"},{"titulo":"Fonte B","url":"https://exemplo.org/b"}]}}\n' "$ferramentas" ;;
   *)
     printf '{"result":"pedido desconhecido","is_error":true}\n'; exit 1 ;;
 esac

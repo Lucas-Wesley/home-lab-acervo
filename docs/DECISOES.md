@@ -132,6 +132,7 @@ Toda etapa que chama o Claude ou o `yt-dlp` entra numa **fila** e roda em segund
 | D21 | Offline | **PWA:** na rede, lê sempre a versão do servidor; fora dela, lê e **edita** os Temas que eu **escolher baixar, um por vez**. Ao voltar, sincroniza **por arquivo**: se o arquivo não mudou no servidor, a edição entra; se mudou, o app mostra as duas versões para eu escolher | Igual à Biblioteca, mas texto do Acervo não pode valer "a última edição": uma integração feita no servidor não pode ser apagada sem eu ver. |
 | D23 | Página do Tema | **Uma página com capítulos** (`## `) e sumário gerado pelo app; o Lucas **separa manualmente** um capítulo grande em página própria (e pode trazer de volta) | Pedido do Lucas em 06/11/2026: os tópicos em arquivos separados ficavam curtos demais. |
 | D25 | Instruções e sugestões | As **instruções da IA** (`regras/`) podem ser lidas e editadas no app, em **Ajustes**; a versão editada fica no servidor e vale no lugar da do repositório, com "Voltar ao padrão". **Sugestões de melhoria** ficam no app, e o Claude Code lê, faz e responde por `/api/sugestoes` | Pedido do Lucas em 06/11/2026: ver e ajustar pelo celular como o Claude organiza os textos, e anotar melhorias enquanto usa o app. |
+| D26 | Mais informações | Selecionar um trecho de um Tema ou de uma Referência mostra uma barra com **Mais informações** e **Copiar**. A IA **pesquisa na internet** sobre o trecho, no sentido em que ele aparece no texto, seguindo `regras/detalhar.md` (editável em Ajustes); o trecho fica **sublinhado** e o toque abre um **modal** com a explicação e as fontes. A marcação fica **fora do texto** (tabela `detalhes`) | Pedido do Lucas em 06/11/2026: saber mais sobre um autor, um lugar ou um conceito citado por cima, sem sair da leitura. |
 | D24 | Visual e entrada pelo celular | **Design system comum** às apps ([DESIGN-SYSTEM.md](DESIGN-SYSTEM.md)): neutros, azul e terracota só como contraste, vidro com blur, listas finas. Vídeo entra por **Compartilhar** (Android: `share_target`; iPhone: atalho do app Atalhos) e vai direto para a fila | Pedido do Lucas em 06/11/2026: identidade clean e moderna igual na Biblioteca e no Acervo; mandar vídeo sem abrir tela. |
 | D22 | Armazenamento | Só o **disco interno do M920q**. **SSD externo descontinuado** até o Lucas avisar que está disponível | Decisão de 05/11/2026. |
 
@@ -139,7 +140,9 @@ Toda etapa que chama o Claude ou o `yt-dlp` entra numa **fila** e roda em segund
 - Sujeito aos **limites de uso da assinatura** (a fila de D14 ajuda a controlar).
 - A imagem precisa do **Claude Code instalado**; o login vem do token de D13.
 - Reserva: **API do Claude (Messages API)** se a assinatura não atender.
-- O Claude roda com as **ferramentas limitadas** à pasta de trabalho da tarefa.
+- O Claude roda com as **ferramentas limitadas** à pasta de trabalho da tarefa. A internet
+  (`WebSearch`, `WebFetch`) só é liberada para "Mais informações" (D26), que roda numa pasta vazia
+  e não mexe em arquivo nenhum.
 
 ### Armazenamento (D22)
 - Tudo no **disco interno do M920q**, em `/srv/data/acervo` na VM `apps`: o SQLite, as Referências e

@@ -39,6 +39,11 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("PUT /api/instrucoes/{arquivo}", a.handleSalvarInstrucao)
 	mux.HandleFunc("DELETE /api/instrucoes/{arquivo}", a.handleRestaurarInstrucao)
 
+	mux.HandleFunc("GET /api/detalhes", a.handleDetalhes)
+	mux.HandleFunc("PUT /api/detalhes/{id}", a.handlePedirDetalhe)
+	mux.HandleFunc("POST /api/detalhes/{id}/refazer", a.handleRefazerDetalhe)
+	mux.HandleFunc("DELETE /api/detalhes/{id}", a.handleApagarDetalhe)
+
 	mux.HandleFunc("GET /api/sugestoes", a.handleSugestoes)
 	mux.HandleFunc("PUT /api/sugestoes/{id}", a.handleGuardarSugestao)
 	mux.HandleFunc("PATCH /api/sugestoes/{id}", a.handleMarcarSugestao)
@@ -210,12 +215,17 @@ func (a *app) handleTarefas(w http.ResponseWriter, r *http.Request) {
 type tarefaComTitulo struct {
 	tarefa
 	Referencia string `json:"referencia"`
+	Link       string `json:"link"`
 }
 
 func (a *app) comTitulos(r *http.Request, lista []tarefa) []tarefaComTitulo {
 	saida := make([]tarefaComTitulo, 0, len(lista))
 	titulos := map[string]string{}
 	for _, t := range lista {
+		if t.Tipo == "detalhar" {
+			saida = append(saida, a.tarefaDeDetalhe(r, t))
+			continue
+		}
 		titulo, ok := titulos[t.ReferenciaID]
 		if !ok {
 			if ref, err := a.referencia(r.Context(), t.ReferenciaID); err == nil {
@@ -226,9 +236,24 @@ func (a *app) comTitulos(r *http.Request, lista []tarefa) []tarefaComTitulo {
 			}
 			titulos[t.ReferenciaID] = titulo
 		}
-		saida = append(saida, tarefaComTitulo{t, titulo})
+		saida = append(saida, tarefaComTitulo{t, titulo, "#/referencia/" + t.ReferenciaID})
 	}
 	return saida
+}
+
+// Na fila, a pesquisa de "Mais informações" mostra o trecho e leva ao texto onde ele está.
+func (a *app) tarefaDeDetalhe(r *http.Request, t tarefa) tarefaComTitulo {
+	var p paramsDetalhe
+	json.Unmarshal(t.Params, &p)
+	d, err := a.detalhe(r.Context(), p.Detalhe)
+	if err != nil {
+		return tarefaComTitulo{t, "(marcação apagada)", ""}
+	}
+	link := "#/ler/" + d.Local
+	if partes := strings.Split(d.Local, "/"); partes[0] == "referencias" {
+		link = "#/referencia/" + partes[1]
+	}
+	return tarefaComTitulo{t, "“" + cortar(d.Trecho, 80, false) + "”", link}
 }
 
 func idDoPedido(w http.ResponseWriter, r *http.Request) (int64, bool) {

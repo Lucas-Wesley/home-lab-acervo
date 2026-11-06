@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api, NOMES_ESTADO, NOMES_ESTADO_TAREFA, NOMES_TAREFA, situacao } from './api.js'
+import CamadaDetalhes from './CamadaDetalhes.vue'
+import { marcar, usarDetalhes } from './detalhes.js'
 import { duvidas, renderizar, tituloDoTexto } from './markdown.js'
 
 const props = defineProps({ id: { type: String, required: true } })
@@ -35,6 +37,10 @@ const htmlDaAba = computed(() => {
   if (abaAtual.value === 'cru') return renderizar(r.textos.cru.replace(/^\[(\d[\d:]*)\]/gm, '<sub>Trechos: [$1]</sub>\n\n'), opcoes)
   return renderizar(r.textos[abaAtual.value] ?? '', opcoes)
 })
+// Cada aba é um texto, com as suas marcações de "Mais informações".
+const textoEl = ref(null)
+const detalhes = usarDetalhes(() => (ref_.value && abaAtual.value !== 'historico' ? `referencias/${props.id}/${abaAtual.value}` : ''))
+const marcado = computed(() => marcar([htmlDaAba.value], detalhes.lista.value))
 const pronta = computed(() => ['organizado', 'validado', 'integrado'].includes(ref_.value?.estado))
 const andando = computed(() => {
   const t = ref_.value?.tarefa
@@ -213,7 +219,10 @@ onBeforeUnmount(() => clearInterval(relogio))
         </li>
       </ul>
       <p v-else-if="abaAtual === 'organizado' && traduzida" class="suave nota">Versão original, só para consulta. No Acervo entra a versão em português.</p>
-      <article v-if="abaAtual !== 'historico'" class="texto" v-html="htmlDaAba" />
+      <template v-if="abaAtual !== 'historico'">
+        <article ref="textoEl" class="texto" @click="detalhes.aoClicar" v-html="marcado.htmls[0]" />
+        <CamadaDetalhes :detalhes="detalhes" :raizes="() => [textoEl]" :titulo="ref_.titulo" :sem-lugar="marcado.semLugar" />
+      </template>
     </template>
   </div>
 </template>

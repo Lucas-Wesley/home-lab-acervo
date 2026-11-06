@@ -11,6 +11,7 @@ import Referencias from './Referencias.vue'
 import Revisoes from './Revisoes.vue'
 import { api } from './api.js'
 import { conflitos, pendentes, sincronizar } from './offline.js'
+import { enviarDetalhesPendentes } from './detalhes.js'
 
 // Rotas no hash, como na Biblioteca: o "voltar" do celular volta para a tela anterior.
 const hash = ref(location.hash)
@@ -71,6 +72,7 @@ async function atualizarContagem() {
 
 async function sincronizarEdicoes() {
   await sincronizar()
+  await enviarDetalhesPendentes()
   atualizarPendentes()
 }
 

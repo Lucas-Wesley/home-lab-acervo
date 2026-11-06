@@ -20,6 +20,7 @@ func (a *app) executores() map[string]executor {
 		"sugerir":    a.naReferencia(a.sugerir, false),
 		"criar_tema": a.naReferencia(a.criarTema, false),
 		"integrar":   a.naReferencia(a.integrar, false),
+		"detalhar":   a.detalhar,
 	}
 }
 

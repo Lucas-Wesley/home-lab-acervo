@@ -34,6 +34,7 @@ export const NOMES_TAREFA = {
   sugerir: 'Sugerir Tema',
   criar_tema: 'Criar Tema',
   integrar: 'Integrar ao Tema',
+  detalhar: 'Mais informações',
 }
 
 export const NOMES_ESTADO = {

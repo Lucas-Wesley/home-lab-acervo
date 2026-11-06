@@ -58,7 +58,7 @@ onBeforeUnmount(() => clearInterval(relogio))
     <div v-for="(t, i) in ativas" :key="t.id" class="tarefa">
       <div class="info">
         <strong>{{ NOMES_TAREFA[t.tipo] || t.tipo }}</strong>
-        <a :href="`#/referencia/${t.referencia_id}`">{{ t.referencia || t.referencia_id }}</a>
+        <a :href="t.link || `#/referencia/${t.referencia_id}`">{{ t.referencia || t.referencia_id }}</a>
         <span class="linha-acoes">
           <span class="chip" :class="classe(t)">{{ t.estado === 'na_fila' ? `${i}ª na fila` : 'Rodando' }}</span>
           <span v-if="t.estado === 'rodando'" class="suave">{{ tempo(t) }}</span>
@@ -71,7 +71,7 @@ onBeforeUnmount(() => clearInterval(relogio))
     <div v-for="t in terminadas" :key="t.id" class="tarefa">
       <div class="info">
         <strong>{{ NOMES_TAREFA[t.tipo] || t.tipo }}</strong>
-        <a :href="`#/referencia/${t.referencia_id}`">{{ t.referencia || t.referencia_id }}</a>
+        <a :href="t.link || `#/referencia/${t.referencia_id}`">{{ t.referencia || t.referencia_id }}</a>
         <span class="linha-acoes">
           <span class="chip" :class="classe(t)">{{ NOMES_ESTADO_TAREFA[t.estado] || t.estado }}</span>
           <span class="suave">{{ new Date(t.criado_em).toLocaleString('pt-BR') }}<template v-if="tempo(t)"> · {{ tempo(t) }}</template></span>

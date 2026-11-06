@@ -136,6 +136,28 @@ e o Claude falhava com "sem resposta". Os caminhos agora são absolutos, e há t
     Ajustes.
 - Testes: Go (instrução editada chega ao Claude; sugestões) e navegador (Ajustes).
 
+## Mais informações sobre um trecho (06/11/2026, D26)
+
+- **Seleção:** ao selecionar texto num Tema ou numa Referência aparece uma barra escura com dois
+  ícones, **Mais informações** e **Copiar** (`CamadaDetalhes.vue`). No celular ela fica abaixo da
+  seleção, porque em cima o sistema mostra o menu dele. Cabe mais ícone ali no futuro.
+- **Marcação fora do texto:** tabela `detalhes` com o trecho, até 300 caracteres antes e depois, o
+  `local` (`temas/…/arquivo.md` ou `referencias/<id>/<aba>`) e a tarefa. Ao abrir a página, o
+  app junta os nós de texto do HTML renderizado, escolhe a ocorrência do trecho com mais contexto
+  igual e envolve em `<mark class="detalhe">` (`detalhes.js`). Se o trecho sumiu do texto, a
+  marcação aparece em "Marcações que não estão mais no texto", no fim da página.
+- **Pesquisa:** tarefa `detalhar` na fila (uma por vez, D14), com a regra `regras/detalhar.md` e
+  só as ferramentas `WebSearch` e `WebFetch`, numa pasta temporária vazia. A resposta é
+  estruturada (`explicacao` em Markdown e `fontes`). O estado (`processando`, `pronto`, `falhou`)
+  vem da tarefa; a Fila mostra o trecho e leva de volta ao texto.
+- **Fora da rede:** as explicações já vistas ficam no aparelho; um pedido novo fica guardado e
+  sobe quando a rede volta (o id vem do aparelho, e reenviar não pesquisa duas vezes).
+- API: `GET /api/detalhes?local=`, `PUT /api/detalhes/{id}`, `POST /api/detalhes/{id}/refazer`,
+  `DELETE /api/detalhes/{id}`.
+- Testes: Go (pesquisa com internet só nesta tarefa, reenvio, refazer, validação, falha),
+  unidade (achar e sublinhar o trecho, pedido fora da rede) e navegador (selecionar, copiar,
+  pedir, abrir o modal, apagar).
+
 ## O que ficou de fora desta versão
 
 - **Verificação de veracidade (item 7):** só a aba "Dúvidas" e o botão "Marcar como validada".

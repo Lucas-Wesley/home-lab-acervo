@@ -83,11 +83,18 @@ espera a sua aprovação.
 No fim do menu:
 
 - **Instruções da IA:** o texto que o Claude segue em cada etapa (organizar, traduzir, sugerir
-  Tema, criar Tema, integrar). Dá para ler e editar pelo celular, e a mudança vale a partir da
+  Tema, criar Tema, integrar) e na pesquisa de "Mais informações". Dá para ler e editar pelo celular, e a mudança vale a partir da
   próxima tarefa. "Voltar ao padrão" volta ao texto de `regras/`.
 - **Sugestões de melhoria:** anote o que pode melhorar no app. Depois, peça ao Claude Code para ver
   as sugestões: ele lê por `GET /api/sugestoes`, faz as mudanças e marca cada uma como feita, com
   uma resposta que aparece no app.
+
+## Mais informações
+
+Selecione um trecho de um Tema ou de uma Referência (um nome, um lugar, uma frase) e toque no ícone
+**Mais informações**. A IA pesquisa na internet, em mais de uma fonte, e o trecho fica sublinhado:
+toque nele para abrir a explicação, com as fontes. O mesmo menu tem **Copiar**. As instruções da
+pesquisa estão em Ajustes → Instruções da IA → Mais informações.
 
 ## Identidade visual
 

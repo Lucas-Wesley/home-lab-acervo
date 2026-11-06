@@ -131,4 +131,18 @@ CREATE TABLE IF NOT EXISTS sugestoes (
 	criada_em     TEXT NOT NULL,
 	atualizada_em TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS detalhes (
+	id            TEXT PRIMARY KEY,
+	local         TEXT NOT NULL,
+	titulo        TEXT NOT NULL DEFAULT '',
+	trecho        TEXT NOT NULL,
+	antes         TEXT NOT NULL DEFAULT '',
+	depois        TEXT NOT NULL DEFAULT '',
+	explicacao    TEXT NOT NULL DEFAULT '',
+	fontes        TEXT NOT NULL DEFAULT '[]',
+	tarefa_id     INTEGER NOT NULL DEFAULT 0,
+	criado_em     TEXT NOT NULL,
+	atualizado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS detalhes_local ON detalhes (local);
 `

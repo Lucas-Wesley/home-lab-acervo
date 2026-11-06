@@ -10,12 +10,25 @@ import (
 	"strings"
 )
 
-// Ferramentas que o Claude pode usar: só ler e escrever arquivos na pasta da tarefa.
+// Ferramentas que o Claude pode usar: nas etapas, só ler e escrever arquivos na pasta da tarefa.
+// A internet fica só para "Mais informações" (D26), que não mexe em arquivo nenhum.
 const (
 	ferramentasEscrita   = "Read,Write,Edit,Glob,Grep"
 	ferramentasLeitura   = "Read,Glob,Grep"
+	ferramentasInternet  = "WebSearch,WebFetch"
 	ferramentasProibidas = "Bash,WebFetch,WebSearch,Task,NotebookEdit"
 )
+
+// proibidas tira da lista de proibidas o que a tarefa pode usar.
+func proibidas(permitidas string) string {
+	var lista []string
+	for _, f := range strings.Split(ferramentasProibidas, ",") {
+		if !strings.Contains(","+permitidas+",", ","+f+",") {
+			lista = append(lista, f)
+		}
+	}
+	return strings.Join(lista, ",")
+}
 
 type pedidoClaude struct {
 	pasta       string   // diretório de trabalho
@@ -41,7 +54,7 @@ func (a *app) chamarClaude(ctx context.Context, p pedidoClaude) (respostaClaude,
 	prompt := p.instrucao + "\n\nSiga as regras abaixo.\n\n" + regra
 
 	args := []string{"-p", prompt, "--output-format", "json",
-		"--allowedTools", p.ferramentas, "--disallowedTools", ferramentasProibidas}
+		"--allowedTools", p.ferramentas, "--disallowedTools", proibidas(p.ferramentas)}
 	for _, d := range p.extras {
 		args = append(args, "--add-dir", d)
 	}

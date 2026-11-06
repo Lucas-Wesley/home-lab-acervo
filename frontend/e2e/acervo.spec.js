@@ -194,3 +194,66 @@ test('Ajustes: anota uma sugestão e edita a instrução que o Claude segue', as
   await expect(page.getByText('Texto original')).toBeVisible()
   await expect(page.locator('article.texto')).not.toContainText('Nunca usar a palavra')
 })
+
+// Seleciona a palavra no texto, como o dedo faria.
+async function selecionar(page, palavra) {
+  await page.evaluate((palavra) => {
+    const andar = document.createTreeWalker(document.querySelector('.pagina-leitura'), NodeFilter.SHOW_TEXT)
+    for (let no = andar.nextNode(); no; no = andar.nextNode()) {
+      const i = no.data.indexOf(palavra)
+      if (i < 0) continue
+      no.parentElement.scrollIntoView({ block: 'center' })
+      const intervalo = document.createRange()
+      intervalo.setStart(no, i)
+      intervalo.setEnd(no, i + palavra.length)
+      getSelection().removeAllRanges()
+      getSelection().addRange(intervalo)
+      return
+    }
+    throw new Error(`não achei "${palavra}"`)
+  }, palavra)
+}
+
+test('Mais informações: seleciona um trecho, a IA pesquisa e o trecho vira link para a explicação', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.goto('/#/ler/temas/tema-de-teste/indice.md')
+  await expect(page.locator('article.texto').last()).toContainText('Tordesilhas')
+
+  // Copiar.
+  await selecionar(page, 'Tordesilhas')
+  await page.getByRole('toolbar', { name: 'Seleção' }).getByRole('button', { name: 'Copiar' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Copiado.' })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Tordesilhas')
+
+  // Mais informações: fica pontilhado enquanto pesquisa e sublinhado quando termina.
+  await selecionar(page, 'Tordesilhas')
+  await page.getByRole('button', { name: 'Mais informações' }).click()
+  await expect(page.getByRole('toolbar', { name: 'Seleção' })).toBeHidden()
+  const marca = page.locator('mark.detalhe', { hasText: 'Tordesilhas' })
+  await expect(marca).toBeVisible()
+  await expect(marca).toHaveClass(/pronto/, { timeout: 15000 })
+
+  // Continua marcado ao abrir a página de novo; o toque abre o modal, sem sair do texto.
+  await page.reload()
+  await marca.click()
+  const modal = page.getByRole('dialog', { name: '“Tordesilhas”' })
+  await expect(modal).toContainText('Explicação de teste.')
+  await expect(modal.getByRole('link', { name: 'Fonte A' })).toHaveAttribute('href', 'https://exemplo.com/a')
+  await expect(page).toHaveURL(/#\/ler\/temas\/tema-de-teste\/indice\.md$/)
+  await page.keyboard.press('Escape')
+  await expect(modal).toBeHidden()
+
+  // Na fila, a pesquisa leva de volta ao texto.
+  await page.goto('/#/fila')
+  await expect(page.getByRole('link', { name: '“Tordesilhas”' }).first()).toHaveAttribute('href', '#/ler/temas/tema-de-teste/indice.md')
+
+  // A instrução nova aparece em Ajustes.
+  await page.goto('/#/ajustes')
+  await expect(page.getByRole('link', { name: /Mais informações/ })).toBeVisible()
+
+  await page.goto('/#/ler/temas/tema-de-teste/indice.md')
+  await marca.click()
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: 'Apagar marcação' }).click()
+  await expect(page.locator('mark.detalhe')).toHaveCount(0)
+})
