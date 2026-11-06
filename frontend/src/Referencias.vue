@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api, nomeDoEstado, situacao } from './api.js'
 import Icone from './Icone.vue'
 import NovaPesquisa from './NovaPesquisa.vue'
-import { descreverPesquisa } from './pesquisa.js'
+import NovoResumo from './NovoResumo.vue'
+import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 
 const referencias = ref([])
 const carregou = ref(false)
@@ -11,7 +12,7 @@ const link = ref('')
 const enviando = ref(false)
 const erro = ref('')
 const filtro = ref('todas')
-const pesquisando = ref(false)
+const novo = ref('') // 'pesquisa' | 'resumo'
 
 const FILTROS = {
   todas: () => true,
@@ -66,10 +67,14 @@ onBeforeUnmount(() => clearInterval(relogio))
   <div class="pagina">
     <div class="cabecalho">
       <h1>Referências</h1>
-      <button v-if="!pesquisando" type="button" class="botao" @click="pesquisando = true"><Icone nome="pesquisar" /> Pesquisar um tema</button>
+      <div v-if="!novo" class="linha-acoes">
+        <button type="button" class="botao" @click="novo = 'pesquisa'"><Icone nome="pesquisar" /> Pesquisar um tema</button>
+        <button type="button" class="botao" @click="novo = 'resumo'"><Icone nome="livro" /> Resumir capítulos</button>
+      </div>
     </div>
 
-    <NovaPesquisa v-if="pesquisando" @fechar="pesquisando = false" />
+    <NovaPesquisa v-if="novo === 'pesquisa'" @fechar="novo = ''" />
+    <NovoResumo v-if="novo === 'resumo'" @fechar="novo = ''" />
 
     <form class="adicionar" @submit.prevent="adicionar">
       <input v-model="link" class="campo" type="url" inputmode="url" placeholder="Cole o link de um vídeo do YouTube" aria-label="Link do vídeo" />
@@ -88,10 +93,11 @@ onBeforeUnmount(() => clearInterval(relogio))
     <div v-if="visiveis.length" class="lista">
     <a v-for="r in visiveis" :key="r.id" :href="`#/referencia/${r.id}`" class="referencia">
       <span v-if="r.tipo === 'pesquisa'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="pesquisar" /></span>
+      <span v-else-if="r.tipo === 'livro'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="livro" /></span>
       <img v-else :src="`https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`" alt="" class="miniatura" loading="lazy" />
       <div class="info">
         <strong>{{ r.titulo || r.url }}</strong>
-        <span class="suave meta">{{ r.tipo === 'pesquisa' ? descreverPesquisa(r.pesquisa) : [r.canal, r.duracao].filter(Boolean).join(' · ') }}</span>
+        <span class="suave meta">{{ r.tipo === 'pesquisa' ? descreverPesquisa(r.pesquisa) : r.tipo === 'livro' ? descreverLivro(r.livro) : [r.canal, r.duracao].filter(Boolean).join(' · ') }}</span>
         <span class="linha-estado">
           <span class="chip" :class="classeDoEstado(r)">{{ nomeDoEstado(r) }}</span>
           <span v-if="situacao(r)" class="chip andando">{{ situacao(r) }}</span>

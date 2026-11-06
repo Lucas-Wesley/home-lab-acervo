@@ -39,6 +39,8 @@ export const NOMES_TAREFA = {
   coletar: 'Coletar nas fontes',
   redigir: 'Escrever a pesquisa',
   conferir: 'Conferir a pesquisa',
+  ler_livro: 'Ler os capítulos',
+  resumir: 'Resumir os capítulos',
 }
 
 export const NOMES_ESTADO = {
@@ -65,6 +67,7 @@ export const NOMES_ESTADO_TAREFA = {
 // O estado com o nome certo para o tipo: numa pesquisa, o material não é "extraído", é coletado.
 export function nomeDoEstado(r) {
   if (r.tipo === 'pesquisa' && r.estado === 'cru') return 'Coletado'
+  if (r.tipo === 'livro' && r.estado === 'cru') return 'Lido'
   return NOMES_ESTADO[r.estado] || r.estado
 }
 

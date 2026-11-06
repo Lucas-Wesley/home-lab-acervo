@@ -165,6 +165,8 @@ func (a *app) textoDaReferencia(ctx context.Context, ref *referencia) (textoPara
 	t.Link = a.cfg.acervoLink + "/#/referencia/" + ref.ID
 	if ref.Tipo == "pesquisa" {
 		t.Contexto = "É uma pesquisa feita a pedido do Lucas, com as fontes marcadas no texto."
+	} else if ref.Tipo == "livro" {
+		t.Contexto = "É o resumo de capítulos de um livro, com as páginas marcadas no texto."
 	} else {
 		t.Contexto = fmt.Sprintf("É o texto organizado de um vídeo (%s).", strings.TrimSpace(ref.Canal+" · "+ref.URL))
 	}
@@ -187,7 +189,7 @@ func podeVirarCartoes(ref *referencia) bool {
 	case "validado", "integrado":
 		return true
 	case "organizado":
-		return ref.Tipo == "pesquisa"
+		return ref.Tipo == "pesquisa" || ref.Tipo == "livro"
 	}
 	return false
 }

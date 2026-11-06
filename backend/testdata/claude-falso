@@ -14,16 +14,27 @@ pasta() { printf '%s' "$prompt" | sed -n 's/.*pasta \([^ ]*\)\/ (caminho.*/\1/p'
 case "$prompt" in
   *"Monte o esboço da pesquisa"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
-    printf '{"type":"result","result":"","is_error":false,"structured_output":{"titulo":"A origem da laranja","perguntas":[{"pergunta":"De onde vem a laranja?","livros":"laranja Ásia","wikipedia":"Laranja (fruta)","youtube":"origem da laranja"},{"pergunta":"Como chegou ao Brasil?","livros":"","wikipedia":"Citricultura no Brasil","youtube":"laranja no Brasil"},{"pergunta":"   ","livros":"x","wikipedia":"x","youtube":"x"}]}}\n' ;;
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"titulo":"A origem da laranja","perguntas":[{"pergunta":"De onde vem a laranja?","livros":"laranja Ásia","wikipedia":"Laranja (fruta)","youtube":"origem da laranja"},{"pergunta":"Como chegou ao Brasil?","livros":"","wikipedia":"Citricultura no Brasil","youtube":"laranja no Brasil"},{"pergunta":"   ","livros":"x","wikipedia":"x","youtube":"x"}],"relacionados":["temas/laranja","temas/nao-existe"]}}\n' ;;
   *"Escreva organizado.md nesta pasta"*)
     {
       printf '# Pesquisa de teste\n\n> Texto de teste escrito a partir do material.\n\n## Seção\n\nConteúdo da pesquisa [1].\n\n<sub>Fontes: [1]</sub>\n\n'
       case "$prompt" in *"não escolheu nenhuma fonte"*) printf '*Sem fontes: escrito com o conhecimento da IA, sem pesquisa.*\n\n' ;; esac
       printf 'Ferramentas: %s.\n\nMaterial lido:\n' "$ferramentas"
       ls fontes 2>/dev/null | sed 's/^/- /'
+      [ -f anterior.md ] && printf '\nPartiu de anterior.md.\n'
+      ls ja-escrito 2>/dev/null | sed 's/^/- já escrito: /'
+      case "$prompt" in *"O que ele quer a mais"*) printf '\nFoco recebido.\n' ;; esac
       printf '\n## Dúvidas\n\n- Uma dúvida de teste.\n'
     } > organizado.md
     case "$ferramentas" in *WebSearch*) printf '# Página\n\nURL: https://exemplo.com\n' > fontes/web-1.md ;; esac
+    ok ;;
+  *"Leia o texto inteiro e escreva organizado.md"*)
+    {
+      printf '# Resumo de teste\n\n> Resumo dos capítulos escolhidos.\n\n## Ideia central\n\nO que o autor defende.\n\n'
+      grep -o '\[p\. [0-9]*\]([^)]*)' cru.md | head -2 | tr '\n' ' ' | sed 's/^/<sub>Páginas: /; s/ $/<\/sub>/'
+      printf '\n'
+      case "$prompt" in *"O que interessa ao Lucas"*) printf '\nFoco recebido.\n' ;; esac
+    } > organizado.md
     ok ;;
   *"Confira organizado.md contra o material"*)
     [ -n "$CLAUDE_FALSO_CONFERIR_FALHA" ] && { printf '# x\n' > organizado.md; printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }

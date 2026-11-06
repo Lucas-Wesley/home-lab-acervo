@@ -27,8 +27,15 @@ export default defineConfig({
             YTDLP_BIN: path.join(testdata, 'yt-dlp-falso'),
             CLAUDE_BIN: path.join(testdata, 'claude-falso'),
             REGRAS_DIR: path.resolve('../regras'),
+            BIBLIOTECA_URL: 'http://localhost:8093',
+            BIBLIOTECA_LINK: 'https://biblioteca.lan',
           },
           url: 'http://localhost:8091/api/health',
+        },
+        {
+          command: 'node e2e/biblioteca-falsa.mjs',
+          env: { PORT: '8093' },
+          url: 'http://localhost:8093/api/books',
         },
         {
           // A versão de produção: é a única que tem service worker e, portanto, offline.

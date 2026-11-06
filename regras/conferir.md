@@ -1,6 +1,6 @@
 # Regras: conferir uma pesquisa
 
-`organizado.md` é o texto de uma pesquisa, escrito a partir do material guardado em `fontes/` (`cru.md` lista os arquivos). Você confere o texto contra esse material e corrige `organizado.md` no lugar. Não há internet nesta etapa: vale só o que está guardado.
+`organizado.md` é o texto de uma pesquisa, escrito a partir do material guardado em `fontes/` (`cru.md` lista os arquivos). Você confere o texto contra esse material e corrige `organizado.md` no lugar. Não há internet nesta etapa: vale só o que está guardado. `anterior.md` e `ja-escrito/`, quando existirem, não são fontes: servem só para a seção "O que há de novo", que você confere contra eles.
 
 ## O que fazer
 

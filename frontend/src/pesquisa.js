@@ -14,10 +14,20 @@ export const PROFUNDIDADES = [
 // Uma linha sobre a pesquisa: "Pesquisa detalhada · Livros, YouTube" ou "Só a resposta da IA".
 export function descreverPesquisa(pesquisa) {
   if (!pesquisa) return ''
-  if (!pesquisa.fontes?.length) return 'Só a resposta da IA, sem fontes'
+  const rodada = pesquisa.rodada > 1 ? ` · ${pesquisa.rodada}ª rodada` : ''
+  if (!pesquisa.fontes?.length) return `Só a resposta da IA, sem fontes${rodada}`
   const profundidade = pesquisa.profundidade === 'detalhada' ? 'detalhada' : 'rápida'
   const fontes = FONTES.filter((f) => pesquisa.fontes.includes(f.chave)).map((f) => f.curto)
-  return `Pesquisa ${profundidade} · ${fontes.join(', ')}`
+  return `Pesquisa ${profundidade} · ${fontes.join(', ')}${rodada}`
+}
+
+// Uma linha sobre o resumo de um livro (D30): "Livro, de Autor · 2 capítulos".
+export function descreverLivro(livro) {
+  if (!livro) return ''
+  const autor = livro.autor ? `, de ${livro.autor}` : ''
+  const n = livro.capitulos?.length ?? 0
+  const escolha = n === 0 ? `p. ${livro.de} a ${livro.ate}` : n === 1 ? `capítulo “${livro.capitulos[0].titulo}”` : `${n} capítulos`
+  return `${livro.titulo}${autor} · ${escolha}`
 }
 
 // As buscas de uma pergunta do esboço que valem para as fontes escolhidas.

@@ -29,6 +29,17 @@ O Lucas pediu uma pesquisa sobre um tema. O servidor já coletou material das fo
   - Site: o título da página, o site e a URL.
 - Não liste fonte que você não usou.
 
+## Quando já existe texto
+
+O pedido diz quando há `anterior.md` (a pesquisa está sendo aprofundada: é o texto da rodada anterior) e `ja-escrito/` (o que o Acervo já tem sobre o assunto, copiado dos Temas). Nenhum dos dois é fonte: as afirmações continuam vindo do material de `fontes/` (o das rodadas anteriores também está lá).
+
+- **Ao aprofundar,** escreva a versão nova e **completa** do texto, não só o acréscimo: mantenha o que continua sustentado, acrescente o que o material novo traz, e quando o material novo contradiz o texto anterior, mostre as versões e quem diz cada uma. Responda também às perguntas das rodadas anteriores.
+- Compare com `ja-escrito/` e com `anterior.md` e escreva, antes de "Linha do tempo", a seção **"O que há de novo"**, em três listas curtas (omitindo a que ficar vazia):
+  - **Novo:** o que este texto traz e o que já estava escrito não tinha.
+  - **Confirmado:** o que já estava escrito e o material novo confirma, de preferência com outra fonte.
+  - **Diferente:** onde o material novo diz outra coisa que o já escrito; diga o que cada lado diz. Isso também vai para "Dúvidas".
+- Fontes novas guardadas da internet seguem a numeração dos arquivos `fontes/web-<n>.md` que já existirem.
+
 ## Sem fontes (quando o Lucas não escolheu nenhuma)
 
 Ele quer só a sua resposta. Escreva com o que você sabe, no mesmo formato, mas sem a seção de fontes; logo abaixo do resumo, escreva a linha `*Sem fontes: escrito com o conhecimento da IA, sem pesquisa.*`. Seja ainda mais cuidadoso: o que você não tiver certeza vai para "Dúvidas", e não para o texto.
@@ -48,6 +59,10 @@ Ele quer só a sua resposta. Escreva com o que você sabe, no mesmo formato, mas
 
 ## ...
 
+## O que há de novo
+
+<só quando já existe texto; ver acima>
+
 ## Linha do tempo
 
 - **<data ou período>** — <acontecimento>
@@ -63,4 +78,5 @@ Ele quer só a sua resposta. Escreva com o que você sabe, no mesmo formato, mas
 ```
 
 - **Linha do tempo:** só se o assunto tiver datas ou períodos.
+- **O que há de novo:** só quando há `anterior.md` ou `ja-escrito/`.
 - **Dúvidas:** omitir a seção se não houver nenhuma.

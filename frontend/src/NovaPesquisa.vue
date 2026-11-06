@@ -3,8 +3,10 @@ import { computed, ref, watch } from 'vue'
 import { api } from './api.js'
 import { FONTES, PROFUNDIDADES } from './pesquisa.js'
 
-// Pesquisador (D27): o Lucas escreve o tema, escolhe as fontes e a profundidade.
-const emit = defineEmits(['fechar'])
+// Pesquisador (D27): o Lucas escreve o tema, escolhe as fontes e a profundidade. Com uma
+// Referência, é para aprofundar a pesquisa dela (D29): as escolhas começam pelas da última rodada.
+const props = defineProps({ referencia: { type: Object, default: null } })
+const emit = defineEmits(['fechar', 'enviado'])
 
 // As últimas escolhas voltam na próxima pesquisa.
 const CHAVE = 'acervo-pesquisa-escolhas'
@@ -15,9 +17,11 @@ function lerEscolhas() {
     return {}
   }
 }
-const salvas = lerEscolhas()
+const aprofundando = !!props.referencia
+const salvas = aprofundando ? { ...props.referencia.pesquisa, flashcards: false } : lerEscolhas()
 
 const tema = ref('')
+const foco = ref('')
 const fontes = ref(salvas.fontes ?? ['livros', 'wikipedia'])
 const profundidade = ref(salvas.profundidade ?? 'rapida')
 const revisarEsboco = ref(salvas.revisar_esboco ?? false)
@@ -29,6 +33,7 @@ const semFontes = computed(() => fontes.value.length === 0)
 const explicacao = computed(() => PROFUNDIDADES.find((p) => p.chave === profundidade.value)?.explicacao)
 
 watch([fontes, profundidade, revisarEsboco, flashcards], () => {
+  if (aprofundando) return
   try {
     localStorage.setItem(CHAVE, JSON.stringify({ fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value, flashcards: flashcards.value }))
   } catch {
@@ -44,6 +49,14 @@ async function pesquisar() {
   enviando.value = true
   erro.value = ''
   try {
+    if (aprofundando) {
+      await api(`/api/referencias/${encodeURIComponent(props.referencia.id)}/aprofundar`, {
+        metodo: 'POST',
+        corpo: { fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value && !semFontes.value, foco: foco.value },
+      })
+      emit('enviado')
+      return
+    }
     const ref_ = await api('/api/pesquisas', {
       metodo: 'POST',
       corpo: { tema: tema.value, fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value && !semFontes.value, flashcards: flashcards.value },
@@ -59,7 +72,17 @@ async function pesquisar() {
 
 <template>
   <form class="cartao nova-pesquisa" @submit.prevent="pesquisar">
-    <label class="grupo">
+    <template v-if="aprofundando">
+      <div>
+        <strong>Aprofundar a pesquisa</strong>
+        <p class="suave dica">Uma nova rodada, a partir do texto atual: o esboço vai atrás do que ficou em aberto, o material já coletado não é buscado de novo, e o texto novo diz o que há de novo. O texto de agora fica na aba Versão anterior.</p>
+      </div>
+      <label class="grupo">
+        <span class="titulo-grupo">O que mais quer saber? <span class="suave">(opcional)</span></span>
+        <textarea v-model="foco" class="campo" rows="2" maxlength="500" placeholder="Ex.: as variedades e como escolher no mercado" />
+      </label>
+    </template>
+    <label v-else class="grupo">
       <span class="titulo-grupo">Tema ou pergunta</span>
       <textarea v-model="tema" class="campo" rows="2" maxlength="500" placeholder="Ex.: qual é a origem da laranja?" required />
     </label>
@@ -85,14 +108,14 @@ async function pesquisar() {
       <span>Revisar o esboço antes de buscar <span class="suave">— a pesquisa para nas perguntas, e você ajusta antes de ela buscar.</span></span>
     </label>
 
-    <label class="marcar">
+    <label v-if="!aprofundando" class="marcar">
       <input v-model="flashcards" type="checkbox" />
       <span>Gerar flashcards do resultado <span class="suave">— pronta a pesquisa, a IA propõe os cartões, e você aprova junto com o texto.</span></span>
     </label>
 
     <div v-if="erro" class="aviso erro">{{ erro }}</div>
     <div class="linha-acoes">
-      <button class="botao principal" :disabled="enviando || tema.trim().length < 3">{{ enviando ? 'Enviando…' : 'Pesquisar' }}</button>
+      <button class="botao principal" :disabled="enviando || (!aprofundando && tema.trim().length < 3)">{{ enviando ? 'Enviando…' : aprofundando ? 'Aprofundar' : 'Pesquisar' }}</button>
       <button type="button" class="botao" @click="emit('fechar')">Cancelar</button>
     </div>
   </form>

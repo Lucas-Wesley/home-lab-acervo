@@ -52,8 +52,31 @@ func (a *app) coletar(ctx context.Context, t *tarefa, ref *referencia) (resultad
 		return pronto, err
 	}
 	pasta := a.pastaReferencia(ref.ID)
-	// Coletar de novo começa do zero; o que a IA guardou dos sites também sai.
-	os.RemoveAll(filepath.Join(pasta, pastaFontes))
+	rodada := p.rodada()
+	vistos := map[string]bool{}
+	var anteriores []coletado
+	if rodada == 1 {
+		// Coletar de novo começa do zero; o que a IA guardou dos sites também sai.
+		os.RemoveAll(filepath.Join(pasta, pastaFontes))
+	} else {
+		// Ao aprofundar, o material das rodadas anteriores fica e não é buscado de novo; o desta
+		// rodada (de uma tentativa que falhou) sai.
+		for _, c := range p.Coleta {
+			if c.rodada() == rodada {
+				if c.Arquivo != "" {
+					os.Remove(filepath.Join(pasta, filepath.FromSlash(c.Arquivo)))
+				}
+				continue
+			}
+			anteriores = append(anteriores, c)
+			switch c.Fonte {
+			case fonteWikipedia:
+				vistos["wiki:"+c.Titulo] = true
+			case fonteYoutube:
+				vistos["yt:"+strings.TrimPrefix(c.URL, "https://www.youtube.com/watch?v=")] = true
+			}
+		}
+	}
 	os.Remove(filepath.Join(pasta, "cru.md"))
 	os.Remove(filepath.Join(pasta, "organizado.md"))
 	if err := os.MkdirAll(filepath.Join(pasta, pastaFontes), 0o755); err != nil {
@@ -62,14 +85,17 @@ func (a *app) coletar(ctx context.Context, t *tarefa, ref *referencia) (resultad
 
 	al := p.alcance()
 	var coleta []coletado
-	vistos := map[string]bool{}
 	videos := 0
 	for i, q := range p.Esboco {
 		if ctx.Err() != nil {
 			return pronto, ctx.Err()
 		}
 		if q.Livros != "" {
-			coleta = append(coleta, a.coletarLivros(ctx, pasta, i+1, q, al.trechos))
+			nome := fmt.Sprintf("%s/livros-%d.md", pastaFontes, i+1)
+			if rodada > 1 {
+				nome = fmt.Sprintf("%s/livros-r%d-%d.md", pastaFontes, rodada, i+1)
+			}
+			coleta = append(coleta, a.coletarLivros(ctx, pasta, nome, q, al.trechos))
 		}
 		if q.Wikipedia != "" {
 			coleta = append(coleta, a.coletarWikipedia(ctx, pasta, q.Wikipedia, al.artigos, vistos)...)
@@ -88,7 +114,10 @@ func (a *app) coletar(ctx context.Context, t *tarefa, ref *referencia) (resultad
 		return pronto, ctx.Err()
 	}
 
-	p.Coleta = coleta
+	for i := range coleta {
+		coleta[i].Rodada = rodada
+	}
+	p.Coleta = append(anteriores, coleta...)
 	if err := a.guardarPedido(ctx, ref.ID, p); err != nil {
 		return pronto, err
 	}
@@ -99,6 +128,9 @@ func (a *app) coletar(ctx context.Context, t *tarefa, ref *referencia) (resultad
 		}
 	}
 	if guardados == 0 && !p.usa(fonteSites) {
+		if rodada > 1 {
+			return pronto, errors.New("nenhuma fonte trouxe material novo para aprofundar: " + resumoDosErros(coleta))
+		}
 		return pronto, errors.New("nenhuma fonte trouxe material para a pesquisa: " + resumoDosErros(coleta))
 	}
 	if err := os.WriteFile(filepath.Join(pasta, "cru.md"), []byte(materialColetado(p)), 0o644); err != nil {
@@ -133,6 +165,12 @@ func materialColetado(p pedidoPesquisa) string {
 	for i, q := range p.Esboco {
 		fmt.Fprintf(&s, "%d. %s\n", i+1, q.Pergunta)
 	}
+	if len(p.Anteriores) > 0 {
+		s.WriteString("\nDas rodadas anteriores:\n\n")
+		for _, q := range p.Anteriores {
+			fmt.Fprintf(&s, "- %s\n", q.Pergunta)
+		}
+	}
 	s.WriteString("\n## Fontes guardadas\n\n")
 	for _, c := range p.Coleta {
 		if c.Erro != "" {
@@ -142,14 +180,18 @@ func materialColetado(p pedidoPesquisa) string {
 		if c.URL != "" {
 			titulo = fmt.Sprintf("[%s](%s)", c.Titulo, c.URL)
 		}
-		fmt.Fprintf(&s, "- **%s:** %s — `%s`\n", nomesCurtos[c.Fonte], titulo, c.Arquivo)
+		rodada := ""
+		if p.rodada() > 1 {
+			rodada = fmt.Sprintf(" (rodada %d)", c.rodada())
+		}
+		fmt.Fprintf(&s, "- **%s:** %s — `%s`%s\n", nomesCurtos[c.Fonte], titulo, c.Arquivo, rodada)
 	}
 	if p.usa(fonteSites) {
 		s.WriteString("- **Sites:** a IA pesquisa ao escrever e guarda em `fontes/web-*.md` o que usar.\n")
 	}
 	var semNada []string
 	for _, c := range p.Coleta {
-		if c.Erro != "" {
+		if c.Erro != "" && c.rodada() == p.rodada() {
 			semNada = append(semNada, fmt.Sprintf("- %s, %s: %s", nomesCurtos[c.Fonte], c.Titulo, c.Erro))
 		}
 	}
@@ -175,7 +217,7 @@ func (a *app) linkDoLivro(t trechoDeLivro) string {
 	return fmt.Sprintf("%s/#/livro/%s?em=%s", a.cfg.bibliotecaLink, url.PathEscape(t.BookID), url.QueryEscape(t.Anchor))
 }
 
-func (a *app) coletarLivros(ctx context.Context, pasta string, n int, q pergunta, limite int) coletado {
+func (a *app) coletarLivros(ctx context.Context, pasta, arquivo string, q pergunta, limite int) coletado {
 	c := coletado{Fonte: fonteLivros, Titulo: fmt.Sprintf("busca %q", q.Livros)}
 	if a.cfg.biblioteca == "" {
 		c.Erro = "a busca nos livros não está configurada (BIBLIOTECA_URL)"
@@ -208,7 +250,7 @@ func (a *app) coletarLivros(ctx context.Context, pasta string, n int, q pergunta
 		}
 		fmt.Fprintf(&s, "## %s%s — p. %d%s\n\nLink: %s\n\n%s\n\n", t.Title, autor, t.Page, capitulo, a.linkDoLivro(t), t.Text)
 	}
-	c.Arquivo = fmt.Sprintf("%s/livros-%d.md", pastaFontes, n)
+	c.Arquivo = arquivo
 	c.Titulo = fmt.Sprintf("%d trechos de %d livro(s) para %q", len(resposta.Results), len(livros), q.Livros)
 	if err := os.WriteFile(filepath.Join(pasta, c.Arquivo), []byte(s.String()), 0o644); err != nil {
 		c.Erro = err.Error()

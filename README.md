@@ -6,8 +6,8 @@ cronológica e versionada — construída de forma incremental ao longo do tempo
 
 > Não é um "resumidor de vídeo". O vídeo é só a matéria-prima; o produto é a base de conhecimento.
 
-> **Status (06/11/2026):** primeira versão construída e testada localmente; ainda não publicada.
-> Andamento em [`docs/CONSTRUCAO.md`](docs/CONSTRUCAO.md).
+> **Status (06/11/2026):** publicado no homelab, com o Pesquisador (D27, D29) e o resumo de
+> capítulos de livros (D30). Andamento em [`docs/CONSTRUCAO.md`](docs/CONSTRUCAO.md).
 
 ## As duas áreas
 
@@ -85,7 +85,7 @@ espera a sua aprovação.
 No fim do menu:
 
 - **Instruções da IA:** o texto que o Claude segue em cada etapa (organizar, traduzir, sugerir
-  Tema, criar Tema, integrar), nas etapas do Pesquisador (esboço, escrever, conferir) e na pesquisa
+  Tema, criar Tema, integrar), nas etapas do Pesquisador (esboço, escrever, conferir), no resumo de capítulos e na pesquisa
   de "Mais informações". Dá para ler e editar pelo celular, e a mudança vale a partir da
   próxima tarefa. "Voltar ao padrão" volta ao texto de `regras/`.
 - **Sugestões de melhoria:** anote o que pode melhorar no app. Depois, peça ao Claude Code para ver
@@ -113,6 +113,18 @@ Em Referências, **Pesquisar um tema**. Escreva o tema ou a pergunta e escolha:
 O resultado é uma Referência do tipo pesquisa, com fonte em cada parte, a aba **Material coletado**
 e as **Dúvidas**; a sugestão de Tema já vem pedida, e o resto é o caminho de sempre. No servidor, a
 busca nos livros usa `BIBLIOTECA_URL` (`compose.prod.yaml`).
+
+**Aprofundar:** na pesquisa pronta, escolha de novo as fontes e a profundidade (por exemplo,
+acrescente o YouTube) e diga o que mais quer saber. A nova rodada parte do texto atual e do que o
+Acervo já tem sobre o assunto, não busca de novo o material que já veio e termina com **O que há
+de novo** (novo, confirmado, diferente). O texto de antes fica na aba **Versão anterior**.
+
+## Resumir capítulos de um livro
+
+Em Referências, **Resumir capítulos**: escolha um livro da Biblioteca e um ou mais capítulos (num
+PDF sem sumário, as páginas). A IA resume o que o livro ensina, sem repetições nem enchimento, com
+a página de cada parte (link de volta ao livro), separa os assuntos que fogem do capítulo e sugere
+o Tema, existente ou novo. As regras estão em Ajustes → Instruções da IA → Resumir capítulos.
 
 ## Identidade visual
 

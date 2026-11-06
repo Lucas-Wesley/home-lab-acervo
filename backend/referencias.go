@@ -30,6 +30,7 @@ type referencia struct {
 	Temas        []string        `json:"temas"`
 	Tipo         string          `json:"tipo"`     // video ou pesquisa (D27)
 	Pesquisa     json.RawMessage `json:"pesquisa"` // o pedido, o esboço e a coleta; null num vídeo
+	Livro        json.RawMessage `json:"livro"`    // o livro e os capítulos escolhidos (D30); null nos outros
 }
 
 // tarefaAtiva é o que a lista mostra: o que está acontecendo com a Referência agora.
@@ -40,12 +41,12 @@ type tarefaAtiva struct {
 	Posicao int    `json:"posicao"` // 0 = rodando; 1 = a próxima...
 }
 
-const colunasReferencia = `id, url, COALESCE(video_id, ''), titulo, canal, duracao, idioma, estado, erro, sugestao, criado_em, atualizado_em, tipo, pesquisa`
+const colunasReferencia = `id, url, COALESCE(video_id, ''), titulo, canal, duracao, idioma, estado, erro, sugestao, criado_em, atualizado_em, tipo, pesquisa, livro`
 
 func lerReferencia(row linha) (*referencia, error) {
 	var r referencia
-	var sug, pesquisa string
-	err := row.Scan(&r.ID, &r.URL, &r.VideoID, &r.Titulo, &r.Canal, &r.Duracao, &r.Idioma, &r.Estado, &r.Erro, &sug, &r.CriadoEm, &r.AtualizadoEm, &r.Tipo, &pesquisa)
+	var sug, pesquisa, livro string
+	err := row.Scan(&r.ID, &r.URL, &r.VideoID, &r.Titulo, &r.Canal, &r.Duracao, &r.Idioma, &r.Estado, &r.Erro, &sug, &r.CriadoEm, &r.AtualizadoEm, &r.Tipo, &pesquisa, &livro)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +56,10 @@ func lerReferencia(row linha) (*referencia, error) {
 	if pesquisa == "" {
 		pesquisa = "null"
 	}
+	if livro == "" {
+		livro = "null"
+	}
+	r.Livro = json.RawMessage(livro)
 	r.Sugestao = json.RawMessage(sug)
 	r.Pesquisa = json.RawMessage(pesquisa)
 	r.Temas = []string{}
@@ -184,7 +189,7 @@ func (a *app) handleReferencia(w http.ResponseWriter, r *http.Request) {
 	}
 	a.completar(r.Context(), []*referencia{ref})
 	textos := map[string]string{}
-	for _, nome := range []string{"cru", "organizado", "traducao"} {
+	for _, nome := range []string{"cru", "organizado", "traducao", "anterior"} {
 		if b, err := os.ReadFile(filepath.Join(a.pastaReferencia(ref.ID), nome+".md")); err == nil {
 			textos[nome] = string(b)
 		}
@@ -263,6 +268,17 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 			erroJSON(w, http.StatusConflict, msg)
 			return
 		}
+	case "aprofundar":
+		var corpo pedidoPesquisa
+		if !lerCorpo(w, r, &corpo) {
+			return
+		}
+		var msg string
+		msg, err = a.aprofundar(ctx, ref, corpo)
+		if msg != "" {
+			erroJSON(w, http.StatusConflict, msg)
+			return
+		}
 	case "sugerir":
 		if !pronta {
 			erroJSON(w, http.StatusConflict, "Organize a Referência antes.")
@@ -324,6 +340,12 @@ func (a *app) proximaEtapa(ref *referencia) string {
 		return a.proximaEtapaPesquisa(ref)
 	}
 	pasta := a.pastaReferencia(ref.ID)
+	if ref.Tipo == "livro" {
+		if !existe(filepath.Join(pasta, "cru.md")) {
+			return "ler_livro"
+		}
+		return "resumir"
+	}
 	switch {
 	case !existe(filepath.Join(pasta, "cru.md")):
 		return "extrair"

@@ -93,6 +93,10 @@ func abrirBanco(caminho string) (*sql.DB, error) {
 		db.Close()
 		return nil, err
 	}
+	if err := acrescentarColuna(db, "referencias", "livro", `TEXT NOT NULL DEFAULT ''`); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return db, nil
 }
 
@@ -122,7 +126,18 @@ func migrarReferencias(db *sql.DB) error {
 	return tx.Commit()
 }
 
-// tipo: "video" ou "pesquisa" (D27); pesquisa guarda o pedido, o esboço e o que foi coletado.
+// acrescentarColuna cria a coluna num banco de antes dela.
+func acrescentarColuna(db *sql.DB, tabela, coluna, definicao string) error {
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, tabela, coluna).Scan(&n); err != nil || n > 0 {
+		return err
+	}
+	_, err := db.Exec(fmt.Sprintf(`ALTER TABLE %s ADD COLUMN %s %s`, tabela, coluna, definicao))
+	return err
+}
+
+// tipo: "video", "pesquisa" (D27) ou "livro" (D30); pesquisa guarda o pedido, o esboço e o que foi
+// coletado; livro, o livro e os capítulos escolhidos.
 const tabelaReferencias = `CREATE TABLE IF NOT EXISTS referencias (
 	id            TEXT PRIMARY KEY,
 	url           TEXT NOT NULL,
@@ -137,7 +152,8 @@ const tabelaReferencias = `CREATE TABLE IF NOT EXISTS referencias (
 	criado_em     TEXT NOT NULL,
 	atualizado_em TEXT NOT NULL,
 	tipo          TEXT NOT NULL DEFAULT 'video',
-	pesquisa      TEXT NOT NULL DEFAULT ''
+	pesquisa      TEXT NOT NULL DEFAULT '',
+	livro         TEXT NOT NULL DEFAULT ''
 );`
 
 const esquema = tabelaReferencias + `

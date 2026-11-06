@@ -170,6 +170,12 @@ e o Claude falhava com "sem resposta". Os caminhos agora são absolutos, e há t
 - **Telas:** formulário em Referências (as últimas escolhas ficam no aparelho), editor do esboço na Referência, aba "Material coletado" (`cru.md`) e ícone de pesquisa na lista.
 - Testes: Go (detalhada com esboço revisado, rápida com sites, só a IA, sem material e tentar de novo, conferência que falha, pedido inválido, migração), unidade e navegador (pedido → esboço → pesquisa → sugestão).
 
+## Aprofundar e resumo de capítulos (06/11/2026, D29 e D30)
+
+- **Aprofundar:** `POST /api/referencias/{id}/aprofundar` com `{fontes, profundidade, revisar_esboco, foco}`. O pedido ganhou `rodada`, `foco`, `anteriores` e `relacionados`, e cada item da coleta, a `rodada` em que veio. O esboço roda com `--add-dir` do conteúdo (só leitura) e devolve `relacionados`; `copiarJaEscrito` põe os Temas em `ja-escrito/` antes de escrever.
+- **Resumo de capítulos:** `GET /api/livros` e `GET /api/livros/{id}` repassam os livros e o sumário da Biblioteca; `POST /api/livros` com `{livro, capitulos, de, ate, foco}` cria a Referência `tipo = 'livro'` (coluna `livro`, acrescentada com `ALTER TABLE`). Etapas `ler_livro` (sem IA) e `resumir` (`livros.go`).
+- Testes: Go (duas rodadas com o já escrito, aprofundar sem texto ou num vídeo, resumo de um capítulo, pedidos inválidos), unidade e navegador (aprofundar com Sites; resumir dois capítulos, com uma Biblioteca falsa em `e2e/biblioteca-falsa.mjs`).
+
 ## O que ficou de fora desta versão
 
 - **Verificação de veracidade (item 7):** só a aba "Dúvidas" e o botão "Marcar como validada".

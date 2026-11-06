@@ -26,6 +26,9 @@ func (a *app) executores() map[string]executor {
 		"coletar":  a.naReferencia(a.coletar, true),
 		"redigir":  a.naReferencia(a.redigir, true),
 		"conferir": a.naReferencia(a.conferir, true),
+		// Resumo de capítulos (D30)
+		"ler_livro": a.naReferencia(a.lerLivro, true),
+		"resumir":   a.naReferencia(a.resumir, true),
 	}
 }
 
@@ -233,7 +236,7 @@ func (a *app) criarTema(ctx context.Context, t *tarefa, ref *referencia) (result
 		instrucao: fmt.Sprintf("A Referência tem id %s, título %q e URL %s. O texto organizado está em %s. "+
 			"O Lucas decidiu criar o Tema %q na pasta %s/ (caminho relativo a esta pasta). Hoje é %s. "+
 			"Escreva só dentro dessa pasta. Responda só 'ok' ao terminar.%s",
-			ref.ID, ref.Titulo, ref.URL, texto, p.Titulo, p.Pasta, time.Now().Format("2006-01-02"), notaDaPesquisa(ref)),
+			ref.ID, ref.Titulo, ref.URL, texto, p.Titulo, p.Pasta, time.Now().Format("2006-01-02"), notaDoTipo(ref)),
 		ferramentas: ferramentasEscrita,
 	})
 	if err == nil {
@@ -275,7 +278,7 @@ func (a *app) integrar(ctx context.Context, t *tarefa, ref *referencia) (resulta
 			"O Lucas decidiu integrá-la ao Tema da pasta %s/ (caminho relativo a esta pasta). Hoje é %s. "+
 			"Escreva só dentro dessa pasta. Ao terminar, responda só 'ok', ou 'nada novo' se a Referência não "+
 			"acrescentar nada ao Tema.%s",
-			ref.ID, ref.Titulo, ref.URL, texto, p.Tema, time.Now().Format("2006-01-02"), notaDaPesquisa(ref)),
+			ref.ID, ref.Titulo, ref.URL, texto, p.Tema, time.Now().Format("2006-01-02"), notaDoTipo(ref)),
 		ferramentas: ferramentasEscrita,
 	})
 	if err == nil {

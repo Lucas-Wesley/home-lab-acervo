@@ -22,6 +22,10 @@ type fontesFalsas struct {
 
 func (f *fontesFalsas) ligar(e *ambiente) {
 	biblioteca := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/books") {
+			bibliotecaDeLivros(w, r)
+			return
+		}
 		f.mu.Lock()
 		f.buscasLivro = append(f.buscasLivro, r.URL.Query().Get("q"))
 		vazio := f.semLivros
