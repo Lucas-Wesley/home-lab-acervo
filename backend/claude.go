@@ -6,9 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -22,7 +20,7 @@ const (
 type pedidoClaude struct {
 	pasta       string   // diretório de trabalho
 	extras      []string // outras pastas que ele pode ler
-	regra       string   // arquivo em regras/, ex.: "organizar.md"
+	regra       string   // arquivo em regras/, ex.: "organizar.md"; vale a versão editada no app, se houver
 	instrucao   string   // o pedido específico desta tarefa
 	ferramentas string
 	esquema     string // JSON Schema da resposta, quando a tarefa devolve dados
@@ -36,11 +34,11 @@ type respostaClaude struct {
 
 func (a *app) chamarClaude(ctx context.Context, p pedidoClaude) (respostaClaude, error) {
 	var r respostaClaude
-	regra, err := os.ReadFile(filepath.Join(a.cfg.regras, p.regra))
+	regra, _, err := a.lerRegra(p.regra)
 	if err != nil {
 		return r, fmt.Errorf("regra %s não encontrada: %w", p.regra, err)
 	}
-	prompt := p.instrucao + "\n\nSiga as regras abaixo.\n\n" + string(regra)
+	prompt := p.instrucao + "\n\nSiga as regras abaixo.\n\n" + regra
 
 	args := []string{"-p", prompt, "--output-format", "json",
 		"--allowedTools", p.ferramentas, "--disallowedTools", ferramentasProibidas}

@@ -1,14 +1,10 @@
 # Regras: criar um Tema a partir de uma Referência
 
-Você recebe `organizado.md` (uma Referência já organizada) e a pasta onde o Tema novo deve nascer.
-Essa pasta é decidida pelo Lucas: `temas/<slug>/` para um Tema principal, ou
-`temas/<pai>/<slug>/` para um subtema. Você escreve só dentro dela.
+Você recebe `organizado.md` (uma Referência já organizada) e a pasta onde o Tema novo deve nascer. Essa pasta é decidida pelo Lucas: `temas/<slug>/` para um Tema principal, ou `temas/<pai>/<slug>/` para um subtema. Você escreve só dentro dela.
 
 ## Estrutura: uma página só
 
-O Tema é **um arquivo só**, `<pasta>/indice.md`, com o texto inteiro dividido em **capítulos**
-(`## `). Não crie outros arquivos: o app monta o sumário a partir dos capítulos, e o Lucas separa
-um capítulo em página própria quando ele crescer.
+O Tema é **um arquivo só**, `<pasta>/indice.md`, com o texto inteiro dividido em **capítulos** (`## `). Não crie outros arquivos: o app monta o sumário a partir dos capítulos, e o Lucas separa um capítulo em página própria quando ele crescer.
 
 ```markdown
 ---
@@ -55,5 +51,4 @@ referencias:
 
 - **Não reescrever o conteúdo**: o texto já foi organizado; aqui só se organiza em capítulos.
 - **Não acrescentar fatos.**
-- **Links para outros Temas são só links**: `[texto](caminho/relativo/indice.md)`, sempre para o
-  `indice.md` do outro Tema, nunca copiando o texto dele.
+- **Links para outros Temas são só links**: `[texto](caminho/relativo/indice.md)`, sempre para o `indice.md` do outro Tema, nunca copiando o texto dele.

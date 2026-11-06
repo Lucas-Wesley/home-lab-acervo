@@ -162,3 +162,35 @@ test('vídeo compartilhado pelo celular entra na fila sem passar por tela nenhum
   await expect(page).toHaveURL(/\/#\/referencias$/)
   await expect(page.locator('.referencia', { hasText: 'Vídeo CCCCCCCCCCC' })).toBeVisible({ timeout: 15000 })
 })
+
+test('Ajustes: anota uma sugestão e edita a instrução que o Claude segue', async ({ page }) => {
+  await page.goto('/#/fila')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await expect(page.getByRole('heading', { name: 'Ajustes' })).toBeVisible()
+
+  // Sugestão: vai com a tela de onde se veio.
+  await page.getByLabel('Sugestão de melhoria').fill('Mostrar o tempo de cada tarefa na fila')
+  await page.getByRole('button', { name: 'Enviar sugestão' }).click()
+  await expect(page.locator('.sugestao', { hasText: 'Mostrar o tempo de cada tarefa' })).toContainText('Nova')
+  const [sugestao] = await (await page.request.get('/api/sugestoes')).json()
+  expect(sugestao.tela).toBe('#/fila')
+
+  // Instrução: abre o texto em vigor, edita e volta ao padrão.
+  await page.getByRole('link', { name: /Organizar a transcrição/ }).click()
+  await expect(page.locator('article.texto')).toContainText('Remover o que não é conteúdo')
+  await expect(page.getByText('Texto original')).toBeVisible()
+  await page.getByRole('button', { name: 'Editar' }).click()
+  const editor = page.getByLabel('Texto da instrução')
+  await editor.fill((await editor.inputValue()) + '\n- Nunca usar a palavra "basicamente".\n')
+  await page.getByRole('button', { name: 'Salvar' }).click()
+  await expect(page.getByText(/Editada em/)).toBeVisible()
+  await expect(page.locator('article.texto')).toContainText('Nunca usar a palavra')
+
+  await page.getByRole('link', { name: 'Ajustes' }).first().click()
+  await expect(page.locator('.instrucao', { hasText: 'Organizar a transcrição' })).toContainText('Editada')
+  await page.getByRole('link', { name: /Organizar a transcrição/ }).click()
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: 'Voltar ao padrão' }).click()
+  await expect(page.getByText('Texto original')).toBeVisible()
+  await expect(page.locator('article.texto')).not.toContainText('Nunca usar a palavra')
+})

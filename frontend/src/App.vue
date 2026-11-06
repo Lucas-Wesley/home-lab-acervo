@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import Acervo from './Acervo.vue'
+import Ajustes from './Ajustes.vue'
 import Fila from './Fila.vue'
 import Icone from './Icone.vue'
+import Instrucao from './Instrucao.vue'
 import Leitor from './Leitor.vue'
 import Referencia from './Referencia.vue'
 import Referencias from './Referencias.vue'
@@ -30,6 +32,7 @@ const MENU = [
   { rota: 'revisoes', nome: 'Revisões', icone: 'revisao', contador: 'revisoes' },
   { rota: 'fila', nome: 'Fila', icone: 'fila', contador: 'fila' },
   { rota: 'baixados', nome: 'Baixados', icone: 'baixado' },
+  { rota: 'ajustes', nome: 'Ajustes', icone: 'ajustes' },
 ]
 
 const secao = computed(() => {
@@ -44,7 +47,11 @@ function ir(destino) {
   location.hash = `#/${destino}`
 }
 
+// A tela de onde se foi para Ajustes: vai junto com a sugestão, para dar contexto.
+const telaAnterior = ref('')
+
 function aoMudarHash() {
+  if (location.hash.startsWith('#/ajustes') && !hash.value.startsWith('#/ajustes')) telaAnterior.value = hash.value || '#/acervo'
   hash.value = location.hash
 }
 
@@ -167,6 +174,8 @@ onBeforeUnmount(() => {
       <Referencias v-else-if="rota.nome === 'referencias'" />
       <Referencia v-else-if="rota.nome === 'referencia'" :key="rota.param" :id="rota.param" />
       <Fila v-else-if="rota.nome === 'fila'" />
+      <Instrucao v-else-if="rota.nome === 'ajustes' && rota.param.startsWith('instrucoes/')" :key="rota.param" :arquivo="rota.param.slice('instrucoes/'.length)" />
+      <Ajustes v-else-if="rota.nome === 'ajustes'" :tela="telaAnterior" />
       <Revisoes v-else-if="rota.nome === 'revisoes' || rota.nome === 'revisao'" :key="rota.param" :id="rota.param" />
       <Acervo v-else :so-baixados="rota.nome === 'baixados'" />
     </main>
@@ -332,7 +341,7 @@ nav {
   }
 
   nav {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
   }
 
   .item {

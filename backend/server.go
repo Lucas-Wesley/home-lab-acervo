@@ -34,6 +34,16 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("GET /api/revisoes/{id}", a.handleRevisao)
 	mux.HandleFunc("POST /api/revisoes/{id}/{decisao}", a.handleDecidir)
 
+	mux.HandleFunc("GET /api/instrucoes", a.handleInstrucoes)
+	mux.HandleFunc("GET /api/instrucoes/{arquivo}", a.handleInstrucao)
+	mux.HandleFunc("PUT /api/instrucoes/{arquivo}", a.handleSalvarInstrucao)
+	mux.HandleFunc("DELETE /api/instrucoes/{arquivo}", a.handleRestaurarInstrucao)
+
+	mux.HandleFunc("GET /api/sugestoes", a.handleSugestoes)
+	mux.HandleFunc("PUT /api/sugestoes/{id}", a.handleGuardarSugestao)
+	mux.HandleFunc("PATCH /api/sugestoes/{id}", a.handleMarcarSugestao)
+	mux.HandleFunc("DELETE /api/sugestoes/{id}", a.handleApagarSugestao)
+
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		erroJSON(w, http.StatusNotFound, "não encontrado")
 	})

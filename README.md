@@ -33,6 +33,8 @@ Toda etapa com o `yt-dlp` ou o Claude entra numa **fila** e roda uma por vez.
 - [`docs/PESQUISADOR.md`](docs/PESQUISADOR.md) — caminhos para integrar a Biblioteca e para o
   módulo Pesquisador (planejamento, nada implementado).
 - [`regras/`](regras/) — as regras que o Claude segue em cada etapa. **É o que define a qualidade.**
+  O Lucas pode editá-las no app (Ajustes → Instruções da IA); a versão editada fica no servidor e
+  vale no lugar destas.
 
 ## Rodar e testar
 
@@ -75,6 +77,17 @@ espera a sua aprovação.
   Funciona na rede de casa, com o certificado do homelab instalado no iPhone (o mesmo da
   Biblioteca). O back-end aceita o link sozinho ou junto com o título, e um vídeo repetido devolve
   "Este vídeo já está nas Referências."
+
+## Ajustes
+
+No fim do menu:
+
+- **Instruções da IA:** o texto que o Claude segue em cada etapa (organizar, traduzir, sugerir
+  Tema, criar Tema, integrar). Dá para ler e editar pelo celular, e a mudança vale a partir da
+  próxima tarefa. "Voltar ao padrão" volta ao texto de `regras/`.
+- **Sugestões de melhoria:** anote o que pode melhorar no app. Depois, peça ao Claude Code para ver
+  as sugestões: ele lê por `GET /api/sugestoes`, faz as mudanças e marca cada uma como feita, com
+  uma resposta que aparece no app.
 
 ## Identidade visual
 

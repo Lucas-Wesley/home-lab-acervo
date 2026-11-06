@@ -114,6 +114,27 @@ e o Claude falhava com "sem resposta". Os caminhos agora são absolutos, e há t
   `url`, manda para `POST /api/referencias`, troca o endereço para `#/referencias` e mostra um
   aviso rápido. `videoDoYouTube` acha o primeiro link de vídeo num texto. No iPhone não existe
   *share target*, e a saída é um atalho do app Atalhos (README). Há teste de navegador.
+- **Ícone próprio:** livros numa estante, no mesmo traço do livro aberto da Biblioteca.
+
+## Ajustes: instruções da IA e sugestões (06/11/2026, D25)
+
+- **Ajustes** é o último item do menu (no celular, a sexta aba).
+- **Instruções da IA:** as cinco regras de [`regras/`](../regras/), com nome e descrição, para ler
+  e editar pelo celular.
+  - A versão editada vai para `DATA_DIR/regras/<arquivo>` e vale no lugar da do repositório
+    (`lerRegra`, usada por `chamarClaude`). "Voltar ao padrão" apaga a edição.
+  - A gravação é atômica (arquivo temporário + rename), e só os cinco arquivos conhecidos são
+    aceitos.
+  - API: `GET /api/instrucoes`, `GET|PUT|DELETE /api/instrucoes/{arquivo}`.
+  - Os parágrafos das regras passaram a ocupar uma linha só, para editar no celular sem quebras
+    no meio da frase.
+- **Sugestões de melhoria:** o Lucas anota o que pode melhorar; o Claude Code lê, faz e responde.
+  - Tabela `sugestoes`. API comum a todas as apps: `GET /api/sugestoes`,
+    `PUT /api/sugestoes/{id}` (o id vem do aparelho, e reenviar não duplica),
+    `PATCH /api/sugestoes/{id}` com `{estado, resposta}` e `DELETE /api/sugestoes/{id}`.
+  - Estados: `nova`, `feita`, `descartada`. A sugestão guarda a tela de onde o Lucas foi para
+    Ajustes.
+- Testes: Go (instrução editada chega ao Claude; sugestões) e navegador (Ajustes).
 
 ## O que ficou de fora desta versão
 

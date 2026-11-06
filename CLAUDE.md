@@ -38,4 +38,8 @@ disponível pra inferência local (Whisper) quando precisar.
 - Antes de automatizar, **validar as regras de cada etapa em modo manual** (elas viram o futuro
   `CLAUDE.md` que define a qualidade — hoje ainda em aberto).
 - Toda chamada ao Claude ou ao `yt-dlp` passa pela **fila** (uma tarefa por vez, D14).
+- **As instruções em vigor podem estar editadas no app** (D25). Antes de mudar `regras/`, ler as
+  versões do servidor (`GET https://192.168.1.20:8444/api/instrucoes/<arquivo>`, com
+  `--cacert ../certs/homelab-ca.crt`). Se uma estiver editada, levar a edição para `regras/` e só
+  então voltar a do servidor ao padrão (`DELETE`), para nada se perder.
 - **Commits:** autoria do Lucas; **sem linha `Co-Authored-By`**.

@@ -122,4 +122,13 @@ CREATE TABLE IF NOT EXISTS referencia_temas (
 	integrado_em  TEXT NOT NULL,
 	PRIMARY KEY (referencia_id, tema)
 );
+CREATE TABLE IF NOT EXISTS sugestoes (
+	id            TEXT PRIMARY KEY,
+	texto         TEXT NOT NULL,
+	tela          TEXT NOT NULL DEFAULT '',
+	estado        TEXT NOT NULL DEFAULT 'nova',
+	resposta      TEXT NOT NULL DEFAULT '',
+	criada_em     TEXT NOT NULL,
+	atualizada_em TEXT NOT NULL
+);
 `
