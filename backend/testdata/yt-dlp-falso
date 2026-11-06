@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# yt-dlp falso para os testes. O id do vídeo decide o caso:
+#   AAAAAAAAAAA português com legenda manual · EEEEEEEEEEE inglês só com legenda automática
+#   SSSSSSSSSSS sem legenda · FFFFFFFFFFF vídeo indisponível
+url="${!#}"
+id="${url##*v=}"
+json=0 out="" lang=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -J) json=1; shift ;;
+    -o) out="$2"; shift 2 ;;
+    --sub-langs) lang="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+if [ "$id" = FFFFFFFFFFF ]; then
+  echo "ERROR: [youtube] $id: Video unavailable" >&2
+  exit 1
+fi
+if [ $json = 1 ]; then
+  case "$id" in
+    AAAAAAAAAAA) idioma='"pt-BR"'; subs='{"pt-BR":[{}]}'; autos='{}' ;;
+    EEEEEEEEEEE) idioma='"en"'; subs='{"live_chat":[{}]}'; autos='{"en-orig":[{}],"pt":[{}]}' ;;
+    *) idioma=null; subs='{}'; autos='{}' ;;
+  esac
+  printf '{"id":"%s","title":"Vídeo %s","channel":"Canal","duration_string":"1:00","language":%s,"webpage_url":"%s","upload_date":"20260101","subtitles":%s,"automatic_captions":%s}\n' \
+    "$id" "$id" "$idioma" "$url" "$subs" "$autos"
+  exit 0
+fi
+cp "$(dirname "$0")/legenda.json3" "$out.$lang.json3"

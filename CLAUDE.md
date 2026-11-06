@@ -7,7 +7,7 @@ o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
 **Comece lendo:**
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **a fonte da verdade do projeto.** Conceitos, fluxo
-  completo, decisões (D1–D10), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
+  completo, decisões (D1–D22), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
 
 ## Em uma frase
 Duas áreas: **Acervo** (base permanente por **Temas**, Markdown multi-arquivo, cumulativa) e
@@ -25,16 +25,17 @@ App **independente** (banco + API próprios) que conversa com os outros **por AP
 roadmap e contrato comum no repo **Hub**: `github.com/Lucas-Wesley/hub-home-lab-web` (pasta `docs/`).
 
 ## Ambiente
-Homelab **LAN-only**: Proxmox no Lenovo M920q (`192.168.1.10`, sem GPU). App web + Claude Code
-headless rodam aí; Mac mini M4 disponível pra inferência local (Whisper) quando precisar.
+Homelab **LAN-only**: Proxmox no Lenovo M920q (sem GPU). App web + Claude Code headless rodam na
+VM `apps` (`192.168.1.20`), com Docker Compose e Caddy, igual à Biblioteca Digital (D11). Mac mini M4
+disponível pra inferência local (Whisper) quando precisar.
 
 ## Regras e convenções (IMPORTANTE)
 - **O CONTEÚDO do Acervo (textos + git do conteúdo) NÃO sobe pro GitHub** — fica local no homelab.
   **Só o código da app** vai pra este repositório.
-- **Armazenamento:** conteúdo começa no **disco interno do M920q**; **SSD externo = backup futuro**
-  (ext4). Ver `docs/DECISOES.md` §4.
+- **Armazenamento:** só o **disco interno do M920q**; **SSD externo descontinuado** (D22).
 - **Verificação de veracidade é sempre com decisão humana** — a IA sinaliza, o Lucas decide. Nada de
   descarte automático.
 - Antes de automatizar, **validar as regras de cada etapa em modo manual** (elas viram o futuro
   `CLAUDE.md` que define a qualidade — hoje ainda em aberto).
+- Toda chamada ao Claude ou ao `yt-dlp` passa pela **fila** (uma tarefa por vez, D14).
 - **Commits:** autoria do Lucas; **sem linha `Co-Authored-By`**.

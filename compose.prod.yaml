@@ -1,0 +1,13 @@
+services:
+  acervo:
+    ports: !reset []
+    volumes:
+      - /srv/data/acervo:/data
+    environment:
+      GIT_AUTOR_NOME: Lucas Wesley
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

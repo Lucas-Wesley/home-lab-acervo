@@ -1,0 +1,7 @@
+{"events":[
+{"tStartMs":0,"segs":[{"utf8":"Olá, hoje vamos"},{"utf8":" falar de história."}]},
+{"tStartMs":2000,"aAppend":1,"segs":[{"utf8":"\n"}]},
+{"tStartMs":15000,"segs":[{"utf8":"Inscreva-se\nno canal."}]},
+{"tStartMs":31000,"segs":[{"utf8":"Em 1494, o Tratado de Tordesilhas."}]},
+{"tStartMs":3725000,"segs":[{"utf8":"Fim."}]}
+]}
