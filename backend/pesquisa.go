@@ -61,17 +61,18 @@ var alcances = map[string]alcance{
 }
 
 type pedidoPesquisa struct {
-	Tema          string     `json:"tema"`
-	Fontes        []string   `json:"fontes"`
-	Profundidade  string     `json:"profundidade"`
-	RevisarEsboco bool       `json:"revisar_esboco"`
-	Flashcards    bool       `json:"flashcards"` // pronta a pesquisa, o texto vai para o Flashcards (D28)
-	Esboco        []pergunta `json:"esboco"`
-	Coleta        []coletado `json:"coleta"`
-	Rodada        int        `json:"rodada"`       // 1 na primeira; cada "aprofundar" soma uma (0 = pesquisa antiga, a 1ª)
-	Foco          string     `json:"foco"`         // o que o Lucas quer a mais, ao aprofundar
-	Anteriores    []pergunta `json:"anteriores"`   // as perguntas das rodadas anteriores
-	Relacionados  []string   `json:"relacionados"` // Temas do Acervo sobre o assunto
+	Tema          string           `json:"tema"`
+	Fontes        []string         `json:"fontes"`
+	Profundidade  string           `json:"profundidade"`
+	RevisarEsboco bool             `json:"revisar_esboco"`
+	Flashcards    bool             `json:"flashcards"` // pronta a pesquisa, o texto vai para o Flashcards (D28)
+	Baralho       escolhaDeBaralho `json:"baralho"`    // para qual baralho (vazio: um novo, com o título da pesquisa)
+	Esboco        []pergunta       `json:"esboco"`
+	Coleta        []coletado       `json:"coleta"`
+	Rodada        int              `json:"rodada"`       // 1 na primeira; cada "aprofundar" soma uma (0 = pesquisa antiga, a 1ª)
+	Foco          string           `json:"foco"`         // o que o Lucas quer a mais, ao aprofundar
+	Anteriores    []pergunta       `json:"anteriores"`   // as perguntas das rodadas anteriores
+	Relacionados  []string         `json:"relacionados"` // Temas do Acervo sobre o assunto
 }
 
 // pergunta do esboço, com as palavras de busca de cada fonte (vazias quando a fonte não foi escolhida).

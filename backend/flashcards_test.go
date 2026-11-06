@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,6 +29,8 @@ func (f *flashcardsFalso) ligar(e *ambiente) {
 			return
 		}
 		switch {
+		case r.Method == "GET" && r.URL.Path == "/api/baralhos":
+			writeJSON(w, http.StatusOK, []map[string]any{{"id": "b1", "nome": "Tema de Teste", "cartoes": 3}})
 		case r.Method == "POST" && r.URL.Path == "/api/textos":
 			var t textoParaCartoes
 			json.NewDecoder(r.Body).Decode(&t)
@@ -67,14 +70,25 @@ func TestFlashcardsDeUmCapituloEDoTemaInteiro(t *testing.T) {
 	}
 	primeiro, segundo := capitulos[0].Titulo, capitulos[1].Titulo
 
-	// Um capítulo: só o texto dele, com o caminho no Acervo e o nome do baralho do Tema.
+	// Para escolher o baralho: os que existem no Flashcards e o nome sugerido, o do Tema.
+	var escolha struct {
+		Baralhos []struct{ ID, Nome string } `json:"baralhos"`
+		Sugestao string                       `json:"sugestao"`
+	}
+	if s := e.pedir("GET", "/api/flashcards/baralhos?arquivo=temas/tema-de-teste/indice.md&capitulo="+url.QueryEscape(primeiro), nil, &escolha); s != http.StatusOK ||
+		len(escolha.Baralhos) != 1 || escolha.Baralhos[0].ID != "b1" || escolha.Sugestao != "Tema de Teste" {
+		t.Fatalf("baralhos: %d %+v", s, escolha)
+	}
+
+	// Um capítulo: só o texto dele, com o caminho no Acervo, no baralho escolhido; o link abre no capítulo.
 	var envio envioFlashcards
-	if s := e.pedir("POST", "/api/flashcards", map[string]string{"arquivo": "temas/tema-de-teste/indice.md", "capitulo": primeiro}, &envio); s != http.StatusCreated {
+	if s := e.pedir("POST", "/api/flashcards", map[string]string{"arquivo": "temas/tema-de-teste/indice.md", "capitulo": primeiro, "baralho_id": "b1"}, &envio); s != http.StatusCreated {
 		t.Fatalf("enviar capítulo: %d", s)
 	}
 	got := f.textos[0]
-	if envio.GeracaoID != 1 || got.Baralho != "Tema de Teste" || got.Titulo != "Tema de Teste › "+primeiro ||
-		got.Link != "https://acervo.lan/#/ler/temas/tema-de-teste/indice.md" {
+	linkDoPrimeiro := "https://acervo.lan/#/ler/temas/tema-de-teste/indice.md?capitulo=" + url.PathEscape(primeiro)
+	if envio.GeracaoID != 1 || got.BaralhoID != "b1" || got.Baralho != "" || got.Titulo != "Tema de Teste › "+primeiro ||
+		got.Link != linkDoPrimeiro || len(got.Secoes) != 1 {
 		t.Fatalf("envio %+v, texto %+v", envio, got)
 	}
 	if !strings.HasPrefix(got.Texto, "## "+primeiro) || strings.Contains(got.Texto, "## "+segundo) || !strings.Contains(got.Contexto, "Onde fica no Acervo") {
@@ -83,12 +97,22 @@ func TestFlashcardsDeUmCapituloEDoTemaInteiro(t *testing.T) {
 
 	// Separado em página própria, o capítulo entra no texto do Tema inteiro no lugar do link.
 	e.pedir("POST", "/api/capitulos/separar", map[string]string{"arquivo": "temas/tema-de-teste/indice.md", "titulo": primeiro, "base": antes.Hash}, nil)
-	if s := e.pedir("POST", "/api/flashcards", map[string]string{"arquivo": "temas/tema-de-teste/indice.md"}, nil); s != http.StatusCreated {
+	if s := e.pedir("POST", "/api/flashcards", map[string]string{"arquivo": "temas/tema-de-teste/indice.md", "baralho": " Revisão geral "}, nil); s != http.StatusCreated {
 		t.Fatalf("enviar Tema: %d", s)
 	}
 	inteiro := f.textos[1].Texto
 	if strings.Contains(inteiro, "Ler o capítulo →") || !strings.Contains(inteiro, "## "+segundo) || strings.HasPrefix(inteiro, "---") {
 		t.Errorf("Tema inteiro:\n%s", inteiro)
+	}
+	// Baralho novo, com o nome dado; cada capítulo com o link dele (o separado, a página própria).
+	links := map[string]string{}
+	for _, s := range f.textos[1].Secoes {
+		links[s.Titulo] = s.Link
+	}
+	if f.textos[1].Baralho != "Revisão geral" || f.textos[1].BaralhoID != "" ||
+		!strings.HasPrefix(links[primeiro], "https://acervo.lan/#/ler/temas/tema-de-teste/") || strings.Contains(links[primeiro], "?capitulo=") ||
+		links[segundo] != "https://acervo.lan/#/ler/temas/tema-de-teste/indice.md?capitulo="+url.PathEscape(segundo) {
+		t.Errorf("baralho %q, seções %v", f.textos[1].Baralho, links)
 	}
 
 	var lista struct {
@@ -120,7 +144,7 @@ func TestPesquisaComFlashcardsAprovadosNoAcervo(t *testing.T) {
 	e := novoAmbiente(t)
 	f := &flashcardsFalso{}
 	f.ligar(e)
-	id := e.pesquisar(map[string]any{"tema": "origem da laranja", "fontes": []string{}, "profundidade": "rapida", "flashcards": true})
+	id := e.pesquisar(map[string]any{"tema": "origem da laranja", "fontes": []string{}, "profundidade": "rapida", "flashcards": true, "baralho": map[string]string{"baralho_id": "b1"}})
 	var lista struct {
 		Envios []envioFlashcards `json:"envios"`
 	}
@@ -128,7 +152,7 @@ func TestPesquisaComFlashcardsAprovadosNoAcervo(t *testing.T) {
 		e.pedir("GET", "/api/flashcards?alvo="+alvoDeReferencia(id), nil, &lista)
 		return len(lista.Envios) == 1
 	})
-	if f.textos[0].Link != "https://acervo.lan/#/referencia/"+id || !strings.Contains(f.textos[0].Contexto, "pesquisa") {
+	if f.textos[0].Link != "https://acervo.lan/#/referencia/"+id || !strings.Contains(f.textos[0].Contexto, "pesquisa") || f.textos[0].BaralhoID != "b1" {
 		t.Errorf("texto enviado: %+v", f.textos[0])
 	}
 	geracao := strconv.FormatInt(lista.Envios[0].GeracaoID, 10)
@@ -155,16 +179,21 @@ func TestPesquisaComFlashcardsAprovadosNoAcervo(t *testing.T) {
 	}
 }
 
-func TestReferenciaNaoValidadaNaoViraFlashcards(t *testing.T) {
+func TestReferenciaOrganizadaViraFlashcards(t *testing.T) {
 	e := novoAmbiente(t)
-	(&flashcardsFalso{}).ligar(e)
+	f := &flashcardsFalso{}
+	f.ligar(e)
 	id := e.adicionar("https://www.youtube.com/watch?v=AAAAAAAAAAA")
 	e.esperarEstado(id, "organizado")
-	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id}, nil); s != http.StatusConflict {
-		t.Errorf("organizada, sem validar: %d", s)
-	}
-	e.pedir("POST", "/api/referencias/"+id+"/validar", nil, nil)
+	// Organizada já vai, mesmo sem validar; sem escolha, para um baralho novo com o título dela.
 	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id}, nil); s != http.StatusCreated {
-		t.Errorf("validada: %d", s)
+		t.Errorf("organizada: %d", s)
+	}
+	if f.textos[0].Baralho == "" || f.textos[0].BaralhoID != "" {
+		t.Errorf("baralho: %+v", f.textos[0])
+	}
+	e.pedir("POST", "/api/referencias/"+id+"/descartar", nil, nil)
+	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id}, nil); s != http.StatusConflict {
+		t.Errorf("descartada: %d", s)
 	}
 }

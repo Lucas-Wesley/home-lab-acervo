@@ -58,6 +58,32 @@ test('lê o Tema numa página só, com sumário de capítulos', async ({ page })
   await expect(page.locator('article.texto sub a', { hasText: '00:30' })).toHaveAttribute('href', /t=30s/)
 })
 
+test('gera flashcards de um capítulo, escolhendo o baralho, e o link do cartão abre no capítulo', async ({ page, request }) => {
+  await page.goto('/#/ler/temas/tema-de-teste/indice.md')
+  await page.getByRole('button', { name: 'Opções do capítulo Segundo capítulo' }).click()
+  await page.getByRole('dialog', { name: 'Capítulo Segundo capítulo' }).getByRole('button', { name: /Gerar flashcards/ }).click()
+
+  // Começa no baralho que tem o nome do Tema; dá para trocar por um novo.
+  const janela = page.getByRole('dialog', { name: /Gerar flashcards do capítulo/ })
+  const baralho = janela.getByLabel('Baralho', { exact: true })
+  await expect(baralho).toHaveValue('b1')
+  await baralho.selectOption({ label: 'Baralho novo…' })
+  await expect(janela.getByLabel('Nome do baralho novo')).toHaveValue('Tema de Teste')
+  await janela.getByLabel('Nome do baralho novo').fill('Revisão do Tema')
+  await janela.getByRole('button', { name: 'Gerar flashcards' }).click()
+  await expect(page.getByText('Enviado ao Flashcards.')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Abrir no Flashcards' })).toHaveAttribute('href', 'https://flashcards.lan/#/geracao/7')
+
+  const enviado = await (await request.get('http://localhost:8097/ultimo')).json()
+  expect(enviado.baralho).toBe('Revisão do Tema')
+  expect(enviado.baralho_id).toBeUndefined()
+  expect(enviado.link).toBe('https://acervo.lan/#/ler/temas/tema-de-teste/indice.md?capitulo=Segundo%20cap%C3%ADtulo')
+
+  // O link que o cartão guarda abre a página já no capítulo.
+  await page.goto(`/${enviado.link.replace('https://acervo.lan/', '')}`)
+  await expect(page.locator('#cap-segundo-capitulo')).toBeInViewport()
+})
+
 test('separa um capítulo em página própria e traz de volta', async ({ page }) => {
   await page.goto('/#/ler/temas/tema-de-teste/indice.md')
   await page.getByRole('button', { name: 'Opções do capítulo Primeiro capítulo' }).click()

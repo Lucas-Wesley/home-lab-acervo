@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import EscolhaDeBaralho from './EscolhaDeBaralho.vue'
 import { api } from './api.js'
 import { FONTES, PROFUNDIDADES } from './pesquisa.js'
 
@@ -18,24 +19,26 @@ function lerEscolhas() {
   }
 }
 const aprofundando = !!props.referencia
-const salvas = aprofundando ? { ...props.referencia.pesquisa, flashcards: false } : lerEscolhas()
+const salvas = aprofundando ? props.referencia.pesquisa : lerEscolhas()
 
 const tema = ref('')
 const foco = ref('')
 const fontes = ref(salvas.fontes ?? ['livros', 'wikipedia'])
 const profundidade = ref(salvas.profundidade ?? 'rapida')
 const revisarEsboco = ref(salvas.revisar_esboco ?? false)
-const flashcards = ref(salvas.flashcards ?? false)
+// Sempre começa desmarcado: gerar cartões é uma decisão de cada pesquisa.
+const flashcards = ref(false)
+const baralho = ref({})
 const enviando = ref(false)
 const erro = ref('')
 
 const semFontes = computed(() => fontes.value.length === 0)
 const explicacao = computed(() => PROFUNDIDADES.find((p) => p.chave === profundidade.value)?.explicacao)
 
-watch([fontes, profundidade, revisarEsboco, flashcards], () => {
+watch([fontes, profundidade, revisarEsboco], () => {
   if (aprofundando) return
   try {
-    localStorage.setItem(CHAVE, JSON.stringify({ fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value, flashcards: flashcards.value }))
+    localStorage.setItem(CHAVE, JSON.stringify({ fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value }))
   } catch {
     // Sem espaço no aparelho, só não lembra as escolhas.
   }
@@ -59,7 +62,7 @@ async function pesquisar() {
     }
     const ref_ = await api('/api/pesquisas', {
       metodo: 'POST',
-      corpo: { tema: tema.value, fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value && !semFontes.value, flashcards: flashcards.value },
+      corpo: { tema: tema.value, fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value && !semFontes.value, flashcards: flashcards.value, baralho: flashcards.value ? baralho.value : undefined },
     })
     location.hash = `#/referencia/${ref_.id}`
   } catch (e) {
@@ -112,6 +115,7 @@ async function pesquisar() {
       <input v-model="flashcards" type="checkbox" />
       <span>Gerar flashcards do resultado <span class="suave">— pronta a pesquisa, a IA propõe os cartões, e você aprova junto com o texto.</span></span>
     </label>
+    <EscolhaDeBaralho v-if="flashcards" v-model="baralho" class="baralho" />
 
     <div v-if="erro" class="aviso erro">{{ erro }}</div>
     <div class="linha-acoes">
@@ -182,6 +186,10 @@ textarea.campo {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.4;
+}
+
+.baralho {
+  margin-left: 24px;
 }
 
 .marcar {

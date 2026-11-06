@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import CamadaDetalhes from './CamadaDetalhes.vue'
+import EnviarFlashcards from './EnviarFlashcards.vue'
 import Icone from './Icone.vue'
 import { api } from './api.js'
 import { capitulos, eLinkInterno, inserirCapitulo, relativo, renderizar, resolver, tituloDoTexto, trocarCapitulo } from './markdown.js'
@@ -10,7 +11,10 @@ import { guardarPosicao, podeVoltar, posicaoGuardada, trocarEndereco, voltandoNo
 
 const props = defineProps({ caminho: { type: String, required: true } })
 
-const [caminhoArquivo, opcao] = props.caminho.split('?')
+const [caminhoArquivo, ...resto] = props.caminho.split('?')
+const opcao = resto.join('?')
+// "?capitulo=Título": o link de um flashcard abre a página já no capítulo de onde ele saiu.
+const capituloPedido = opcao.startsWith('capitulo=') ? opcao.slice('capitulo='.length) : ''
 const arquivo = ref(null)
 const erro = ref('')
 const modo = ref(opcao === 'editar' ? 'editar' : 'ler')
@@ -34,6 +38,7 @@ const detalhes = usarDetalhes(() => caminhoArquivo)
 // Flashcards (D28): o texto vai para o app Flashcards, que monta a proposta; a revisão é lá.
 const flashcards = ref({ disponivel: false, link: '', envios: [] })
 const linkDosCartoes = ref('')
+const envioAberto = ref(null) // { origem, titulo, aviso }: a janela de gerar flashcards
 
 const CHAVE_ANCORA = 'acervo-ancora'
 
@@ -103,6 +108,7 @@ async function carregar({ manterPosicao = false } = {}) {
     if (manterPosicao) window.scrollTo(0, y)
     else if (voltandoNoHistorico()) window.scrollTo(0, posicaoGuardada(caminhoArquivo))
     else if (ancora && document.getElementById(ancora)) document.getElementById(ancora).scrollIntoView()
+    else if (capituloPedido && lista.value.some((c) => c.titulo === capituloPedido)) document.getElementById(lista.value.find((c) => c.titulo === capituloPedido).id)?.scrollIntoView()
     else window.scrollTo(0, 0)
   } catch (e) {
     erro.value = e.status === 0 ? 'Sem conexão, e este Tema não foi baixado para ler fora da rede.' : e.message
@@ -200,25 +206,21 @@ function ultimoEnvio(capitulo) {
 
 const quando = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 
-async function gerarFlashcards(capitulo) {
+function gerarFlashcards(capitulo) {
   menu.value = null
-  const deOnde = capitulo ? `do capítulo "${capitulo}"` : eIndice.value ? 'do Tema inteiro' : 'deste capítulo'
   const antes = ultimoEnvio(capitulo)
-  const aviso = antes ? `\n\nJá foi enviado em ${quando(antes.criado_em)}; os cartões de mesma pergunta são atualizados, não repetidos.` : ''
-  if (!confirm(`Gerar flashcards ${deOnde}?\n\nA IA monta os cartões no Flashcards, em segundo plano; você revisa e aprova lá, em Pedidos à IA.${aviso}`)) return
-  ocupado.value = true
-  mensagem.value = ''
-  linkDosCartoes.value = ''
-  try {
-    const e = await api('/api/flashcards', { metodo: 'POST', corpo: { arquivo: caminhoArquivo, capitulo: capitulo ?? '' }, tempo: 30000 })
-    mensagem.value = 'Enviado ao Flashcards. A IA está montando os cartões; a proposta fica em Pedidos à IA, para você aprovar.'
-    linkDosCartoes.value = `${flashcards.value.link}/#/geracao/${e.geracao_id}`
-    carregarFlashcards()
-  } catch (e) {
-    mensagem.value = e.status === 0 ? 'Gerar flashcards só funciona na rede de casa.' : e.message
-  } finally {
-    ocupado.value = false
+  envioAberto.value = {
+    origem: { arquivo: caminhoArquivo, capitulo: capitulo ?? '' },
+    titulo: capitulo ? `do capítulo “${capitulo}”` : eIndice.value ? 'do Tema inteiro' : 'deste capítulo',
+    aviso: antes ? `Já foi enviado em ${quando(antes.criado_em)}. No mesmo baralho, os cartões de mesma pergunta são atualizados, não repetidos.` : '',
   }
+}
+
+function flashcardsEnviados(e) {
+  envioAberto.value = null
+  mensagem.value = 'Enviado ao Flashcards. A IA está montando os cartões; a proposta fica em Pedidos à IA, para você aprovar.'
+  linkDosCartoes.value = `${flashcards.value.link}/#/geracao/${e.geracao_id}`
+  carregarFlashcards()
 }
 
 // ---------- Edição ----------
@@ -520,6 +522,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
 
         <article ref="corpoEl" class="texto" :class="{ 'com-acoes': podeMexerNosCapitulos }" @click="aoClicarNoTexto" v-html="partes.corpo" />
         <CamadaDetalhes :detalhes="detalhes" :raizes="() => [introEl, corpoEl]" :titulo="tituloAtual" :sem-lugar="partes.semLugar" />
+        <EnviarFlashcards v-if="envioAberto" v-bind="envioAberto" @fechar="envioAberto = null" @enviado="flashcardsEnviados" />
 
         <nav v-if="vizinhos.anterior || vizinhos.proximo" class="vizinhos">
           <a v-if="vizinhos.anterior" href="#" class="cartao" @click.prevent="abrirCapituloDoTema(vizinhos.anterior)">

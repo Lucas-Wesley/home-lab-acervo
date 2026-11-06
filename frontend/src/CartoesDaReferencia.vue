@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import EnviarFlashcards from './EnviarFlashcards.vue'
 import { api } from './api.js'
 
 // Flashcards de uma Referência (D28). O texto organizado vai para o app Flashcards, que monta a
@@ -14,15 +15,13 @@ const nome = ref('')
 const ocupado = ref(false)
 const erro = ref('')
 const feito = ref('')
+const escolhendo = ref(false) // a janela de escolher o baralho
 let relogio
 
 const ultimo = computed(() => info.value.envios[0])
 const trabalhando = computed(() => ['na_fila', 'rodando'].includes(g.value?.estado))
 const escolhidos = computed(() => cartoes.value.filter((c) => c.incluir))
-const podeGerar = computed(() => {
-  const r = props.referencia
-  return ['validado', 'integrado'].includes(r.estado) || (r.tipo === 'pesquisa' && r.estado === 'organizado')
-})
+const podeGerar = computed(() => ['organizado', 'validado', 'integrado'].includes(props.referencia.estado))
 const visivel = computed(() => info.value.disponivel && (ultimo.value || podeGerar.value))
 const linkNoFlashcards = computed(() => (g.value ? `${info.value.link}/#/geracao/${g.value.id}` : ''))
 
@@ -47,18 +46,15 @@ async function carregar() {
   if (trabalhando.value) relogio = setTimeout(carregar, 4000)
 }
 
-async function gerar() {
-  ocupado.value = true
+function gerar() {
   feito.value = ''
-  try {
-    await api('/api/flashcards', { metodo: 'POST', corpo: { referencia: props.referencia.id }, tempo: 30000 })
-    g.value = null
-    await carregar()
-  } catch (e) {
-    erro.value = e.message
-  } finally {
-    ocupado.value = false
-  }
+  escolhendo.value = true
+}
+
+async function enviado() {
+  escolhendo.value = false
+  g.value = null
+  await carregar()
 }
 
 async function decidir(acao, corpo) {
@@ -150,8 +146,19 @@ watch(() => props.referencia.estado, carregar)
 
     <template v-else>
       <p :class="g.estado === 'falhou' ? 'erro-texto' : 'suave'">{{ g.estado === 'falhou' ? `Falhou: ${g.erro}` : 'Descartados.' }}</p>
-      <div><button class="botao" :disabled="ocupado" @click="decidir('refazer')">Gerar de novo</button></div>
+      <div class="linha-acoes">
+        <button class="botao" :disabled="ocupado" @click="decidir('refazer')">Gerar de novo</button>
+        <button v-if="podeGerar" class="botao" :disabled="ocupado" @click="gerar">Gerar em outro baralho</button>
+      </div>
     </template>
+
+    <EnviarFlashcards
+      v-if="escolhendo"
+      :origem="{ referencia: referencia.id }"
+      :titulo="referencia.tipo === 'pesquisa' ? 'desta pesquisa' : 'desta Referência'"
+      @fechar="escolhendo = false"
+      @enviado="enviado"
+    />
   </section>
 </template>
 

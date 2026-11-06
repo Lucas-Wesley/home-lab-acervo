@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -23,6 +24,8 @@ import (
 // servidor. A IA roda na fila de lá; o Acervo não decide nada sobre os cartões. A proposta fica para
 // revisar no Flashcards, e a de uma Referência também aparece na página dela, para aprovar ali junto
 // com a pesquisa. Cada envio fica anotado aqui, para mostrar "enviado em" e achar a proposta.
+// O Lucas escolhe o baralho na hora de mandar (um que já existe, ou um novo); cada capítulo do texto
+// vai com o link dele, e o cartão guarda o link do capítulo de onde saiu, para abrir no estudo.
 
 // O Flashcards recusa acima disso; aqui a mensagem já sugere mandar por capítulo.
 const maxTextoFlashcards = 150_000
@@ -44,11 +47,33 @@ type envioFlashcards struct {
 
 // textoParaCartoes é o que vai para o Flashcards.
 type textoParaCartoes struct {
-	Titulo   string `json:"titulo"`
-	Baralho  string `json:"baralho"`
-	Contexto string `json:"contexto"`
-	Texto    string `json:"texto"`
-	Link     string `json:"link"`
+	Titulo    string         `json:"titulo"`
+	BaralhoID string         `json:"baralho_id,omitempty"` // um baralho que já existe lá
+	Baralho   string         `json:"baralho,omitempty"`    // ou o nome do baralho novo (sugerido: o do Tema principal)
+	Contexto  string         `json:"contexto"`
+	Texto     string         `json:"texto"`
+	Link      string         `json:"link"`
+	Secoes    []secaoComLink `json:"secoes,omitempty"`
+}
+
+// secaoComLink: um capítulo do texto e onde abri-lo no Acervo.
+type secaoComLink struct {
+	Titulo string `json:"titulo"`
+	Link   string `json:"link"`
+}
+
+// escolhaDeBaralho: para onde o Lucas mandou os cartões. Vazia, vai para um baralho novo com o nome sugerido.
+type escolhaDeBaralho struct {
+	BaralhoID string `json:"baralho_id,omitempty"`
+	Baralho   string `json:"baralho,omitempty"`
+}
+
+func (t *textoParaCartoes) escolher(e escolhaDeBaralho) {
+	if id := strings.TrimSpace(e.BaralhoID); id != "" {
+		t.BaralhoID, t.Baralho = id, ""
+	} else if nome := strings.TrimSpace(e.Baralho); nome != "" {
+		t.Baralho = nome
+	}
 }
 
 func alvoDeArquivo(arquivo, capitulo string) string {
@@ -92,10 +117,15 @@ func (a *app) textoDoArquivo(arquivo, capitulo string) (textoParaCartoes, error)
 		}
 		nomes = append(nomes, capitulo)
 	}
-	t.Texto = a.juntarCapitulos(path.Dir(arquivo), semSecoes(corpo, semCartoes))
+	corpo = semSecoes(corpo, semCartoes)
+	t.Texto = a.juntarCapitulos(path.Dir(arquivo), corpo)
 	t.Titulo = strings.Join(nomes, " › ")
 	t.Baralho = nomes[0]
-	t.Link = a.cfg.acervoLink + "/#/ler/" + arquivo
+	t.Link = a.linkDeLeitura(arquivo, "")
+	t.Secoes = a.secoesComLink(arquivo, corpo)
+	if capitulo != "" && len(t.Secoes) == 1 {
+		t.Link = t.Secoes[0].Link // um capítulo só: o link abre nele
+	}
 
 	var contexto strings.Builder
 	fmt.Fprintf(&contexto, "Onde fica no Acervo: %s.", t.Titulo)
@@ -112,6 +142,34 @@ func (a *app) textoDoArquivo(arquivo, capitulo string) (textoParaCartoes, error)
 	}
 	t.Contexto = strings.TrimSpace(contexto.String())
 	return t, nil
+}
+
+// linkDeLeitura: a página no Leitor, ou um capítulo dela (o Leitor rola até ele).
+func (a *app) linkDeLeitura(arquivo, capitulo string) string {
+	link := a.cfg.acervoLink + "/#/ler/" + arquivo
+	if capitulo != "" {
+		link += "?capitulo=" + url.PathEscape(capitulo)
+	}
+	return link
+}
+
+// secoesComLink: cada capítulo do texto com o link dele. O capítulo separado em página própria
+// leva para essa página.
+func (a *app) secoesComLink(arquivo, corpo string) []secaoComLink {
+	var lista []secaoComLink
+	for _, s := range secoes(corpo) {
+		link := a.linkDeLeitura(arquivo, s.Titulo)
+		for _, l := range strings.Split(corpo[s.ini:s.fim], "\n") {
+			if m := linkDeCapitulo.FindStringSubmatch(strings.TrimSpace(l)); m != nil {
+				if rel, err := caminhoDeArquivo(path.Join(path.Dir(arquivo), m[1])); err == nil {
+					link = a.linkDeLeitura(rel, "")
+				}
+				break
+			}
+		}
+		lista = append(lista, secaoComLink{Titulo: s.Titulo, Link: link})
+	}
+	return lista
 }
 
 // semSecoes tira os capítulos com esses títulos.
@@ -153,7 +211,7 @@ func (a *app) juntarCapitulos(pasta, texto string) string {
 func (a *app) textoDaReferencia(ctx context.Context, ref *referencia) (textoParaCartoes, error) {
 	var t textoParaCartoes
 	if !podeVirarCartoes(ref) {
-		return t, errors.New("Só uma Referência validada (ou uma pesquisa pronta) vira flashcards: o texto ainda não foi conferido.")
+		return t, errors.New("Só uma Referência com o texto já organizado vira flashcards.")
 	}
 	b, err := os.ReadFile(filepath.Join(a.pastaReferencia(ref.ID), "organizado.md"))
 	if err != nil {
@@ -184,12 +242,11 @@ func (a *app) textoDaReferencia(ctx context.Context, ref *referencia) (textoPara
 	return t, nil
 }
 
+// Organizada já basta (D28): o Lucas confere os cartões na revisão, mesmo sem ter validado o texto.
 func podeVirarCartoes(ref *referencia) bool {
 	switch ref.Estado {
-	case "validado", "integrado":
+	case "organizado", "validado", "integrado":
 		return true
-	case "organizado":
-		return ref.Tipo == "pesquisa" || ref.Tipo == "livro"
 	}
 	return false
 }
@@ -295,7 +352,8 @@ func (a *app) cartoesDaPesquisa(ctx context.Context, id string) {
 	if err != nil {
 		return
 	}
-	if p, err := a.pedidoDe(ref); err != nil || !p.Flashcards {
+	p, err := a.pedidoDe(ref)
+	if err != nil || !p.Flashcards {
 		return
 	}
 	if ja, _ := a.envios(ctx, `WHERE alvo = ? AND geracao_id > 0`, alvoDeReferencia(id)); len(ja) > 0 {
@@ -303,6 +361,7 @@ func (a *app) cartoesDaPesquisa(ctx context.Context, id string) {
 	}
 	t, err := a.textoDaReferencia(ctx, ref)
 	if err == nil {
+		t.escolher(p.Baralho)
 		_, err = a.enviarFlashcards(ctx, alvoDeReferencia(id), t)
 	}
 	if err != nil {
@@ -320,54 +379,96 @@ func (a *app) descartarCartoes(ctx context.Context, id string) {
 
 // ---------- Handlers ----------
 
-// handleEnviarFlashcards: POST /api/flashcards {arquivo, capitulo} ou {referencia}.
+// origemDosCartoes: o que se quer mandar ({arquivo, capitulo} ou {referencia}).
+type origemDosCartoes struct {
+	Arquivo    string `json:"arquivo"`
+	Capitulo   string `json:"capitulo"`
+	Referencia string `json:"referencia"`
+}
+
+// texto monta o texto da origem; em caso de erro, já respondeu.
+func (a *app) texto(w http.ResponseWriter, r *http.Request, o origemDosCartoes) (string, textoParaCartoes, bool) {
+	ctx := r.Context()
+	if o.Referencia != "" {
+		ref, err := a.referencia(ctx, o.Referencia)
+		if err != nil {
+			erroJSON(w, http.StatusNotFound, "Referência não encontrada.")
+			return "", textoParaCartoes{}, false
+		}
+		t, err := a.textoDaReferencia(ctx, ref)
+		if err != nil {
+			erroJSON(w, http.StatusConflict, err.Error())
+			return "", t, false
+		}
+		return alvoDeReferencia(ref.ID), t, true
+	}
+	arquivo, err := caminhoDeArquivo(o.Arquivo)
+	if err != nil {
+		erroJSON(w, http.StatusBadRequest, "Arquivo inválido.")
+		return "", textoParaCartoes{}, false
+	}
+	capitulo := strings.TrimSpace(o.Capitulo)
+	t, err := a.textoDoArquivo(arquivo, capitulo)
+	if errors.Is(err, errNaoEncontrado) {
+		erroJSON(w, http.StatusNotFound, "Texto não encontrado.")
+		return "", t, false
+	} else if err != nil {
+		falha(w, err)
+		return "", t, false
+	}
+	return alvoDeArquivo(arquivo, capitulo), t, true
+}
+
+// handleEnviarFlashcards: POST /api/flashcards {arquivo, capitulo} ou {referencia}, com o baralho
+// escolhido ({baralho_id} ou o nome do novo em {baralho}).
 func (a *app) handleEnviarFlashcards(w http.ResponseWriter, r *http.Request) {
 	var corpo struct {
-		Arquivo    string `json:"arquivo"`
-		Capitulo   string `json:"capitulo"`
-		Referencia string `json:"referencia"`
+		origemDosCartoes
+		escolhaDeBaralho
 	}
 	if !lerCorpo(w, r, &corpo) {
 		return
 	}
-	ctx := r.Context()
-	var t textoParaCartoes
-	var alvo string
-	var err error
-	if corpo.Referencia != "" {
-		ref, e := a.referencia(ctx, corpo.Referencia)
-		if e != nil {
-			erroJSON(w, http.StatusNotFound, "Referência não encontrada.")
-			return
-		}
-		alvo = alvoDeReferencia(ref.ID)
-		if t, err = a.textoDaReferencia(ctx, ref); err != nil {
-			erroJSON(w, http.StatusConflict, err.Error())
-			return
-		}
-	} else {
-		arquivo, e := caminhoDeArquivo(corpo.Arquivo)
-		if e != nil {
-			erroJSON(w, http.StatusBadRequest, "Arquivo inválido.")
-			return
-		}
-		capitulo := strings.TrimSpace(corpo.Capitulo)
-		alvo = alvoDeArquivo(arquivo, capitulo)
-		t, err = a.textoDoArquivo(arquivo, capitulo)
-		if errors.Is(err, errNaoEncontrado) {
-			erroJSON(w, http.StatusNotFound, "Texto não encontrado.")
-			return
-		} else if err != nil {
-			falha(w, err)
-			return
-		}
+	alvo, t, ok := a.texto(w, r, corpo.origemDosCartoes)
+	if !ok {
+		return
 	}
-	e, err := a.enviarFlashcards(ctx, alvo, t)
+	t.escolher(corpo.escolhaDeBaralho)
+	e, err := a.enviarFlashcards(r.Context(), alvo, t)
 	if err != nil {
 		erroJSON(w, http.StatusBadGateway, err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, e)
+}
+
+// handleBaralhosDoFlashcards: GET /api/flashcards/baralhos?arquivo=&capitulo= (ou ?referencia=) —
+// os baralhos que existem lá, para escolher, e o nome sugerido para um novo (o do Tema principal).
+func (a *app) handleBaralhosDoFlashcards(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	sugestao := ""
+	if o := (origemDosCartoes{Arquivo: q.Get("arquivo"), Capitulo: q.Get("capitulo"), Referencia: q.Get("referencia")}); o.Arquivo != "" || o.Referencia != "" {
+		_, t, ok := a.texto(w, r, o)
+		if !ok {
+			return
+		}
+		sugestao = t.Baralho
+	}
+	var baralhos []struct {
+		ID   string `json:"id"`
+		Nome string `json:"nome"`
+	}
+	if status, err := a.chamarFlashcards(r.Context(), "GET", "/api/baralhos", nil, &baralhos); err != nil {
+		erroJSON(w, statusOu(status, http.StatusBadGateway), err.Error())
+		return
+	}
+	if baralhos == nil {
+		baralhos = []struct {
+			ID   string `json:"id"`
+			Nome string `json:"nome"`
+		}{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"baralhos": baralhos, "sugestao": sugestao})
 }
 
 // handleListarFlashcards: GET /api/flashcards?alvo= — os envios daquele texto, o mais novo primeiro,

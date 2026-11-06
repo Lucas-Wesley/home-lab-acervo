@@ -29,6 +29,9 @@ export default defineConfig({
             REGRAS_DIR: path.resolve('../regras'),
             BIBLIOTECA_URL: 'http://localhost:8093',
             BIBLIOTECA_LINK: 'https://biblioteca.lan',
+            FLASHCARDS_URL: 'http://localhost:8097',
+            FLASHCARDS_LINK: 'https://flashcards.lan',
+            ACERVO_LINK: 'https://acervo.lan',
           },
           url: 'http://localhost:8091/api/health',
         },
@@ -36,6 +39,11 @@ export default defineConfig({
           command: 'node e2e/biblioteca-falsa.mjs',
           env: { PORT: '8093' },
           url: 'http://localhost:8093/api/books',
+        },
+        {
+          command: 'node e2e/flashcards-falso.mjs',
+          env: { PORT: '8097' },
+          url: 'http://localhost:8097/api/baralhos',
         },
         {
           // A versão de produção: é a única que tem service worker e, portanto, offline.

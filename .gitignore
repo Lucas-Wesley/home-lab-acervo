@@ -13,3 +13,5 @@ backend/web/dist/*
 
 .DS_Store
 .env
+
+backend/home-lab-acervo

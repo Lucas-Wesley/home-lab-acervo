@@ -50,6 +50,7 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 
 	mux.HandleFunc("GET /api/flashcards", a.handleListarFlashcards)
 	mux.HandleFunc("POST /api/flashcards", a.handleEnviarFlashcards)
+	mux.HandleFunc("GET /api/flashcards/baralhos", a.handleBaralhosDoFlashcards)
 	mux.HandleFunc("GET /api/flashcards/{geracao}", a.handleProposta)
 	mux.HandleFunc("POST /api/flashcards/{geracao}/{acao}", a.handleDecidirProposta)
 
