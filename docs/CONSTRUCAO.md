@@ -164,8 +164,6 @@ e o Claude falhava com "sem resposta". Os caminhos agora são absolutos, e há t
 - **Excluir ou mover Tema** pelo app (mover exige reescrever os links que apontam para ele).
 - **Tradução:** a regra existe e o fluxo está testado com o Claude falso, mas falta um vídeo em
   inglês de verdade.
-- **Publicação:** pronta (`deploy.sh`, Docker, Caddy), mas não feita: falta commit/push, o token do
-  Claude na VM e copiar o `proxy/` para `/opt/proxy`.
 
 ## Notas da construção
 
