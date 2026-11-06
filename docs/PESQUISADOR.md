@@ -1,6 +1,11 @@
 # Integração com a Biblioteca e módulo Pesquisador — caminhos possíveis
 
-> Planejamento de 06/11/2026, **nada implementado**. Pedido do Lucas: pensar em como a Biblioteca
+> **Atualização (06/11/2026):** o Pesquisador foi implementado já com P1, P2 e P3 juntos, e o Lucas
+> escolhe as fontes e a profundidade em cada pedido (D27, em [`DECISOES.md`](DECISOES.md) e
+> [`CONSTRUCAO.md`](CONSTRUCAO.md)). A Biblioteca ganhou a busca no texto dos livros (R32 dela). A parte
+> "Biblioteca → Acervo" (B1 a B5) continua só planejada.
+>
+> Planejamento de 06/11/2026. Pedido do Lucas: pensar em como a Biblioteca
 > Digital conversa com o Acervo e num "pesquisador" que **produz conteúdo** sobre um tema, em vez
 > de organizar um vídeo. Aqui ficam as opções, com recomendação; a decisão é do Lucas.
 

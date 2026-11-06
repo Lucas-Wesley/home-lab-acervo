@@ -1,7 +1,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { api, NOMES_ESTADO, NOMES_ESTADO_TAREFA, NOMES_TAREFA, situacao } from './api.js'
+import { api, NOMES_ESTADO_TAREFA, NOMES_TAREFA, nomeDoEstado, situacao } from './api.js'
 import CamadaDetalhes from './CamadaDetalhes.vue'
+import EsbocoPesquisa from './EsbocoPesquisa.vue'
+import { descreverPesquisa } from './pesquisa.js'
 import { marcar, usarDetalhes } from './detalhes.js'
 import { duvidas, renderizar, tituloDoTexto } from './markdown.js'
 
@@ -16,6 +18,7 @@ const novoTema = ref({ titulo: '', pai: '' })
 const temaAlvo = ref('')
 const ocupado = ref(false)
 
+const ehPesquisa = computed(() => ref_.value?.tipo === 'pesquisa')
 const traduzida = computed(() => !!ref_.value?.textos.traducao)
 const textoPrincipal = computed(() => ref_.value?.textos.traducao || ref_.value?.textos.organizado || '')
 const abas = computed(() => {
@@ -24,7 +27,7 @@ const abas = computed(() => {
   if (t.traducao) lista.push(['traducao', 'Português'])
   if (t.organizado) lista.push(['organizado', t.traducao ? 'Original' : 'Organizado'])
   if (duvidas(textoPrincipal.value)) lista.push(['duvidas', 'Dúvidas'])
-  if (t.cru) lista.push(['cru', 'Transcrição'])
+  if (t.cru) lista.push(['cru', ehPesquisa.value ? 'Material coletado' : 'Transcrição'])
   lista.push(['historico', 'Histórico'])
   return lista
 })
@@ -131,12 +134,15 @@ onBeforeUnmount(() => clearInterval(relogio))
     <template v-if="ref_">
       <header class="cabeca">
         <h1>{{ ref_.titulo || ref_.url }}</h1>
-        <div class="suave meta">
+        <div v-if="ehPesquisa" class="suave meta">
+          {{ descreverPesquisa(ref_.pesquisa) }}<template v-if="ref_.pesquisa.tema !== ref_.titulo"> · pedido: “{{ ref_.pesquisa.tema }}”</template>
+        </div>
+        <div v-else class="suave meta">
           {{ [ref_.canal, ref_.duracao, ref_.idioma && `idioma: ${ref_.idioma}`].filter(Boolean).join(' · ') }}
           · <a :href="ref_.url" target="_blank" rel="noopener">abrir no YouTube</a>
         </div>
         <div class="linha-acoes estado">
-          <span class="chip" :class="{ erro: ref_.estado === 'erro', ok: ref_.estado === 'integrado' }">{{ NOMES_ESTADO[ref_.estado] || ref_.estado }}</span>
+          <span class="chip" :class="{ erro: ref_.estado === 'erro', ok: ref_.estado === 'integrado' }">{{ nomeDoEstado(ref_) }}</span>
           <span v-if="situacao(ref_)" class="chip andando">{{ situacao(ref_) }}</span>
           <a v-if="ref_.tarefa?.estado === 'em_revisao'" class="botao" :href="`#/revisao/${ref_.tarefa.id}`">Revisar proposta</a>
         </div>
@@ -146,6 +152,14 @@ onBeforeUnmount(() => clearInterval(relogio))
       <div v-if="andando" class="aviso">
         {{ ref_.tarefa.estado === 'rodando' ? 'Trabalhando nisso agora. Etapas com o Claude levam alguns minutos; pode sair da tela.' : 'Na fila: roda assim que as tarefas anteriores terminarem.' }}
       </div>
+
+      <EsbocoPesquisa
+        v-if="ehPesquisa && ref_.estado === 'esboco' && !andando"
+        :key="ref_.atualizado_em"
+        :pesquisa="ref_.pesquisa"
+        :ocupado="ocupado"
+        @aprovar="(esboco) => executar('pesquisar', { esboco })"
+      />
 
       <section v-if="ref_.temas.length" class="cartao temas-ligados">
         <span class="suave">No Acervo:</span>
@@ -162,7 +176,7 @@ onBeforeUnmount(() => clearInterval(relogio))
       </section>
 
       <div class="linha-acoes barra-acoes">
-        <template v-if="ref_.estado === 'erro' || (!pronta && !andando && ref_.estado !== 'descartado')">
+        <template v-if="ref_.estado === 'erro' || (!pronta && !andando && ref_.estado !== 'descartado' && ref_.estado !== 'esboco')">
           <button class="botao principal" :disabled="ocupado || andando" @click="executar('reprocessar')">Tentar de novo</button>
         </template>
         <template v-if="pronta">

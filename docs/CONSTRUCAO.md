@@ -158,6 +158,18 @@ e o Claude falhava com "sem resposta". Os caminhos agora são absolutos, e há t
   unidade (achar e sublinhar o trecho, pedido fora da rede) e navegador (selecionar, copiar,
   pedir, abrir o modal, apagar).
 
+## Pesquisador (06/11/2026, D27)
+
+- **Pedido:** `POST /api/pesquisas` com `{tema, fontes, profundidade, revisar_esboco}` cria uma Referência com `tipo = 'pesquisa'`; o pedido, o esboço e a coleta ficam na coluna `pesquisa` (JSON). A tabela `referencias` foi refeita uma vez (`migrarReferencias`) para o `video_id` deixar de ser obrigatório.
+- **Etapas:** `planejar` (resposta estruturada com as perguntas e as buscas), `coletar` (`coleta.go`, sem IA), `redigir` e `conferir` (`pesquisa.go`). Com "Revisar o esboço", a Referência para no estado `esboco` até `POST /api/referencias/{id}/pesquisar` com o esboço editado. "Tentar de novo" retoma da etapa que falta (`proximaEtapaPesquisa`).
+- **Fontes:**
+  - **Livros:** `GET {BIBLIOTECA_URL}/api/search` (R32 da Biblioteca); cada trecho vem com o link de volta ao ponto do livro (`BIBLIOTECA_LINK`).
+  - **Wikipédia:** API do pt.wikipedia (busca e texto do artigo, até 60 mil caracteres).
+  - **YouTube:** `yt-dlp --flat-playlist -J "ytsearchN:<busca>"`, vídeos de 2 a 90 minutos com legenda, pela mesma extração das Referências de vídeo.
+  - **Sites:** só na escrita, com `WebSearch`/`WebFetch`; a IA guarda em `fontes/web-*.md` o que usou.
+- **Telas:** formulário em Referências (as últimas escolhas ficam no aparelho), editor do esboço na Referência, aba "Material coletado" (`cru.md`) e ícone de pesquisa na lista.
+- Testes: Go (detalhada com esboço revisado, rápida com sites, só a IA, sem material e tentar de novo, conferência que falha, pedido inválido, migração), unidade e navegador (pedido → esboço → pesquisa → sugestão).
+
 ## O que ficou de fora desta versão
 
 - **Verificação de veracidade (item 7):** só a aba "Dúvidas" e o botão "Marcar como validada".

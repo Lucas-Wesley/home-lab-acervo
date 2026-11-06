@@ -28,6 +28,8 @@ type referencia struct {
 	AtualizadoEm string          `json:"atualizado_em"`
 	Tarefa       *tarefaAtiva    `json:"tarefa"`
 	Temas        []string        `json:"temas"`
+	Tipo         string          `json:"tipo"`     // video ou pesquisa (D27)
+	Pesquisa     json.RawMessage `json:"pesquisa"` // o pedido, o esboço e a coleta; null num vídeo
 }
 
 // tarefaAtiva é o que a lista mostra: o que está acontecendo com a Referência agora.
@@ -38,19 +40,23 @@ type tarefaAtiva struct {
 	Posicao int    `json:"posicao"` // 0 = rodando; 1 = a próxima...
 }
 
-const colunasReferencia = `id, url, video_id, titulo, canal, duracao, idioma, estado, erro, sugestao, criado_em, atualizado_em`
+const colunasReferencia = `id, url, COALESCE(video_id, ''), titulo, canal, duracao, idioma, estado, erro, sugestao, criado_em, atualizado_em, tipo, pesquisa`
 
 func lerReferencia(row linha) (*referencia, error) {
 	var r referencia
-	var sug string
-	err := row.Scan(&r.ID, &r.URL, &r.VideoID, &r.Titulo, &r.Canal, &r.Duracao, &r.Idioma, &r.Estado, &r.Erro, &sug, &r.CriadoEm, &r.AtualizadoEm)
+	var sug, pesquisa string
+	err := row.Scan(&r.ID, &r.URL, &r.VideoID, &r.Titulo, &r.Canal, &r.Duracao, &r.Idioma, &r.Estado, &r.Erro, &sug, &r.CriadoEm, &r.AtualizadoEm, &r.Tipo, &pesquisa)
 	if err != nil {
 		return nil, err
 	}
 	if sug == "" {
 		sug = "null"
 	}
+	if pesquisa == "" {
+		pesquisa = "null"
+	}
 	r.Sugestao = json.RawMessage(sug)
+	r.Pesquisa = json.RawMessage(pesquisa)
 	r.Temas = []string{}
 	return &r, nil
 }
@@ -236,7 +242,24 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 	case "descartar":
 		err = a.mudarEstado(ctx, ref.ID, "descartado")
 	case "reprocessar":
+		if ref.Estado == "esboco" {
+			erroJSON(w, http.StatusConflict, "Aprove o esboço para a pesquisa continuar.")
+			return
+		}
 		_, err = a.fila.enfileirar(ctx, ref.ID, a.proximaEtapa(ref), nil)
+	case "pesquisar":
+		var corpo struct {
+			Esboco []pergunta `json:"esboco"`
+		}
+		if !lerCorpo(w, r, &corpo) {
+			return
+		}
+		var msg string
+		msg, err = a.aprovarEsboco(ctx, ref, corpo.Esboco)
+		if msg != "" {
+			erroJSON(w, http.StatusConflict, msg)
+			return
+		}
 	case "sugerir":
 		if !pronta {
 			erroJSON(w, http.StatusConflict, "Organize a Referência antes.")
@@ -294,6 +317,9 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 
 // proximaEtapa decide o que reprocessar a partir do que já existe em disco.
 func (a *app) proximaEtapa(ref *referencia) string {
+	if ref.Tipo == "pesquisa" {
+		return a.proximaEtapaPesquisa(ref)
+	}
 	pasta := a.pastaReferencia(ref.ID)
 	switch {
 	case !existe(filepath.Join(pasta, "cru.md")):

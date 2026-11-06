@@ -21,13 +21,16 @@ type instrucao struct {
 	Conteudo  string `json:"conteudo,omitempty"`
 }
 
-// Na ordem em que as etapas acontecem; por último, a pesquisa de um trecho (D26).
+// Na ordem em que as etapas acontecem; depois, o Pesquisador (D27) e a pesquisa de um trecho (D26).
 var instrucoes = []instrucao{
 	{Arquivo: "organizar.md", Nome: "Organizar a transcrição", Descricao: "Transforma a transcrição bruta num texto organizado: tira propaganda e conversa, junta cada assunto num lugar e mantém tudo o que é conteúdo."},
 	{Arquivo: "traduzir.md", Nome: "Traduzir", Descricao: "Passa o texto organizado para o português, quando o vídeo é em outra língua."},
 	{Arquivo: "sugerir.md", Nome: "Sugerir o Tema", Descricao: "Propõe em qual Tema a Referência entra, ou se ela vira um Tema novo."},
 	{Arquivo: "criar-tema.md", Nome: "Criar um Tema", Descricao: "Escreve a página de um Tema novo a partir da Referência."},
 	{Arquivo: "integrar.md", Nome: "Integrar num Tema", Descricao: "Acrescenta a um Tema que já existe só o que a Referência traz de novo."},
+	{Arquivo: "pesquisar-esboco.md", Nome: "Pesquisa: esboço", Descricao: "Divide o tema pedido em perguntas e escolhe as palavras de busca de cada fonte (livros, Wikipédia, YouTube)."},
+	{Arquivo: "pesquisar.md", Nome: "Pesquisa: escrever", Descricao: "Escreve o texto da pesquisa a partir do material coletado (e dos sites, se escolhidos), com a fonte de cada parte."},
+	{Arquivo: "conferir.md", Nome: "Pesquisa: conferir", Descricao: "Na pesquisa detalhada, confere cada afirmação do texto contra o material guardado e corrige o que não se sustenta."},
 	{Arquivo: "detalhar.md", Nome: "Mais informações", Descricao: "Pesquisa na internet sobre um trecho que você selecionou no texto e explica, com as fontes."},
 }
 

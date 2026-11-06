@@ -25,13 +25,15 @@ fonte (YouTube) ─> extrair ─> organizar ─> (traduzir) ─> sugerir Tema �
 
 Toda etapa com o `yt-dlp` ou o Claude entra numa **fila** e roda uma por vez.
 
+Também dá para **pesquisar um tema** (Referências → Pesquisar um tema): veja "Pesquisador" abaixo.
+
 ## Documentação
 
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **comece por aqui.** Conceitos, fluxo, decisões, riscos,
   o que foi adiado e o que está em aberto.
 - [`docs/CONSTRUCAO.md`](docs/CONSTRUCAO.md) — arquitetura e andamento da construção.
-- [`docs/PESQUISADOR.md`](docs/PESQUISADOR.md) — caminhos para integrar a Biblioteca e para o
-  módulo Pesquisador (planejamento, nada implementado).
+- [`docs/PESQUISADOR.md`](docs/PESQUISADOR.md) — os caminhos estudados para integrar a Biblioteca e
+  para o Pesquisador. O Pesquisador foi feito (D27); a integração com a Biblioteca ainda não.
 - [`regras/`](regras/) — as regras que o Claude segue em cada etapa. **É o que define a qualidade.**
   O Lucas pode editá-las no app (Ajustes → Instruções da IA); a versão editada fica no servidor e
   vale no lugar destas.
@@ -83,7 +85,8 @@ espera a sua aprovação.
 No fim do menu:
 
 - **Instruções da IA:** o texto que o Claude segue em cada etapa (organizar, traduzir, sugerir
-  Tema, criar Tema, integrar) e na pesquisa de "Mais informações". Dá para ler e editar pelo celular, e a mudança vale a partir da
+  Tema, criar Tema, integrar), nas etapas do Pesquisador (esboço, escrever, conferir) e na pesquisa
+  de "Mais informações". Dá para ler e editar pelo celular, e a mudança vale a partir da
   próxima tarefa. "Voltar ao padrão" volta ao texto de `regras/`.
 - **Sugestões de melhoria:** anote o que pode melhorar no app. Depois, peça ao Claude Code para ver
   as sugestões: ele lê por `GET /api/sugestoes`, faz as mudanças e marca cada uma como feita, com
@@ -95,6 +98,21 @@ Selecione um trecho de um Tema ou de uma Referência (um nome, um lugar, uma fra
 **Mais informações**. A IA pesquisa na internet, em mais de uma fonte, e o trecho fica sublinhado:
 toque nele para abrir a explicação, com as fontes. O mesmo menu tem **Copiar**. As instruções da
 pesquisa estão em Ajustes → Instruções da IA → Mais informações.
+
+## Pesquisador
+
+Em Referências, **Pesquisar um tema**. Escreva o tema ou a pergunta e escolha:
+
+- **Fontes:** Meus livros (a busca no texto dos livros da Biblioteca), Wikipédia, YouTube (os vídeos
+  servem só de fonte; não viram Referência) e Sites (a IA pesquisa na internet ao escrever). Sem
+  nenhuma, é só a resposta da IA, com o que ela já sabe.
+- **Profundidade:** rápida (1 a 3 perguntas) ou detalhada (4 a 8 perguntas, mais fontes e a
+  conferência de cada afirmação contra o material guardado).
+- **Revisar o esboço:** a pesquisa para nas perguntas, e você ajusta antes de ela buscar.
+
+O resultado é uma Referência do tipo pesquisa, com fonte em cada parte, a aba **Material coletado**
+e as **Dúvidas**; a sugestão de Tema já vem pedida, e o resto é o caminho de sempre. No servidor, a
+busca nos livros usa `BIBLIOTECA_URL` (`compose.prod.yaml`).
 
 ## Identidade visual
 

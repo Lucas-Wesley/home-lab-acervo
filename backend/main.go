@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -87,14 +89,44 @@ func abrirBanco(caminho string) (*sql.DB, error) {
 		db.Close()
 		return nil, err
 	}
+	if err := migrarReferencias(db); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return db, nil
 }
 
-const esquema = `
-CREATE TABLE IF NOT EXISTS referencias (
+// migrarReferencias: a Referência que não é vídeo (a pesquisa, D27) não tem video_id. O SQLite não
+// tira o NOT NULL de uma coluna, então a tabela antiga é refeita uma vez, com os mesmos dados.
+func migrarReferencias(db *sql.DB) error {
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('referencias') WHERE name = 'tipo'`).Scan(&n); err != nil || n > 0 {
+		return err
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	colunas := `id, url, video_id, titulo, canal, duracao, idioma, estado, erro, sugestao, criado_em, atualizado_em`
+	for _, passo := range []string{
+		strings.Replace(tabelaReferencias, "referencias (", "referencias_nova (", 1),
+		`INSERT INTO referencias_nova (` + colunas + `) SELECT ` + colunas + ` FROM referencias`,
+		`DROP TABLE referencias`,
+		`ALTER TABLE referencias_nova RENAME TO referencias`,
+	} {
+		if _, err := tx.Exec(passo); err != nil {
+			return fmt.Errorf("migrar referências: %w", err)
+		}
+	}
+	return tx.Commit()
+}
+
+// tipo: "video" ou "pesquisa" (D27); pesquisa guarda o pedido, o esboço e o que foi coletado.
+const tabelaReferencias = `CREATE TABLE IF NOT EXISTS referencias (
 	id            TEXT PRIMARY KEY,
 	url           TEXT NOT NULL,
-	video_id      TEXT NOT NULL UNIQUE,
+	video_id      TEXT UNIQUE,
 	titulo        TEXT NOT NULL DEFAULT '',
 	canal         TEXT NOT NULL DEFAULT '',
 	duracao       TEXT NOT NULL DEFAULT '',
@@ -103,8 +135,12 @@ CREATE TABLE IF NOT EXISTS referencias (
 	erro          TEXT NOT NULL DEFAULT '',
 	sugestao      TEXT NOT NULL DEFAULT '',
 	criado_em     TEXT NOT NULL,
-	atualizado_em TEXT NOT NULL
-);
+	atualizado_em TEXT NOT NULL,
+	tipo          TEXT NOT NULL DEFAULT 'video',
+	pesquisa      TEXT NOT NULL DEFAULT ''
+);`
+
+const esquema = tabelaReferencias + `
 CREATE TABLE IF NOT EXISTS tarefas (
 	id            INTEGER PRIMARY KEY AUTOINCREMENT,
 	referencia_id TEXT NOT NULL,

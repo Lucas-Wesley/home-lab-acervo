@@ -35,10 +35,15 @@ export const NOMES_TAREFA = {
   criar_tema: 'Criar Tema',
   integrar: 'Integrar ao Tema',
   detalhar: 'Mais informações',
+  planejar: 'Montar o esboço',
+  coletar: 'Coletar nas fontes',
+  redigir: 'Escrever a pesquisa',
+  conferir: 'Conferir a pesquisa',
 }
 
 export const NOMES_ESTADO = {
   novo: 'Novo',
+  esboco: 'Esboço para revisar',
   cru: 'Extraído',
   organizado: 'Organizado',
   validado: 'Validado',
@@ -55,6 +60,12 @@ export const NOMES_ESTADO_TAREFA = {
   falhou: 'Falhou',
   cancelada: 'Cancelada',
   rejeitada: 'Rejeitada',
+}
+
+// O estado com o nome certo para o tipo: numa pesquisa, o material não é "extraído", é coletado.
+export function nomeDoEstado(r) {
+  if (r.tipo === 'pesquisa' && r.estado === 'cru') return 'Coletado'
+  return NOMES_ESTADO[r.estado] || r.estado
 }
 
 // O que a lista mostra sobre a tarefa de agora.

@@ -5,6 +5,8 @@ services:
       - /srv/data/acervo:/data
     environment:
       GIT_AUTOR_NOME: Lucas Wesley
+      # Pesquisador (D27): a busca nos livros, pela rede interna do Docker.
+      BIBLIOTECA_URL: http://biblioteca:8080
     networks:
       - proxy
 

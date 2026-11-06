@@ -3,6 +3,12 @@
 #   AAAAAAAAAAA português com legenda manual · EEEEEEEEEEE inglês só com legenda automática
 #   SSSSSSSSSSS sem legenda · FFFFFFFFFFF vídeo indisponível
 url="${!#}"
+# Busca de vídeos (Pesquisador): um curto demais, um com legenda e um sem legenda.
+case "$url" in
+  ytsearch*)
+    printf '{"entries":[{"id":"CCCCCCCCCCC","title":"Curto","channel":"X","duration":30},{"id":"SSSSSSSSSSS","title":"Sem legenda","channel":"Y","duration":600},{"id":"AAAAAAAAAAA","title":"Vídeo bom","channel":"Canal","duration":900}]}\n'
+    exit 0 ;;
+esac
 id="${url##*v=}"
 json=0 out="" lang=""
 while [ $# -gt 0 ]; do

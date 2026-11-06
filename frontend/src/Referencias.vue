@@ -1,6 +1,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { api, NOMES_ESTADO, situacao } from './api.js'
+import { api, nomeDoEstado, situacao } from './api.js'
+import Icone from './Icone.vue'
+import NovaPesquisa from './NovaPesquisa.vue'
+import { descreverPesquisa } from './pesquisa.js'
 
 const referencias = ref([])
 const carregou = ref(false)
@@ -8,6 +11,7 @@ const link = ref('')
 const enviando = ref(false)
 const erro = ref('')
 const filtro = ref('todas')
+const pesquisando = ref(false)
 
 const FILTROS = {
   todas: () => true,
@@ -60,7 +64,12 @@ onBeforeUnmount(() => clearInterval(relogio))
 
 <template>
   <div class="pagina">
-    <h1>Referências</h1>
+    <div class="cabecalho">
+      <h1>Referências</h1>
+      <button v-if="!pesquisando" type="button" class="botao" @click="pesquisando = true"><Icone nome="pesquisar" /> Pesquisar um tema</button>
+    </div>
+
+    <NovaPesquisa v-if="pesquisando" @fechar="pesquisando = false" />
 
     <form class="adicionar" @submit.prevent="adicionar">
       <input v-model="link" class="campo" type="url" inputmode="url" placeholder="Cole o link de um vídeo do YouTube" aria-label="Link do vídeo" />
@@ -73,17 +82,18 @@ onBeforeUnmount(() => clearInterval(relogio))
     </div>
 
     <div v-if="carregou && !visiveis.length" class="vazio">
-      {{ referencias.length ? 'Nada neste filtro.' : 'Nenhuma Referência ainda. Cole o link de um vídeo acima: a legenda é extraída e organizada sozinha, na fila.' }}
+      {{ referencias.length ? 'Nada neste filtro.' : 'Nenhuma Referência ainda. Cole o link de um vídeo acima, ou pesquise um tema: tudo é organizado sozinho, na fila.' }}
     </div>
 
     <div v-if="visiveis.length" class="lista">
     <a v-for="r in visiveis" :key="r.id" :href="`#/referencia/${r.id}`" class="referencia">
-      <img :src="`https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`" alt="" class="miniatura" loading="lazy" />
+      <span v-if="r.tipo === 'pesquisa'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="pesquisar" /></span>
+      <img v-else :src="`https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`" alt="" class="miniatura" loading="lazy" />
       <div class="info">
         <strong>{{ r.titulo || r.url }}</strong>
-        <span class="suave meta">{{ [r.canal, r.duracao].filter(Boolean).join(' · ') }}</span>
+        <span class="suave meta">{{ r.tipo === 'pesquisa' ? descreverPesquisa(r.pesquisa) : [r.canal, r.duracao].filter(Boolean).join(' · ') }}</span>
         <span class="linha-estado">
-          <span class="chip" :class="classeDoEstado(r)">{{ NOMES_ESTADO[r.estado] || r.estado }}</span>
+          <span class="chip" :class="classeDoEstado(r)">{{ nomeDoEstado(r) }}</span>
           <span v-if="situacao(r)" class="chip andando">{{ situacao(r) }}</span>
         </span>
         <span v-if="r.erro" class="erro-texto">{{ r.erro }}</span>
@@ -94,6 +104,19 @@ onBeforeUnmount(() => clearInterval(relogio))
 </template>
 
 <style scoped>
+.cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.cabecalho :deep(svg) {
+  width: 16px;
+  height: 16px;
+}
+
 .adicionar {
   display: flex;
   gap: 8px;
@@ -154,6 +177,18 @@ onBeforeUnmount(() => clearInterval(relogio))
   border-radius: 6px;
   object-fit: cover;
   background: var(--superficie-forte);
+}
+
+.miniatura.pesquisa {
+  display: grid;
+  place-items: center;
+  color: var(--azul);
+  background: var(--azul-fundo);
+}
+
+.miniatura.pesquisa :deep(svg) {
+  width: 22px;
+  height: 22px;
 }
 
 .info {

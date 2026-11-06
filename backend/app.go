@@ -18,6 +18,10 @@ type config struct {
 	modelo     string // vazio = o padrão do Claude Code
 	autorNome  string
 	autorEmail string
+	// Pesquisador (D27): de onde vêm os livros e a Wikipédia.
+	biblioteca     string // API da Biblioteca, ex.: http://biblioteca:8080 no servidor
+	bibliotecaLink string // endereço que o Lucas abre, para os links de volta ao livro
+	wikipedia      string
 }
 
 func configDoAmbiente(dados string) config {
@@ -30,6 +34,10 @@ func configDoAmbiente(dados string) config {
 		modelo:     os.Getenv("CLAUDE_MODEL"),
 		autorNome:  env("GIT_AUTOR_NOME", "Acervo"),
 		autorEmail: env("GIT_AUTOR_EMAIL", "acervo@homelab.local"),
+
+		biblioteca:     strings.TrimSuffix(os.Getenv("BIBLIOTECA_URL"), "/"),
+		bibliotecaLink: strings.TrimSuffix(env("BIBLIOTECA_LINK", "https://192.168.1.20:8443"), "/"),
+		wikipedia:      strings.TrimSuffix(env("WIKIPEDIA_URL", "https://pt.wikipedia.org"), "/"),
 	}
 }
 
