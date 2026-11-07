@@ -230,7 +230,7 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	acao := r.PathValue("acao")
-	if acao != "descartar" && a.ocupada(ctx, ref.ID) {
+	if a.ocupada(ctx, ref.ID) {
 		erroJSON(w, http.StatusConflict, "Já há uma tarefa em andamento para esta Referência.")
 		return
 	}
@@ -238,17 +238,6 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	switch acao {
-	case "validar":
-		if ref.Estado != "organizado" {
-			erroJSON(w, http.StatusConflict, "Só uma Referência organizada pode ser validada.")
-			return
-		}
-		err = a.mudarEstado(ctx, ref.ID, "validado")
-	case "descartar":
-		err = a.mudarEstado(ctx, ref.ID, "descartado")
-		if err == nil {
-			a.descartarCartoes(ctx, ref.ID)
-		}
 	case "reprocessar":
 		if ref.Estado == "esboco" {
 			erroJSON(w, http.StatusConflict, "Aprove o esboço para a pesquisa continuar.")
@@ -326,12 +315,60 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Pediu de novo: o erro da tentativa anterior não vale mais.
-	if acao != "validar" && acao != "descartar" {
-		a.db.ExecContext(ctx, `UPDATE referencias SET erro = '' WHERE id = ?`, ref.ID)
-	}
+	a.db.ExecContext(ctx, `UPDATE referencias SET erro = '' WHERE id = ?`, ref.ID)
 	ref, _ = a.referencia(ctx, ref.ID)
 	a.completar(ctx, []*referencia{ref})
 	writeJSON(w, http.StatusOK, ref)
+}
+
+// handleExcluirReferencia: DELETE /api/referencias/{id} (D33). Apaga a Referência, os textos, o
+// histórico e as propostas pendentes dela; o que já entrou nos Temas fica, porque é do Acervo.
+func (a *app) handleExcluirReferencia(w http.ResponseWriter, r *http.Request) {
+	ref, ok := a.referenciaDoPedido(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	if a.ocupada(ctx, ref.ID) {
+		erroJSON(w, http.StatusConflict, "Há uma tarefa em andamento para esta Referência: cancele na Fila antes de excluir.")
+		return
+	}
+	pendentes, err := a.fila.listar(ctx, `WHERE referencia_id = ? AND estado = ?`, ref.ID, emRevisao)
+	if err != nil {
+		falha(w, err)
+		return
+	}
+	for _, t := range pendentes {
+		a.conteudo.descartarRevisao(ctx, t.ID)
+	}
+	a.descartarCartoes(ctx, ref.ID)
+	tx, err := a.db.BeginTx(ctx, nil)
+	if err != nil {
+		falha(w, err)
+		return
+	}
+	defer tx.Rollback()
+	for _, q := range []struct {
+		sql string
+		arg string
+	}{
+		{`DELETE FROM tarefas WHERE referencia_id = ?`, ref.ID},
+		{`DELETE FROM referencia_temas WHERE referencia_id = ?`, ref.ID},
+		{`DELETE FROM flashcards WHERE alvo = ?`, alvoDeReferencia(ref.ID)},
+		{`DELETE FROM detalhes WHERE local LIKE ?`, "referencias/" + ref.ID + "/%"},
+		{`DELETE FROM referencias WHERE id = ?`, ref.ID},
+	} {
+		if _, err := tx.ExecContext(ctx, q.sql, q.arg); err != nil {
+			falha(w, err)
+			return
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		falha(w, err)
+		return
+	}
+	os.RemoveAll(a.pastaReferencia(ref.ID))
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // proximaEtapa decide o que reprocessar a partir do que já existe em disco.

@@ -22,7 +22,9 @@ const ultimo = computed(() => info.value.envios[0])
 const trabalhando = computed(() => ['na_fila', 'rodando'].includes(g.value?.estado))
 const escolhidos = computed(() => cartoes.value.filter((c) => c.incluir))
 const podeGerar = computed(() => ['organizado', 'validado', 'integrado'].includes(props.referencia.estado))
-const visivel = computed(() => info.value.disponivel && (ultimo.value || podeGerar.value))
+// Sem nada enviado, o cartão some: "Gerar flashcards" fica no menu da Referência.
+const visivel = computed(() => info.value.disponivel && !!ultimo.value)
+const disponivel = computed(() => info.value.disponivel && podeGerar.value)
 const linkNoFlashcards = computed(() => (g.value ? `${info.value.link}/#/geracao/${g.value.id}` : ''))
 
 async function carregar() {
@@ -79,6 +81,8 @@ function aprovar() {
   decidir('aprovar', { nome_baralho: nome.value, cartoes: escolhidos.value.map(({ incluir, ...c }) => c) })
 }
 
+defineExpose({ gerar, disponivel })
+
 onMounted(carregar)
 onBeforeUnmount(() => clearTimeout(relogio))
 // A pesquisa que acabou de ficar pronta manda o texto sozinha: olhar de novo quando o estado muda.
@@ -95,12 +99,7 @@ watch(() => props.referencia.estado, carregar)
     <div v-if="erro" class="aviso erro">{{ erro }}</div>
     <div v-if="feito" class="aviso ok">{{ feito }}</div>
 
-    <template v-if="!ultimo">
-      <p class="suave">A IA lê o texto desta Referência e propõe os cartões; você aprova aqui ou no Flashcards.</p>
-      <div><button class="botao" :disabled="ocupado" @click="gerar">Gerar flashcards</button></div>
-    </template>
-
-    <template v-else-if="!ultimo.geracao_id">
+    <template v-if="!ultimo.geracao_id">
       <p class="erro-texto">Não chegou ao Flashcards: {{ ultimo.erro }}</p>
       <div><button class="botao" :disabled="ocupado" @click="gerar">Tentar de novo</button></div>
     </template>
@@ -151,15 +150,15 @@ watch(() => props.referencia.estado, carregar)
         <button v-if="podeGerar" class="botao" :disabled="ocupado" @click="gerar">Gerar em outro baralho</button>
       </div>
     </template>
-
-    <EnviarFlashcards
-      v-if="escolhendo"
-      :origem="{ referencia: referencia.id }"
-      :titulo="referencia.tipo === 'pesquisa' ? 'desta pesquisa' : 'desta Referência'"
-      @fechar="escolhendo = false"
-      @enviado="enviado"
-    />
   </section>
+
+  <EnviarFlashcards
+    v-if="escolhendo"
+    :origem="{ referencia: referencia.id }"
+    :titulo="referencia.tipo === 'pesquisa' ? 'desta pesquisa' : 'desta Referência'"
+    @fechar="escolhendo = false"
+    @enviado="enviado"
+  />
 </template>
 
 <style scoped>

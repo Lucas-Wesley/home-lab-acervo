@@ -4,6 +4,7 @@ import { api, NOMES_ESTADO_TAREFA, NOMES_TAREFA, nomeDoEstado, situacao } from '
 import CamadaDetalhes from './CamadaDetalhes.vue'
 import CartoesDaReferencia from './CartoesDaReferencia.vue'
 import EsbocoPesquisa from './EsbocoPesquisa.vue'
+import Icone from './Icone.vue'
 import NovaPesquisa from './NovaPesquisa.vue'
 import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 import { marcar, usarDetalhes } from './detalhes.js'
@@ -19,6 +20,8 @@ const acao = ref(null) // 'criar' | 'integrar' | 'aprofundar'
 const novoTema = ref({ titulo: '', pai: '' })
 const temaAlvo = ref('')
 const ocupado = ref(false)
+const menuAberto = ref(false)
+const cartoes = ref(null) // CartoesDaReferencia: o "Gerar flashcards" do menu abre a janela dele
 
 const ehPesquisa = computed(() => ref_.value?.tipo === 'pesquisa')
 const ehLivro = computed(() => ref_.value?.tipo === 'livro')
@@ -55,6 +58,30 @@ const andando = computed(() => {
 })
 const sugestao = computed(() => ref_.value?.sugestao)
 const temaPorCaminho = (c) => temas.value.find((t) => t.caminho === c)
+
+// Menu "⋯": as ações ficam escondidas para o texto vir primeiro.
+function escolher(fn) {
+  menuAberto.value = false
+  fn()
+}
+
+function fecharMenu(e) {
+  if (e.type === 'keydown' ? e.key === 'Escape' : !e.target.closest?.('.menu-acoes')) menuAberto.value = false
+}
+
+async function excluir() {
+  if (!confirm('Excluir esta Referência? O texto e o histórico dela somem; o que já entrou nos Temas continua no Acervo.')) return
+  ocupado.value = true
+  erro.value = ''
+  try {
+    await api(`/api/referencias/${encodeURIComponent(props.id)}`, { metodo: 'DELETE' })
+    location.hash = '#/referencias'
+  } catch (e) {
+    erro.value = e.message
+  } finally {
+    ocupado.value = false
+  }
+}
 
 let relogio
 async function carregar() {
@@ -121,13 +148,19 @@ function duracao(t) {
 }
 
 onMounted(() => {
+  document.addEventListener('click', fecharMenu)
+  document.addEventListener('keydown', fecharMenu)
   carregar()
   carregarTemas()
   relogio = setInterval(() => {
     if (document.visibilityState === 'visible' && (andando.value || !ref_.value)) carregar()
   }, 3000)
 })
-onBeforeUnmount(() => clearInterval(relogio))
+onBeforeUnmount(() => {
+  clearInterval(relogio)
+  document.removeEventListener('click', fecharMenu)
+  document.removeEventListener('keydown', fecharMenu)
+})
 </script>
 
 <template>
@@ -137,7 +170,25 @@ onBeforeUnmount(() => clearInterval(relogio))
 
     <template v-if="ref_">
       <header class="cabeca">
-        <h1>{{ ref_.titulo || ref_.url }}</h1>
+        <div class="titulo-linha">
+          <h1>{{ ref_.titulo || ref_.url }}</h1>
+          <div class="menu-acoes">
+            <button class="botao icone" aria-label="Mais ações" title="Mais ações" aria-haspopup="menu" :aria-expanded="menuAberto" @click="menuAberto = !menuAberto">
+              <Icone nome="pontos" />
+            </button>
+            <div v-if="menuAberto" class="painel-menu" role="menu">
+              <template v-if="pronta">
+                <button v-if="cartoes?.disponivel" role="menuitem" @click="escolher(cartoes.gerar)">Gerar flashcards</button>
+                <button role="menuitem" :disabled="ocupado || andando" @click="escolher(() => executar('sugerir'))">{{ sugestao ? 'Sugerir Tema de novo' : 'Sugerir Tema' }}</button>
+                <button role="menuitem" :disabled="ocupado || andando" @click="escolher(abrirCriar)">Criar Tema</button>
+                <button role="menuitem" :disabled="ocupado || andando || !temas.length" @click="escolher(abrirIntegrar)">Integrar em Tema</button>
+                <button v-if="ehPesquisa" role="menuitem" :disabled="ocupado || andando" @click="escolher(() => (acao = 'aprofundar'))">Aprofundar</button>
+                <hr />
+              </template>
+              <button role="menuitem" class="perigo" :disabled="ocupado || andando" @click="escolher(excluir)">Excluir</button>
+            </div>
+          </div>
+        </div>
         <div v-if="ehPesquisa" class="suave meta">
           {{ descreverPesquisa(ref_.pesquisa) }}<template v-if="ref_.pesquisa.tema !== ref_.titulo"> · pedido: “{{ ref_.pesquisa.tema }}”</template>
           <template v-if="ref_.pesquisa.foco"> · a mais: “{{ ref_.pesquisa.foco }}”</template>
@@ -185,20 +236,10 @@ onBeforeUnmount(() => clearInterval(relogio))
         <div><button class="botao" :disabled="andando" @click="usarSugestao">Usar sugestão</button></div>
       </section>
 
-      <CartoesDaReferencia :referencia="ref_" />
+      <CartoesDaReferencia ref="cartoes" :referencia="ref_" />
 
-      <div class="linha-acoes barra-acoes">
-        <template v-if="ref_.estado === 'erro' || (!pronta && !andando && ref_.estado !== 'descartado' && ref_.estado !== 'esboco')">
-          <button class="botao principal" :disabled="ocupado || andando" @click="executar('reprocessar')">Tentar de novo</button>
-        </template>
-        <template v-if="pronta">
-          <button class="botao" :disabled="ocupado || andando" @click="executar('sugerir')">{{ sugestao ? 'Sugerir de novo' : 'Sugerir Tema' }}</button>
-          <button class="botao" :disabled="ocupado || andando" @click="abrirCriar">Criar Tema</button>
-          <button class="botao" :disabled="ocupado || andando || !temas.length" @click="abrirIntegrar">Integrar em Tema</button>
-          <button v-if="ref_.estado === 'organizado'" class="botao" :disabled="ocupado" @click="executar('validar')">Marcar como validada</button>
-          <button v-if="ehPesquisa" class="botao" :disabled="ocupado || andando" @click="acao = 'aprofundar'">Aprofundar</button>
-        </template>
-        <button v-if="ref_.estado !== 'descartado'" class="botao perigo" :disabled="ocupado" @click="executar('descartar')">Descartar</button>
+      <div v-if="ref_.estado === 'erro' || (!pronta && !andando && ref_.estado !== 'descartado' && ref_.estado !== 'esboco')" class="linha-acoes barra-acoes">
+        <button class="botao principal" :disabled="ocupado || andando" @click="executar('reprocessar')">Tentar de novo</button>
       </div>
 
       <NovaPesquisa v-if="acao === 'aprofundar'" :referencia="ref_" @fechar="acao = null" @enviado="acao = null; carregar()" />
@@ -265,10 +306,70 @@ onBeforeUnmount(() => clearInterval(relogio))
   font-size: 0.9rem;
 }
 
+.titulo-linha {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
 .cabeca h1 {
   margin-bottom: 6px;
   font-family: var(--leitura);
   line-height: 1.25;
+}
+
+.menu-acoes {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.painel-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  background: var(--vidro);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--sombra);
+}
+
+.painel-menu button {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--raio-p);
+  background: none;
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.painel-menu button:hover:not(:disabled) {
+  background: var(--superficie);
+}
+
+.painel-menu button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.painel-menu .perigo {
+  color: var(--perigo);
+}
+
+.painel-menu hr {
+  margin: 4px 6px;
+  border: 0;
+  border-top: 1px solid var(--linha);
 }
 
 .meta {

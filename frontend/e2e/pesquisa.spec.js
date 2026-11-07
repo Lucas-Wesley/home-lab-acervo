@@ -60,7 +60,8 @@ test('aprofunda uma pesquisa pronta, e o texto de antes fica na Versão anterior
   await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()
   await expect(page.getByText('Sugestão da IA:')).toBeVisible({ timeout: 20000 })
 
-  await page.getByRole('button', { name: 'Aprofundar' }).click()
+  await page.getByRole('button', { name: 'Mais ações' }).click()
+  await page.getByRole('menuitem', { name: 'Aprofundar' }).click()
   await expect(page.getByRole('button', { name: 'YouTube' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Sites' }).click()
   await page.getByLabel('O que mais quer saber?').fill('as variedades')

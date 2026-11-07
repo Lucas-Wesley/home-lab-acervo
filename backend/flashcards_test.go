@@ -172,8 +172,10 @@ func TestPesquisaComFlashcardsAprovadosNoAcervo(t *testing.T) {
 		t.Errorf("ação desconhecida: %d", s)
 	}
 
-	// Descartar a pesquisa descarta a proposta de cartões dela.
-	e.pedir("POST", "/api/referencias/"+id+"/descartar", nil, nil)
+	// Excluir a pesquisa descarta a proposta de cartões dela.
+	if s := e.pedir("DELETE", "/api/referencias/"+id, nil, nil); s != http.StatusNoContent {
+		t.Fatalf("excluir: %d", s)
+	}
 	if f.acoes[len(f.acoes)-1] != "/api/geracoes/"+geracao+"/descartar" {
 		t.Errorf("ações: %v", f.acoes)
 	}
@@ -192,8 +194,8 @@ func TestReferenciaOrganizadaViraFlashcards(t *testing.T) {
 	if f.textos[0].Baralho == "" || f.textos[0].BaralhoID != "" {
 		t.Errorf("baralho: %+v", f.textos[0])
 	}
-	e.pedir("POST", "/api/referencias/"+id+"/descartar", nil, nil)
-	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id}, nil); s != http.StatusConflict {
-		t.Errorf("descartada: %d", s)
+	e.pedir("DELETE", "/api/referencias/"+id, nil, nil)
+	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id}, nil); s != http.StatusNotFound {
+		t.Errorf("excluída: %d", s)
 	}
 }

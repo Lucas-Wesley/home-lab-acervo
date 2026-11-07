@@ -18,7 +18,8 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await page.getByRole('button', { name: 'Transcrição' }).click()
   await expect(page.locator('article.texto')).toContainText('Tratado de Tordesilhas')
 
-  await page.getByRole('button', { name: 'Sugerir Tema' }).click()
+  await page.getByRole('button', { name: 'Mais ações' }).click()
+  await page.getByRole('menuitem', { name: 'Sugerir Tema' }).click()
   await expect(page.getByText('Sugestão da IA:')).toBeVisible({ timeout: 15000 })
   await page.getByRole('button', { name: 'Usar sugestão' }).click()
   await expect(page.locator('.formulario input')).toHaveValue('Tema de Teste')
@@ -180,6 +181,17 @@ test('vídeo sem legenda mostra o erro na lista', async ({ page }) => {
   await page.getByLabel('Link do vídeo').fill('https://www.youtube.com/watch?v=SSSSSSSSSSS')
   await page.getByRole('button', { name: 'Adicionar' }).click()
   await expect(page.getByText('Não foi possível extrair a legenda deste vídeo. O processo não continuou.')).toBeVisible({ timeout: 15000 })
+})
+
+test('exclui uma Referência pelo menu', async ({ page }) => {
+  await page.goto('/#/referencias')
+  const cartao = page.locator('.referencia', { hasText: 'SSSSSSSSSSS' })
+  await cartao.click()
+  await page.getByRole('button', { name: 'Mais ações' }).click()
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('menuitem', { name: 'Excluir' }).click()
+  await expect(page).toHaveURL(/#\/referencias$/)
+  await expect(page.locator('.referencia', { hasText: 'SSSSSSSSSSS' })).toHaveCount(0)
 })
 
 test('vídeo compartilhado pelo celular entra na fila sem passar por tela nenhuma', async ({ page }) => {

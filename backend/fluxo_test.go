@@ -402,3 +402,34 @@ func TestPropostasSimultaneas(t *testing.T) {
 		t.Errorf("os dois Temas deviam estar no Acervo: %+v", temas)
 	}
 }
+
+func TestExcluirReferencia(t *testing.T) {
+	e := novoAmbiente(t)
+	id := e.adicionar("https://www.youtube.com/watch?v=AAAAAAAAAAA")
+	e.esperarEstado(id, "organizado")
+	pasta := e.app.pastaReferencia(id)
+	if _, err := os.Stat(pasta); err != nil {
+		t.Fatalf("pasta antes: %v", err)
+	}
+	if s := e.pedir("DELETE", "/api/referencias/"+id, nil, nil); s != http.StatusNoContent {
+		t.Fatalf("excluir: %d", s)
+	}
+	if s := e.pedir("GET", "/api/referencias/"+id, nil, nil); s != http.StatusNotFound {
+		t.Errorf("depois: %d", s)
+	}
+	if _, err := os.Stat(pasta); !os.IsNotExist(err) {
+		t.Errorf("pasta ficou: %v", err)
+	}
+	var n int
+	e.app.db.QueryRow(`SELECT COUNT(*) FROM tarefas WHERE referencia_id = ?`, id).Scan(&n)
+	if n != 0 {
+		t.Errorf("tarefas ficaram: %d", n)
+	}
+	// O mesmo vídeo pode voltar depois.
+	if novo := e.adicionar("https://www.youtube.com/watch?v=AAAAAAAAAAA"); novo == "" {
+		t.Error("não voltou")
+	}
+	if s := e.pedir("DELETE", "/api/referencias/"+id, nil, nil); s != http.StatusNotFound {
+		t.Errorf("de novo: %d", s)
+	}
+}
