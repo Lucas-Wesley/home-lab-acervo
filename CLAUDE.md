@@ -1,7 +1,7 @@
 # Acervo
 
 App do **ecossistema de apps pessoais do Lucas**. Gerenciador de conhecimento: transforma conteúdos
-(hoje YouTube; futuro: artigos e outras fontes) numa **base de conhecimento permanente, organizada,
+(vídeos do YouTube, artigos e páginas da web, pesquisas e capítulos de livros) numa **base de conhecimento permanente, organizada,
 verificada, cronológica e versionada**. **Não é um "resumidor de vídeo"** — o vídeo é matéria-prima;
 o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
@@ -41,6 +41,8 @@ disponível pra inferência local (Whisper) quando precisar.
 - **Internet só em "Mais informações"** (D26) **e na escrita de uma pesquisa com "Sites"** (D27): as
   outras etapas continuam sem `WebSearch`/`WebFetch`. A coleta do Pesquisador (livros, Wikipédia,
   YouTube) é feita pelo servidor, sem a IA.
+- **Artigos** (D34): o servidor lê a página sem IA (`artigo.go`), sem nada específico de um site;
+  o que sobrar do site, a etapa de organizar tira (`regras/organizar-artigo.md`).
 - **Flashcards** (D28, D31): o Acervo só manda o texto (com o baralho escolhido e o link de cada capítulo) ao app Flashcards (`FLASHCARDS_URL`); a IA e as regras dos
   cartões ficam lá (`flashcards/regras/gerar-do-texto.md`).
 - **As instruções em vigor podem estar editadas no app** (D25). Antes de mudar `regras/`, ler as

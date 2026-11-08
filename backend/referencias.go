@@ -28,7 +28,7 @@ type referencia struct {
 	AtualizadoEm string          `json:"atualizado_em"`
 	Tarefa       *tarefaAtiva    `json:"tarefa"`
 	Temas        []string        `json:"temas"`
-	Tipo         string          `json:"tipo"`     // video ou pesquisa (D27)
+	Tipo         string          `json:"tipo"`     // video, artigo (D34), pesquisa (D27) ou livro (D30)
 	Pesquisa     json.RawMessage `json:"pesquisa"` // o pedido, o esboço e a coleta; null num vídeo
 	Livro        json.RawMessage `json:"livro"`    // o livro e os capítulos escolhidos (D30); null nos outros
 }
@@ -141,38 +141,61 @@ func novoID() string {
 	return hex.EncodeToString(b)
 }
 
+// handleCriarReferencia: POST /api/referencias {url, tipo}. Um link do YouTube vira vídeo; qualquer
+// outro link de página vira artigo (D34). tipo "video" recusa o que não for do YouTube.
 func (a *app) handleCriarReferencia(w http.ResponseWriter, r *http.Request) {
 	var corpo struct {
-		URL string `json:"url"`
+		URL  string `json:"url"`
+		Tipo string `json:"tipo"`
 	}
 	if !lerCorpo(w, r, &corpo) {
 		return
 	}
-	video, err := videoDoYouTube(corpo.URL)
-	if err != nil {
+	ctx := r.Context()
+	var id, link, tipo, video string
+	if v, err := videoDoYouTube(corpo.URL); err == nil {
+		tipo, video, link = "video", v, "https://www.youtube.com/watch?v="+v
+	} else if corpo.Tipo == "video" {
 		erroJSON(w, http.StatusBadRequest, "Cole um link de vídeo do YouTube.")
+		return
+	} else if l, err := linkDaWeb(corpo.URL); err == nil {
+		tipo, link = "artigo", l
+	} else {
+		erroJSON(w, http.StatusBadRequest, "Cole um link de vídeo do YouTube ou de uma página da web.")
 		return
 	}
 	var existente string
-	if a.db.QueryRowContext(r.Context(), `SELECT id FROM referencias WHERE video_id = ?`, video).Scan(&existente) == nil {
-		writeJSON(w, http.StatusConflict, map[string]string{"erro": "Este vídeo já está nas Referências.", "id": existente})
+	if tipo == "video" {
+		a.db.QueryRowContext(ctx, `SELECT id FROM referencias WHERE video_id = ?`, video).Scan(&existente)
+	} else {
+		a.db.QueryRowContext(ctx, `SELECT id FROM referencias WHERE tipo = 'artigo' AND url = ?`, link).Scan(&existente)
+	}
+	if existente != "" {
+		msg := "Este vídeo já está nas Referências."
+		if tipo == "artigo" {
+			msg = "Esta página já está nas Referências."
+		}
+		writeJSON(w, http.StatusConflict, map[string]string{"erro": msg, "id": existente})
 		return
 	}
-	id := novoID()
-	link := "https://www.youtube.com/watch?v=" + video
-	_, err = a.db.ExecContext(r.Context(),
-		`INSERT INTO referencias (id, url, video_id, estado, criado_em, atualizado_em) VALUES (?, ?, ?, 'novo', ?, ?)`,
-		id, link, video, agora(), agora())
+	id = novoID()
+	var videoID any
+	if video != "" {
+		videoID = video
+	}
+	_, err := a.db.ExecContext(ctx,
+		`INSERT INTO referencias (id, url, video_id, tipo, estado, criado_em, atualizado_em) VALUES (?, ?, ?, ?, 'novo', ?, ?)`,
+		id, link, videoID, tipo, agora(), agora())
 	if err != nil {
 		falha(w, err)
 		return
 	}
-	if _, err := a.fila.enfileirar(r.Context(), id, "extrair", nil); err != nil {
+	if _, err := a.fila.enfileirar(ctx, id, "extrair", nil); err != nil {
 		falha(w, err)
 		return
 	}
-	ref, _ := a.referencia(r.Context(), id)
-	a.completar(r.Context(), []*referencia{ref})
+	ref, _ := a.referencia(ctx, id)
+	a.completar(ctx, []*referencia{ref})
 	writeJSON(w, http.StatusCreated, ref)
 }
 

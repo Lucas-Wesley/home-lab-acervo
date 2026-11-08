@@ -176,6 +176,12 @@ e o Claude falhava com "sem resposta". Os caminhos agora são absolutos, e há t
 - **Resumo de capítulos:** `GET /api/livros` e `GET /api/livros/{id}` repassam os livros e o sumário da Biblioteca; `POST /api/livros` com `{livro, capitulos, de, ate, foco}` cria a Referência `tipo = 'livro'` (coluna `livro`, acrescentada com `ALTER TABLE`). Etapas `ler_livro` (sem IA) e `resumir` (`livros.go`).
 - Testes: Go (duas rodadas com o já escrito, aprofundar sem texto ou num vídeo, resumo de um capítulo, pedidos inválidos), unidade e navegador (aprofundar com Sites; resumir dois capítulos, com uma Biblioteca falsa em `e2e/biblioteca-falsa.mjs`).
 
+## Artigos, menu ⋯ em Referências e Compartilhar (08/11/2026, D34)
+
+- **Artigos:** `POST /api/referencias` com `{url, tipo}`: YouTube vira vídeo; outro link http(s), artigo (`tipo = "video"` recusa o que não é do YouTube). `artigo.go` baixa a página (até 5 MB, 30 s, cabeçalhos de navegador), lê os metadados e o texto principal (`raizDoArtigo`: o elemento com mais texto em `<p>` filhos, subindo até 70% do texto em parágrafos da página) e escreve `cru.md`. `organizar` usa `organizar-artigo.md` no artigo; `notaDoTipo` avisa a IA de que não há marcas de tempo. Dependência nova: `golang.org/x/net/html` (a mesma do Flashcards).
+- **Front:** menu ⋯ em Referências (estilo do menu passou para `style.css`), página `Pesquisar.vue` (`NovaPesquisa` com `pagina`), `Compartilhar.vue` montada no lugar do app em `/compartilhar` (`main.js`).
+- Testes: Go (artigo com o título do "Compartilhar" junto, rastreio tirado, sobras do site fora, repetido, página sem texto, 404), navegador (menu ⋯, página do Pesquisar, Compartilhar no endereço novo e no antigo). Conferido à mão com páginas reais (Wikipédia, BBC, G1, um blog com código e um ensaio sem `<article>`).
+
 ## O que ficou de fora desta versão
 
 - **Verificação de veracidade (item 7):** só a aba "Dúvidas" e o botão "Marcar como validada".

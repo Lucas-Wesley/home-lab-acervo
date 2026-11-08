@@ -284,7 +284,10 @@ func TestErrosVisiveis(t *testing.T) {
 		t.Errorf("indisponível: %q", d.Erro)
 	}
 
-	if s := e.pedir("POST", "/api/referencias", map[string]string{"url": "https://exemplo.com"}, nil); s != http.StatusBadRequest {
+	if s := e.pedir("POST", "/api/referencias", map[string]string{"url": "https://exemplo.com", "tipo": "video"}, nil); s != http.StatusBadRequest {
+		t.Errorf("vídeo que não é do YouTube: %d", s)
+	}
+	if s := e.pedir("POST", "/api/referencias", map[string]string{"url": "ftp://exemplo.com/x"}, nil); s != http.StatusBadRequest {
 		t.Errorf("link inválido: %d", s)
 	}
 

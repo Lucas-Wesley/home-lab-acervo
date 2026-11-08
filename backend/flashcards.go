@@ -225,6 +225,8 @@ func (a *app) textoDaReferencia(ctx context.Context, ref *referencia) (textoPara
 		t.Contexto = "É uma pesquisa feita a pedido do Lucas, com as fontes marcadas no texto."
 	} else if ref.Tipo == "livro" {
 		t.Contexto = "É o resumo de capítulos de um livro, com as páginas marcadas no texto."
+	} else if ref.Tipo == "artigo" {
+		t.Contexto = fmt.Sprintf("É o texto organizado de uma página da web (%s).", strings.TrimSpace(ref.Canal+" · "+ref.URL))
 	} else {
 		t.Contexto = fmt.Sprintf("É o texto organizado de um vídeo (%s).", strings.TrimSpace(ref.Canal+" · "+ref.URL))
 	}

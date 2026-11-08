@@ -1,9 +1,9 @@
 // Pesquisador (D27): os nomes das fontes e das profundidades, na ordem em que aparecem.
 export const FONTES = [
-  { chave: 'livros', nome: 'Meus livros', curto: 'Livros' },
-  { chave: 'wikipedia', nome: 'Wikipédia', curto: 'Wikipédia' },
-  { chave: 'youtube', nome: 'YouTube', curto: 'YouTube' },
-  { chave: 'sites', nome: 'Sites', curto: 'Sites' },
+  { chave: 'livros', nome: 'Meus livros', curto: 'Livros', explicacao: 'Trechos dos livros da Biblioteca, com o link da página.' },
+  { chave: 'wikipedia', nome: 'Wikipédia', curto: 'Wikipédia', explicacao: 'Os artigos ficam guardados junto com a pesquisa.' },
+  { chave: 'youtube', nome: 'YouTube', curto: 'YouTube', explicacao: 'A transcrição de vídeos com legenda; servem só de fonte e não viram Referência.' },
+  { chave: 'sites', nome: 'Sites', curto: 'Sites', explicacao: 'A IA busca e lê páginas da internet na hora de escrever.' },
 ]
 
 export const PROFUNDIDADES = [

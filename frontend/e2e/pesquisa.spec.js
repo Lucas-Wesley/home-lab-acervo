@@ -1,19 +1,26 @@
 import { expect, test } from '@playwright/test'
 
+// Uma fonte na página Pesquisar um tema: a linha com o nome e a explicação.
+const fonte = (page, nome) => page.getByRole('checkbox', { name: new RegExp(`^${nome}`) })
+
 // Pesquisador (D27), com o claude e o yt-dlp falsos: pedido → esboço revisado → coleta →
 // texto conferido → sugestão de Tema.
 test('pesquisa um tema no YouTube, com o esboço revisado antes de buscar', async ({ page }) => {
+  // Pesquisar um tema é uma página própria, aberta pelo menu ⋯ (D34).
   await page.goto('/#/referencias')
-  await page.getByRole('button', { name: 'Pesquisar um tema' }).click()
+  await page.getByRole('button', { name: 'Mais opções' }).click()
+  await page.getByRole('menuitem', { name: 'Pesquisar um tema' }).click()
+  await expect(page).toHaveURL(/#\/pesquisar$/)
   await page.getByLabel('Tema ou pergunta').fill('Qual é a origem da laranja?')
 
   // Os livros vêm marcados; aqui, a pesquisa é só no YouTube.
-  await expect(page.getByRole('button', { name: 'Meus livros' })).toHaveAttribute('aria-pressed', 'true')
-  await page.getByRole('button', { name: 'Meus livros' }).click()
-  await page.getByRole('button', { name: 'Wikipédia' }).click()
+  await expect(fonte(page, 'Meus livros')).toBeChecked()
+  await fonte(page, 'Meus livros').uncheck()
+  await fonte(page, 'Wikipédia').uncheck()
   await expect(page.getByText('Nenhuma fonte: só a resposta da IA')).toBeVisible()
-  await page.getByRole('button', { name: 'YouTube' }).click()
-  await page.getByRole('button', { name: 'Detalhada' }).click()
+  await fonte(page, 'YouTube').check()
+  await page.getByRole('radio', { name: /^Detalhada/ }).check()
+  await expect(page.locator('.barra-pesquisa')).toContainText('Detalhada · YouTube')
   await page.getByLabel('Revisar o esboço antes de buscar').check()
   await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()
 
@@ -47,16 +54,13 @@ test('pesquisa um tema no YouTube, com o esboço revisado antes de buscar', asyn
 
 // Aprofundar (D29): outra rodada, com mais uma fonte e o que o Lucas quer a mais.
 test('aprofunda uma pesquisa pronta, e o texto de antes fica na Versão anterior', async ({ page }) => {
-  await page.goto('/#/referencias')
-  await page.getByRole('button', { name: 'Pesquisar um tema' }).click()
+  await page.goto('/#/pesquisar')
   await page.getByLabel('Tema ou pergunta').fill('De onde vem o caju?')
-  for (const nome of ['Meus livros', 'Wikipédia']) {
-    if ((await page.getByRole('button', { name: nome }).getAttribute('aria-pressed')) === 'true') await page.getByRole('button', { name: nome }).click()
-  }
-  for (const nome of ['YouTube', 'Detalhada']) await page.getByRole('button', { name: nome }).click()
-  if ((await page.getByRole('button', { name: 'YouTube' }).getAttribute('aria-pressed')) !== 'true') await page.getByRole('button', { name: 'YouTube' }).click()
-  await page.getByRole('button', { name: 'Rápida' }).click()
-  if (await page.getByLabel('Revisar o esboço antes de buscar').isChecked()) await page.getByLabel('Revisar o esboço antes de buscar').uncheck()
+  await fonte(page, 'Meus livros').setChecked(false)
+  await fonte(page, 'Wikipédia').setChecked(false)
+  await fonte(page, 'YouTube').setChecked(true)
+  await page.getByRole('radio', { name: /^Rápida/ }).check()
+  await page.getByLabel('Revisar o esboço antes de buscar').setChecked(false)
   await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()
   await expect(page.getByText('Sugestão da IA:')).toBeVisible({ timeout: 20000 })
 
@@ -79,7 +83,8 @@ test('aprofunda uma pesquisa pronta, e o texto de antes fica na Versão anterior
 // Resumo de capítulos (D30, D32): escolher o livro na lista e os capítulos; a IA resume e sugere o Tema.
 test('resume dois capítulos de um livro da Biblioteca', async ({ page }) => {
   await page.goto('/#/referencias')
-  await page.getByRole('link', { name: 'Resumir capítulos' }).click()
+  await page.getByRole('button', { name: 'Mais opções' }).click()
+  await page.getByRole('menuitem', { name: 'Resumir capítulos' }).click()
   await expect(page).toHaveURL(/#\/resumir$/)
   await expect(page.locator('.livro', { hasText: 'Pães de Fermentação Natural' })).toContainText('EPUB')
   await page.getByRole('link', { name: /Pães de Fermentação Natural/ }).first().click()

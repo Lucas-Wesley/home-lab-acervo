@@ -6,6 +6,7 @@ import Fila from './Fila.vue'
 import Icone from './Icone.vue'
 import Instrucao from './Instrucao.vue'
 import Leitor from './Leitor.vue'
+import Pesquisar from './Pesquisar.vue'
 import Referencia from './Referencia.vue'
 import Referencias from './Referencias.vue'
 import Resumir from './Resumir.vue'
@@ -16,7 +17,6 @@ import { enviarDetalhesPendentes } from './detalhes.js'
 
 // Rotas no hash, como na Biblioteca: o "voltar" do celular volta para a tela anterior.
 const hash = ref(location.hash)
-const recado = ref(null) // { texto, erro } — aviso rápido, como o de um link compartilhado
 const versao = ref('')
 const contagem = ref({ fila: 0, revisoes: 0 })
 const naoEnviadas = ref(0)
@@ -40,7 +40,7 @@ const MENU = [
 const secao = computed(() => {
   const n = rota.value.nome
   if (n === 'ler') return 'acervo'
-  if (n === 'referencia' || n === 'resumir') return 'referencias'
+  if (n === 'referencia' || n === 'resumir' || n === 'pesquisar') return 'referencias'
   if (n === 'revisao') return 'revisoes'
   return n
 })
@@ -93,31 +93,7 @@ function aoMudarVisibilidade() {
   atualizarContagem()
 }
 
-// Compartilhar um vídeo com o app instalado (Android) abre "/?text=…&url=…": o link vai direto
-// para a fila, como se tivesse sido colado em Referências.
-let tempoDoRecado
-function mostrarRecado(texto, erro = false) {
-  recado.value = { texto, erro }
-  clearTimeout(tempoDoRecado)
-  tempoDoRecado = setTimeout(() => (recado.value = null), 4000)
-}
-
-async function receberCompartilhado() {
-  const p = new URLSearchParams(location.search)
-  const enviado = [p.get('url'), p.get('text'), p.get('title')].filter(Boolean).join(' ')
-  if (!enviado) return
-  history.replaceState(null, '', `${location.pathname}#/referencias`)
-  hash.value = location.hash
-  try {
-    await api('/api/referencias', { metodo: 'POST', corpo: { url: enviado } })
-    mostrarRecado('Vídeo enviado para a fila.')
-  } catch (e) {
-    mostrarRecado(e.message, true)
-  }
-}
-
 onMounted(async () => {
-  receberCompartilhado()
   window.addEventListener('hashchange', aoMudarHash)
   window.addEventListener('online', aoVoltarARede)
   window.addEventListener('acervo:pendentes', atualizarPendentes)
@@ -177,6 +153,7 @@ onBeforeUnmount(() => {
       <Referencias v-else-if="rota.nome === 'referencias'" />
       <Referencia v-else-if="rota.nome === 'referencia'" :key="rota.param" :id="rota.param" />
       <Resumir v-else-if="rota.nome === 'resumir'" :livro="rota.param" />
+      <Pesquisar v-else-if="rota.nome === 'pesquisar'" />
       <Fila v-else-if="rota.nome === 'fila'" />
       <Instrucao v-else-if="rota.nome === 'ajustes' && rota.param.startsWith('instrucoes/')" :key="rota.param" :arquivo="rota.param.slice('instrucoes/'.length)" />
       <Ajustes v-else-if="rota.nome === 'ajustes'" :tela="telaAnterior" />
@@ -184,9 +161,6 @@ onBeforeUnmount(() => {
       <Acervo v-else :so-baixados="rota.nome === 'baixados'" />
     </main>
 
-    <Transition name="recado">
-      <div v-if="recado" class="recado vidro" :class="{ erro: recado.erro }" role="status">{{ recado.texto }}</div>
-    </Transition>
   </div>
 </template>
 
@@ -292,35 +266,6 @@ nav {
   font-weight: 600;
 }
 
-.recado {
-  position: fixed;
-  left: 50%;
-  bottom: calc(24px + env(safe-area-inset-bottom));
-  z-index: 40;
-  max-width: calc(100% - 32px);
-  padding: 10px 16px;
-  border: 1px solid var(--vidro-borda);
-  border-radius: 999px;
-  box-shadow: var(--sombra);
-  font-size: 0.88rem;
-  transform: translateX(-50%);
-}
-
-.recado.erro {
-  color: var(--terracota);
-}
-
-.recado-enter-active,
-.recado-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.recado-enter-from,
-.recado-leave-to {
-  opacity: 0;
-  transform: translate(-50%, 8px);
-}
-
 /* Celular: o menu vira uma barra de abas de vidro no pé da tela. No leitor ela some, para o
    texto ter a tela toda; a barra do próprio leitor tem o voltar. */
 @media (max-width: 820px) {
@@ -374,14 +319,6 @@ nav {
 
   .conteudo {
     margin-left: 0;
-  }
-
-  .recado {
-    bottom: calc(80px + env(safe-area-inset-bottom));
-  }
-
-  .lendo .recado {
-    bottom: calc(24px + env(safe-area-inset-bottom));
   }
 }
 </style>

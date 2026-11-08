@@ -21,9 +21,10 @@ export default defineConfig({
         background_color: '#fbfaf8',
         display: 'standalone',
         start_url: '/',
-        // Android: o Acervo aparece em "Compartilhar"; o link chega em "/?text=…" (App.vue).
+        // Android: o Acervo aparece em "Compartilhar"; o link chega em "/compartilhar?text=…", uma
+        // tela curta que manda o link e se fecha (Compartilhar.vue).
         share_target: {
-          action: '/',
+          action: '/compartilhar',
           method: 'GET',
           params: { title: 'title', text: 'text', url: 'url' },
         },

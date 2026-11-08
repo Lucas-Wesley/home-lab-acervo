@@ -28,7 +28,7 @@ export async function api(caminho, { metodo = 'GET', corpo, tempo = 15000 } = {}
 export const caminhoApi = (caminho) => caminho.split('/').map(encodeURIComponent).join('/')
 
 export const NOMES_TAREFA = {
-  extrair: 'Extrair legenda',
+  extrair: 'Extrair o texto',
   organizar: 'Organizar',
   traduzir: 'Traduzir',
   sugerir: 'Sugerir Tema',

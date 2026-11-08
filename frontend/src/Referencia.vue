@@ -33,7 +33,7 @@ const abas = computed(() => {
   if (t.traducao) lista.push(['traducao', 'Português'])
   if (t.organizado) lista.push(['organizado', t.traducao ? 'Original' : 'Organizado'])
   if (duvidas(textoPrincipal.value)) lista.push(['duvidas', 'Dúvidas'])
-  if (t.cru) lista.push(['cru', ehPesquisa.value ? 'Material coletado' : ehLivro.value ? 'Texto do livro' : 'Transcrição'])
+  if (t.cru) lista.push(['cru', ehPesquisa.value ? 'Material coletado' : ehLivro.value ? 'Texto do livro' : ref_.value.tipo === 'artigo' ? 'Texto da página' : 'Transcrição'])
   if (t.anterior) lista.push(['anterior', 'Versão anterior'])
   lista.push(['historico', 'Histórico'])
   return lista
@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
         </div>
         <div v-else class="suave meta">
           {{ [ref_.canal, ref_.duracao, ref_.idioma && `idioma: ${ref_.idioma}`].filter(Boolean).join(' · ') }}
-          · <a :href="ref_.url" target="_blank" rel="noopener">abrir no YouTube</a>
+          · <a :href="ref_.url" target="_blank" rel="noopener">{{ ref_.tipo === 'artigo' ? 'abrir a página' : 'abrir no YouTube' }}</a>
         </div>
         <div class="linha-acoes estado">
           <span class="chip" :class="{ erro: ref_.estado === 'erro', ok: ref_.estado === 'integrado' }">{{ nomeDoEstado(ref_) }}</span>
@@ -317,59 +317,6 @@ onBeforeUnmount(() => {
   margin-bottom: 6px;
   font-family: var(--leitura);
   line-height: 1.25;
-}
-
-.menu-acoes {
-  position: relative;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.painel-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 20;
-  display: grid;
-  min-width: 200px;
-  padding: 6px;
-  border: 1px solid var(--linha);
-  border-radius: var(--raio);
-  background: var(--vidro);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
-  box-shadow: var(--sombra);
-}
-
-.painel-menu button {
-  padding: 8px 10px;
-  border: 0;
-  border-radius: var(--raio-p);
-  background: none;
-  color: var(--texto);
-  font: inherit;
-  font-size: 0.9rem;
-  text-align: left;
-  cursor: pointer;
-}
-
-.painel-menu button:hover:not(:disabled) {
-  background: var(--superficie);
-}
-
-.painel-menu button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.painel-menu .perigo {
-  color: var(--perigo);
-}
-
-.painel-menu hr {
-  margin: 4px 6px;
-  border: 0;
-  border-top: 1px solid var(--linha);
 }
 
 .meta {

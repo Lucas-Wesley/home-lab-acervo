@@ -67,6 +67,16 @@ func (a *app) extrair(ctx context.Context, t *tarefa, ref *referencia) (resultad
 	if err := os.MkdirAll(pasta, 0o755); err != nil {
 		return pronto, err
 	}
+	if ref.Tipo == "artigo" {
+		if err := a.extrairPagina(ctx, ref, pasta); err != nil {
+			return pronto, err
+		}
+		if err := a.mudarEstado(ctx, ref.ID, "cru"); err != nil {
+			return pronto, err
+		}
+		_, err := a.fila.enfileirar(ctx, ref.ID, "organizar", nil)
+		return pronto, err
+	}
 	info, lingua, err := a.baixarLegenda(ctx, ref.URL, pasta)
 	if info.Titulo != "" {
 		idioma := info.Idioma
@@ -90,9 +100,13 @@ func (a *app) organizar(ctx context.Context, t *tarefa, ref *referencia) (result
 	pasta := a.pastaReferencia(ref.ID)
 	os.Remove(filepath.Join(pasta, "organizado.md"))
 	os.Remove(filepath.Join(pasta, "traducao.md"))
+	regra := "organizar.md"
+	if ref.Tipo == "artigo" {
+		regra = "organizar-artigo.md"
+	}
 	_, err := a.chamarClaude(ctx, pedidoClaude{
 		pasta:       pasta,
-		regra:       "organizar.md",
+		regra:       regra,
 		instrucao:   "Leia cru.md nesta pasta e escreva organizado.md nesta pasta. Responda só 'ok' ao terminar.",
 		ferramentas: ferramentasEscrita,
 	})

@@ -136,7 +136,7 @@ func acrescentarColuna(db *sql.DB, tabela, coluna, definicao string) error {
 	return err
 }
 
-// tipo: "video", "pesquisa" (D27) ou "livro" (D30); pesquisa guarda o pedido, o esboço e o que foi
+// tipo: "video", "artigo" (D34), "pesquisa" (D27) ou "livro" (D30); pesquisa guarda o pedido, o esboço e o que foi
 // coletado; livro, o livro e os capítulos escolhidos.
 const tabelaReferencias = `CREATE TABLE IF NOT EXISTS referencias (
 	id            TEXT PRIMARY KEY,

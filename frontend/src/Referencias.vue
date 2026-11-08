@@ -1,8 +1,7 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api, nomeDoEstado, situacao } from './api.js'
 import Icone from './Icone.vue'
-import NovaPesquisa from './NovaPesquisa.vue'
 import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 
 const referencias = ref([])
@@ -11,7 +10,27 @@ const link = ref('')
 const enviando = ref(false)
 const erro = ref('')
 const filtro = ref('todas')
-const novo = ref('') // 'pesquisa'
+const novo = ref('') // 'video' ou 'artigo': o campo do link aberto pelo menu ⋯
+const menuAberto = ref(false)
+const campo = ref(null)
+
+// D34: as entradas novas ficam no menu ⋯, para a lista vir primeiro.
+const ENTRADAS = {
+  video: { placeholder: 'Cole o link de um vídeo do YouTube', rotulo: 'Link do vídeo' },
+  artigo: { placeholder: 'Cole o link de um artigo, blog ou site', rotulo: 'Link da página' },
+}
+
+async function abrir(tipo) {
+  menuAberto.value = false
+  novo.value = tipo
+  erro.value = ''
+  await nextTick()
+  campo.value?.focus()
+}
+
+function fecharMenu(e) {
+  if (e.type === 'keydown' ? e.key === 'Escape' : !e.target.closest?.('.menu-acoes')) menuAberto.value = false
+}
 
 const FILTROS = {
   todas: () => true,
@@ -38,8 +57,9 @@ async function adicionar() {
   enviando.value = true
   erro.value = ''
   try {
-    await api('/api/referencias', { metodo: 'POST', corpo: { url: link.value } })
+    await api('/api/referencias', { metodo: 'POST', corpo: { url: link.value, tipo: novo.value } })
     link.value = ''
+    novo.value = ''
     await carregar()
   } catch (e) {
     if (e.status === 409 && e.dados?.id) location.hash = `#/referencia/${e.dados.id}`
@@ -58,25 +78,38 @@ function classeDoEstado(r) {
 onMounted(() => {
   carregar()
   relogio = setInterval(() => document.visibilityState === 'visible' && carregar(), 3000)
+  document.addEventListener('click', fecharMenu)
+  document.addEventListener('keydown', fecharMenu)
 })
-onBeforeUnmount(() => clearInterval(relogio))
+onBeforeUnmount(() => {
+  clearInterval(relogio)
+  document.removeEventListener('click', fecharMenu)
+  document.removeEventListener('keydown', fecharMenu)
+})
 </script>
 
 <template>
   <div class="pagina">
     <div class="cabecalho">
       <h1>Referências</h1>
-      <div v-if="!novo" class="linha-acoes">
-        <button type="button" class="botao" @click="novo = 'pesquisa'"><Icone nome="pesquisar" /> Pesquisar um tema</button>
-        <a href="#/resumir" class="botao"><Icone nome="livro" /> Resumir capítulos</a>
+      <div class="menu-acoes">
+        <button class="botao icone" aria-label="Mais opções" title="Mais opções" aria-haspopup="menu" :aria-expanded="menuAberto" @click="menuAberto = !menuAberto">
+          <Icone nome="pontos" />
+        </button>
+        <div v-if="menuAberto" class="painel-menu" role="menu">
+          <button role="menuitem" @click="abrir('video')"><Icone nome="referencias" /> Link de vídeo</button>
+          <button role="menuitem" @click="abrir('artigo')"><Icone nome="link" /> Link de artigo ou site</button>
+          <hr />
+          <a role="menuitem" href="#/pesquisar"><Icone nome="pesquisar" /> Pesquisar um tema</a>
+          <a role="menuitem" href="#/resumir"><Icone nome="livro" /> Resumir capítulos</a>
+        </div>
       </div>
     </div>
 
-    <NovaPesquisa v-if="novo === 'pesquisa'" @fechar="novo = ''" />
-
-    <form class="adicionar" @submit.prevent="adicionar">
-      <input v-model="link" class="campo" type="url" inputmode="url" placeholder="Cole o link de um vídeo do YouTube" aria-label="Link do vídeo" />
+    <form v-if="novo" class="adicionar" @submit.prevent="adicionar">
+      <input ref="campo" v-model="link" class="campo" type="url" inputmode="url" :placeholder="ENTRADAS[novo].placeholder" :aria-label="ENTRADAS[novo].rotulo" />
       <button class="botao principal" :disabled="enviando || !link.trim()">{{ enviando ? 'Enviando…' : 'Adicionar' }}</button>
+      <button type="button" class="botao icone" aria-label="Cancelar" title="Cancelar" @click="novo = ''; link = ''; erro = ''"><Icone nome="fechar" /></button>
     </form>
     <div v-if="erro" class="aviso erro">{{ erro }}</div>
 
@@ -85,13 +118,14 @@ onBeforeUnmount(() => clearInterval(relogio))
     </div>
 
     <div v-if="carregou && !visiveis.length" class="vazio">
-      {{ referencias.length ? 'Nada neste filtro.' : 'Nenhuma Referência ainda. Cole o link de um vídeo acima, ou pesquise um tema: tudo é organizado sozinho, na fila.' }}
+      {{ referencias.length ? 'Nada neste filtro.' : 'Nenhuma Referência ainda. No ⋯ acima, mande o link de um vídeo ou de um artigo, pesquise um tema ou resuma capítulos de um livro: tudo é organizado sozinho, na fila.' }}
     </div>
 
     <div v-if="visiveis.length" class="lista">
     <a v-for="r in visiveis" :key="r.id" :href="`#/referencia/${r.id}`" class="referencia">
       <span v-if="r.tipo === 'pesquisa'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="pesquisar" /></span>
       <span v-else-if="r.tipo === 'livro'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="livro" /></span>
+      <span v-else-if="r.tipo === 'artigo'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="link" /></span>
       <img v-else :src="`https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`" alt="" class="miniatura" loading="lazy" />
       <div class="info">
         <strong>{{ r.titulo || r.url }}</strong>
@@ -110,21 +144,21 @@ onBeforeUnmount(() => clearInterval(relogio))
 <style scoped>
 .cabecalho {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  align-items: baseline;
+  gap: 12px;
+  align-items: flex-start;
   justify-content: space-between;
-}
-
-.cabecalho :deep(svg) {
-  width: 16px;
-  height: 16px;
 }
 
 .adicionar {
   display: flex;
   gap: 8px;
+  align-items: center;
   margin-bottom: 12px;
+}
+
+.adicionar .campo {
+  flex: 1;
+  min-width: 0;
 }
 
 .aviso {

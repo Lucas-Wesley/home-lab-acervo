@@ -6,6 +6,9 @@ test.describe.configure({ mode: 'serial' })
 
 test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await page.goto('/#/referencias')
+  // As entradas ficam no menu ⋯ (D34).
+  await page.getByRole('button', { name: 'Mais opções' }).click()
+  await page.getByRole('menuitem', { name: 'Link de vídeo' }).click()
   await page.getByLabel('Link do vídeo').fill('https://youtu.be/AAAAAAAAAAA?si=teste')
   await page.getByRole('button', { name: 'Adicionar' }).click()
 
@@ -178,6 +181,8 @@ test('baixa um Tema, edita fora da rede e sincroniza ao voltar', async ({ page, 
 
 test('vídeo sem legenda mostra o erro na lista', async ({ page }) => {
   await page.goto('/#/referencias')
+  await page.getByRole('button', { name: 'Mais opções' }).click()
+  await page.getByRole('menuitem', { name: 'Link de vídeo' }).click()
   await page.getByLabel('Link do vídeo').fill('https://www.youtube.com/watch?v=SSSSSSSSSSS')
   await page.getByRole('button', { name: 'Adicionar' }).click()
   await expect(page.getByText('Não foi possível extrair a legenda deste vídeo. O processo não continuou.')).toBeVisible({ timeout: 15000 })
@@ -194,11 +199,18 @@ test('exclui uma Referência pelo menu', async ({ page }) => {
   await expect(page.locator('.referencia', { hasText: 'SSSSSSSSSSS' })).toHaveCount(0)
 })
 
-test('vídeo compartilhado pelo celular entra na fila sem passar por tela nenhuma', async ({ page }) => {
-  await page.goto('/?title=Um%20v%C3%ADdeo&text=' + encodeURIComponent('Veja isto https://youtu.be/CCCCCCCCCCC?si=x'))
+test('link compartilhado pelo celular vai para a fila numa tela curta, sem abrir o app', async ({ page }) => {
+  await page.goto('/compartilhar?title=Um%20v%C3%ADdeo&text=' + encodeURIComponent('Veja isto https://youtu.be/CCCCCCCCCCC?si=x'))
   await expect(page.getByRole('status')).toHaveText('Vídeo enviado para a fila.')
-  await expect(page).toHaveURL(/\/#\/referencias$/)
-  await expect(page.locator('.referencia', { hasText: 'Vídeo CCCCCCCCCCC' })).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('.menu')).toHaveCount(0)
+  // O navegador do teste não deixa fechar a aba: fica o recado e o link.
+  await expect(page.getByText('Pode voltar ao app de onde compartilhou.')).toBeVisible()
+  await page.getByRole('link', { name: 'Abrir no Acervo' }).click()
+  await expect(page.getByRole('heading', { name: 'Vídeo CCCCCCCCCCC' })).toBeVisible({ timeout: 15000 })
+
+  // O endereço antigo do manifest ("/?text=") também cai na tela curta; o mesmo vídeo já estava lá.
+  await page.goto('/?text=' + encodeURIComponent('https://www.youtube.com/watch?v=CCCCCCCCCCC'))
+  await expect(page.getByRole('status')).toHaveText('Este vídeo já está nas Referências.')
 })
 
 test('Ajustes: anota uma sugestão e edita a instrução que o Claude segue', async ({ page }) => {

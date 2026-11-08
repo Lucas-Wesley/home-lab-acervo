@@ -59,14 +59,16 @@ Igual à Biblioteca: `git push origin main` e `./deploy.sh`. Antes da primeira v
    `/opt/proxy` na VM e rodar `docker compose up -d` lá.
 3. Endereço: `https://192.168.1.20:8444`.
 
-## Mandar um vídeo do celular
+## Mandar um vídeo ou uma página do celular
 
-Basta compartilhar o vídeo. A Referência é criada e entra na fila (extrair → organizar), e depois
-espera a sua aprovação.
+Basta compartilhar o vídeo, o artigo ou a página. A Referência é criada e entra na fila (extrair →
+organizar), e depois espera a sua aprovação.
 
-- **Android:** instale o PWA (Chrome → "Adicionar à tela inicial"). Depois, no YouTube, toque em
-  Compartilhar → **Acervo**. O app abre por um instante, mostra "Vídeo enviado para a fila." e
-  pronto. Isso usa o `share_target` do manifest (`frontend/vite.config.js`).
+- **Android:** instale o PWA (Chrome → "Adicionar à tela inicial"). Depois, no YouTube ou no
+  navegador, toque em Compartilhar → **Acervo**. Abre só uma tela curta, "Vídeo enviado para a
+  fila." (ou "Página…"), que se fecha sozinha e volta ao app de onde você compartilhou. Se o Acervo
+  já estava aberto, a tela fica: é só voltar. Isso usa o `share_target` do manifest
+  (`frontend/vite.config.js`) e `frontend/src/Compartilhar.vue`.
 - **iPhone:** o Safari não deixa um PWA aparecer em Compartilhar (o WebKit não tem *Web Share
   Target*). A saída é um atalho do app **Atalhos**, que envia sem abrir tela nenhuma:
   1. Novo atalho → (i) → ligar **Mostrar na Folha de Compartilhamento**, aceitando **URLs** e
@@ -74,7 +76,7 @@ espera a sua aprovação.
   2. Ação **Obter Conteúdo do URL**: URL `https://192.168.1.20:8444/api/referencias`, método
      **POST**, corpo **JSON** com o campo `url` = *Entrada do Atalho*.
   3. Ação **Mostrar Notificação**: "Enviado ao Acervo".
-  4. Dê o nome **Acervo**. No YouTube: Compartilhar → Mais → **Acervo**.
+  4. Dê o nome **Acervo**. No YouTube ou no Safari: Compartilhar → Mais → **Acervo**.
 
   Funciona na rede de casa, com o certificado do homelab instalado no iPhone (o mesmo da
   Biblioteca). O back-end aceita o link sozinho ou junto com o título, e um vídeo repetido devolve

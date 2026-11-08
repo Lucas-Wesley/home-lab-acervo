@@ -14,6 +14,7 @@ defineProps({ nome: { type: String, required: true } })
     <path v-else-if="nome === 'expandir'" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
     <path v-else-if="nome === 'recolher'" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" />
     <path v-else-if="nome === 'mais'" d="M12 5v14M5 12h14" />
+    <path v-else-if="nome === 'feito'" d="M5 12.5l4.5 4.5L19 7.5" />
     <path v-else-if="nome === 'link'" d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" />
     <path v-else-if="nome === 'acervo'" d="M4 5.5A1.5 1.5 0 015.5 4H10v16H5.5A1.5 1.5 0 014 18.5zM10 4h4v16h-4zM14.5 5l4-1 2.5 15-4 1z" />
     <path v-else-if="nome === 'revisao'" d="M9 11l2.5 2.5L16 9M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z" />

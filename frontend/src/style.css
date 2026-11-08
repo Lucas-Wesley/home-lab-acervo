@@ -433,3 +433,83 @@ mark.detalhe.falhou {
     font-size: 1.55rem;
   }
 }
+
+/* Menu "⋯" (Referência e Referências): as ações ficam escondidas até tocar. */
+.menu-acoes {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.painel-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  background: var(--vidro);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--sombra);
+}
+
+.painel-menu button {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--raio-p);
+  background: none;
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.painel-menu button:hover:not(:disabled) {
+  background: var(--superficie);
+}
+
+.painel-menu button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.painel-menu .perigo {
+  color: var(--perigo);
+}
+
+.painel-menu hr {
+  margin: 4px 6px;
+  border: 0;
+  border-top: 1px solid var(--linha);
+}
+
+.painel-menu a {
+  padding: 8px 10px;
+  border-radius: var(--raio-p);
+  color: var(--texto);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.painel-menu a:hover {
+  background: var(--superficie);
+}
+
+.painel-menu button,
+.painel-menu a {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.painel-menu svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--texto-suave);
+}
