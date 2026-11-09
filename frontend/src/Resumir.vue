@@ -536,7 +536,7 @@ onMounted(() => {
 }
 
 .erro-texto {
-  color: var(--terracota);
+  color: var(--vermelho);
 }
 
 @media (max-width: 820px) {

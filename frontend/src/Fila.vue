@@ -90,10 +90,8 @@ onBeforeUnmount(() => clearInterval(relogio))
 
 h2 {
   margin: 28px 0 4px;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--texto-fraco);
 }
 

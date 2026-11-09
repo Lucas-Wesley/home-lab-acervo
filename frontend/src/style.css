@@ -1,37 +1,45 @@
-/* Tokens do design system comum às apps do homelab (Biblioteca, Acervo e as próximas).
-   A especificação fica em docs/DESIGN-SYSTEM.md; os valores são os mesmos em todas as apps.
-   Neutros (branco, cinza, preto, um toque de bege) em quase tudo; azul e terracota só quando
-   precisa de contraste: azul para ação e informação, terracota para atenção e erro. */
+/* Tokens do design system comum às apps do homelab (Biblioteca, Acervo, Flashcards…).
+   A especificação fica em docs/DESIGN-SYSTEM.md; os valores são os mesmos em todas as apps,
+   menos a cor do app (--marca), que diz em qual delas se está.
+   Neutros frios em quase tudo; a cor do app na ação principal e no item ativo, azul para
+   informação e vermelho para erro e atenção. */
 :root {
-  --fundo: #fbfaf8;
-  --superficie: #f3f1ed;
-  --superficie-forte: #e8e5df;
-  --texto: #1b1b1a;
-  --texto-suave: #6d6a65;
-  --texto-fraco: #9b978f;
-  --linha: rgb(27 27 26 / 8%);
-  --linha-forte: rgb(27 27 26 / 14%);
-  --vidro: rgb(251 250 248 / 72%);
+  --fundo: #ffffff;
+  --lateral: #f7f8fa;
+  --item-ativo: #ffffff;
+  --superficie: #f2f3f6;
+  --superficie-forte: #e6e8ec;
+  --texto: #17191e;
+  --texto-suave: #5c6270;
+  --texto-fraco: #858b96;
+  --linha: rgb(23 25 30 / 9%);
+  --linha-forte: rgb(23 25 30 / 16%);
+  --vidro: rgb(255 255 255 / 78%);
   --vidro-borda: rgb(255 255 255 / 60%);
-  --sombra: 0 1px 2px rgb(27 27 26 / 4%), 0 8px 24px rgb(27 27 26 / 6%);
-  --destaque: #1b1b1a;
-  --destaque-texto: #fbfaf8;
+  --sombra: 0 1px 2px rgb(23 25 30 / 5%), 0 8px 24px rgb(23 25 30 / 9%);
+  --destaque: #17191e;
+  --destaque-texto: #ffffff;
 
-  --azul: #33608c;
-  --azul-fundo: #e6edf4;
-  --terracota: #b4553a;
-  --terracota-fundo: #f6e7e1;
+  /* Cor do app: Acervo. */
+  --marca: #127a5a;
+  --marca-fundo: #e3f3ec;
+  --marca-texto: #ffffff;
 
-  /* Papéis, a partir das duas cores de contraste. */
-  --link: var(--azul);
-  --perigo: var(--terracota);
-  --perigo-fundo: var(--terracota-fundo);
-  --aviso: var(--terracota);
-  --aviso-fundo: var(--terracota-fundo);
+  --azul: #2459c7;
+  --azul-fundo: #e8effc;
+  --vermelho: #cc3340;
+  --vermelho-fundo: #fdecee;
+
+  /* Papéis, a partir das cores acima. */
+  --link: var(--marca);
+  --perigo: var(--vermelho);
+  --perigo-fundo: var(--vermelho-fundo);
+  --aviso: var(--vermelho);
+  --aviso-fundo: var(--vermelho-fundo);
   --ok: var(--azul);
   --ok-fundo: var(--azul-fundo);
   --mais: var(--azul-fundo);
-  --menos: var(--terracota-fundo);
+  --menos: var(--vermelho-fundo);
 
   --raio-p: 8px;
   --raio: 12px;
@@ -44,23 +52,28 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fundo: #131312;
-    --superficie: #1c1c1b;
-    --superficie-forte: #282826;
-    --texto: #e7e5e0;
-    --texto-suave: #9d9991;
-    --texto-fraco: #6f6c66;
+    --fundo: #121418;
+    --lateral: #16181c;
+    --item-ativo: #23262c;
+    --superficie: #1c1f24;
+    --superficie-forte: #282c32;
+    --texto: #e9eaed;
+    --texto-suave: #a2a7b0;
+    --texto-fraco: #737983;
     --linha: rgb(255 255 255 / 8%);
-    --linha-forte: rgb(255 255 255 / 14%);
-    --vidro: rgb(19 19 18 / 70%);
+    --linha-forte: rgb(255 255 255 / 15%);
+    --vidro: rgb(18 20 24 / 72%);
     --vidro-borda: rgb(255 255 255 / 6%);
-    --sombra: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 35%);
-    --destaque: #e7e5e0;
-    --destaque-texto: #131312;
-    --azul: #8eb1d6;
-    --azul-fundo: #1b2733;
-    --terracota: #e3967c;
-    --terracota-fundo: #33221c;
+    --sombra: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 40%);
+    --destaque: #e9eaed;
+    --destaque-texto: #121418;
+    --marca: #5ccf9f;
+    --marca-fundo: #15302a;
+    --marca-texto: #121418;
+    --azul: #8fb0f5;
+    --azul-fundo: #1a2540;
+    --vermelho: #f07a83;
+    --vermelho-fundo: #3a1d21;
     color-scheme: dark;
   }
 }
@@ -98,12 +111,12 @@ a {
 }
 
 :focus-visible {
-  outline: 2px solid var(--azul);
+  outline: 2px solid var(--marca);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--azul) 22%, transparent);
+  background: color-mix(in srgb, var(--marca) 20%, transparent);
 }
 
 /* ---------- Peças comuns ---------- */
@@ -143,9 +156,9 @@ a {
 }
 
 .botao.principal {
-  border-color: var(--destaque);
-  background: var(--destaque);
-  color: var(--destaque-texto);
+  border-color: var(--marca);
+  background: var(--marca);
+  color: var(--marca-texto);
 }
 
 .botao.principal:hover {
@@ -195,7 +208,8 @@ a {
 }
 
 .campo:focus {
-  border-color: var(--azul);
+  border-color: var(--marca);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--marca) 18%, transparent);
   outline: none;
 }
 
@@ -211,8 +225,8 @@ a {
 }
 
 .chip.erro {
-  background: var(--terracota-fundo);
-  color: var(--terracota);
+  background: var(--vermelho-fundo);
+  color: var(--vermelho);
 }
 
 .chip.ok,
@@ -231,8 +245,8 @@ a {
 }
 
 .aviso.erro {
-  background: var(--terracota-fundo);
-  color: var(--terracota);
+  background: var(--vermelho-fundo);
+  color: var(--vermelho);
 }
 
 .aviso.ok {
@@ -254,18 +268,16 @@ a {
 .pagina h1 {
   margin: 0 0 20px;
   font-size: 1.75rem;
-  font-weight: 650;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  letter-spacing: -0.022em;
 }
 
-/* Rótulo pequeno acima de grupos: "Temas", "Em andamento"… */
+/* Rótulo acima de grupos: "Temas", "Em andamento"… Em caixa normal, como um subtítulo. */
 .rotulo {
   margin: 28px 0 8px;
-  color: var(--texto-fraco);
-  font-size: 0.72rem;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .linha-acoes {
@@ -345,7 +357,7 @@ a {
 .texto blockquote {
   margin: 0 0 1.2em;
   padding: 2px 0 2px 16px;
-  border-left: 2px solid var(--terracota);
+  border-left: 2px solid var(--marca);
   color: var(--texto-suave);
   font-style: italic;
 }
@@ -407,7 +419,7 @@ mark.detalhe.pendente {
 
 mark.detalhe.falhou {
   text-decoration-style: dotted;
-  text-decoration-color: var(--terracota);
+  text-decoration-color: var(--vermelho);
 }
 
 .texto code {

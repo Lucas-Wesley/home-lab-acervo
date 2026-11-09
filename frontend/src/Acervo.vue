@@ -214,15 +214,14 @@ onMounted(carregar)
 
 .abrir:hover .titulo,
 .abrir:hover strong {
-  color: var(--azul);
+  color: var(--marca);
 }
 
 .titulo {
-  font-family: var(--leitura);
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.06rem;
+  font-weight: 650;
   line-height: 1.3;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.012em;
   transition: color 0.15s ease;
 }
 
@@ -231,9 +230,8 @@ onMounted(carregar)
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-family: var(--leitura);
   color: var(--texto-suave);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   line-height: 1.5;
 }
 
@@ -269,6 +267,6 @@ onMounted(carregar)
 }
 
 .subtemas a:hover {
-  color: var(--azul);
+  color: var(--marca);
 }
 </style>

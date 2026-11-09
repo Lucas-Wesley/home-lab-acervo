@@ -122,7 +122,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="app" :class="{ lendo: rota.nome === 'ler' }">
     <aside class="menu" aria-label="Menu">
-      <div class="marca">Acervo</div>
+      <div class="marca"><span class="marca-icone"><Icone nome="acervo" /></span>Acervo</div>
       <nav>
         <button
           v-for="item in MENU"
@@ -178,15 +178,34 @@ onBeforeUnmount(() => {
   width: 216px;
   padding: max(28px, env(safe-area-inset-top)) 12px 16px;
   border-right: 1px solid var(--linha);
-  background: var(--fundo);
+  background: var(--lateral);
 }
 
+/* A cor do app aparece aqui, no item ativo e no botão principal. */
 .marca {
-  padding: 0 10px 22px;
-  font-family: var(--leitura);
-  font-size: 1.2rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 24px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.marca-icone {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--marca);
+  color: var(--marca-texto);
+}
+
+.marca-icone svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.9;
 }
 
 nav {
@@ -212,14 +231,19 @@ nav {
 }
 
 .item:hover {
-  background: var(--superficie);
+  background: var(--linha);
   color: var(--texto);
 }
 
 .item.ativo {
-  background: var(--superficie);
+  background: var(--item-ativo);
+  box-shadow: 0 0 0 1px var(--linha), 0 1px 2px rgb(23 25 30 / 5%);
   color: var(--texto);
   font-weight: 600;
+}
+
+.item.ativo svg {
+  color: var(--marca);
 }
 
 .contador {
@@ -227,8 +251,8 @@ nav {
   min-width: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--terracota);
-  color: var(--destaque-texto);
+  background: var(--vermelho);
+  color: #ffffff;
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 18px;
@@ -256,8 +280,8 @@ nav {
 }
 
 .faixa.erro {
-  background: var(--terracota-fundo);
-  color: var(--terracota);
+  background: var(--vermelho-fundo);
+  color: var(--vermelho);
 }
 
 .faixa a {
@@ -307,7 +331,12 @@ nav {
   .item.ativo,
   .item:hover {
     background: transparent;
+    box-shadow: none;
     font-weight: 600;
+  }
+
+  .item.ativo {
+    color: var(--marca);
   }
 
   .contador {

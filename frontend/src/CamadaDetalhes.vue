@@ -279,10 +279,8 @@ onBeforeUnmount(() => {
 
 .rotulo {
   color: var(--texto-fraco);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .modal-detalhe h2 {
@@ -349,10 +347,8 @@ onBeforeUnmount(() => {
 .fontes h3 {
   margin: 0 0 6px;
   color: var(--texto-fraco);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .fontes ol {
@@ -385,8 +381,6 @@ onBeforeUnmount(() => {
   color: var(--texto-suave);
   font-size: 0.82rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .sem-lugar p {
@@ -416,7 +410,7 @@ onBeforeUnmount(() => {
 }
 
 .recado-detalhe.erro {
-  background: var(--terracota);
+  background: var(--vermelho);
   color: #fff;
 }
 

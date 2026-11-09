@@ -258,7 +258,7 @@ onBeforeUnmount(() => {
 }
 
 .erro-texto {
-  color: var(--terracota);
+  color: var(--vermelho);
   font-size: 0.82rem;
   line-height: 1.4;
 }

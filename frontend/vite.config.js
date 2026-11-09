@@ -17,8 +17,8 @@ export default defineConfig({
         name: 'Acervo',
         short_name: 'Acervo',
         lang: 'pt-BR',
-        theme_color: '#fbfaf8',
-        background_color: '#fbfaf8',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
         // Android: o Acervo aparece em "Compartilhar"; o link chega em "/compartilhar?text=…", uma

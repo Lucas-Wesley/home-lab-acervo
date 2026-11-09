@@ -709,8 +709,6 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
   margin: 0 0 8px;
   font-size: 0.82rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--texto-suave);
 }
 
@@ -739,10 +737,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
 .sumario h3 {
   margin: 0 0 8px;
   font-family: var(--interface);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--texto-fraco);
 }
 
@@ -876,10 +872,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
 .painel-capitulos strong {
   display: block;
   padding: 0 10px 8px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   color: var(--texto-suave);
 }
 

@@ -95,7 +95,7 @@ onMounted(async () => {
 }
 
 .caixa.erro {
-  color: var(--terracota);
+  color: var(--vermelho);
 }
 
 .dica {
