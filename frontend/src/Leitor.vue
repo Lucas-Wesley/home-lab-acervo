@@ -28,6 +28,7 @@ const mensagem = ref('')
 const conflito = ref(null) // { atual, minha }
 const temas = ref([])
 const capitulosDoTema = ref([]) // numa página de capítulo separado: os capítulos do Tema
+const livrosDoTema = ref([]) // D38: capítulos dos livros da Biblioteca marcados com este Tema
 const menu = ref(null) // capítulo com o menu aberto
 const perguntando = ref(false) // janela de Perguntar (D35)
 const ocupado = ref(false)
@@ -105,6 +106,7 @@ async function carregar({ manterPosicao = false } = {}) {
     if (a.pendente?.conflito) conflito.value = { atual: a.pendente.conflito, minha: a.pendente.conteudo }
     document.title = `${tituloAtual.value} · Acervo`
     if (!eIndice.value && a.tema) carregarCapitulosDoTema(a.tema)
+    if (eIndice.value && a.tema) carregarLivrosDoTema(a.tema)
     await nextTick()
     const ancora = sessionStorage.getItem(CHAVE_ANCORA)
     sessionStorage.removeItem(CHAVE_ANCORA)
@@ -123,6 +125,14 @@ async function carregarCapitulosDoTema(tema) {
     capitulosDoTema.value = capitulos((await lerArquivo(`${tema}/indice.md`)).conteudo)
   } catch {
     capitulosDoTema.value = []
+  }
+}
+
+async function carregarLivrosDoTema(tema) {
+  try {
+    livrosDoTema.value = await api(`/api/temas-livros?tema=${encodeURIComponent(tema)}`)
+  } catch {
+    livrosDoTema.value = [] // fora da rede de casa, a lista não aparece
   }
 }
 
@@ -565,6 +575,16 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
           </ul>
         </section>
 
+        <section v-if="eIndice && livrosDoTema.length" class="rodape-tema livros-do-tema">
+          <h3>Livros da sua biblioteca que falam disto</h3>
+          <ul>
+            <li v-for="l in livrosDoTema" :key="`${l.livro}-${l.capitulo}`">
+              <a :href="l.link" target="_blank" rel="noopener">{{ l.titulo }}</a><span class="suave"><template v-if="l.autor"> · {{ l.autor }}</template> · “{{ l.capitulo }}”, p. {{ l.de }}–{{ l.ate }}</span>
+              <span v-if="l.resumo" class="resumo-livro suave">{{ l.resumo }}</span>
+            </li>
+          </ul>
+        </section>
+
         <div v-if="eIndice && arquivo.tema" class="linha-acoes extras">
           <button class="botao" @click="novoCapitulo"><Icone nome="mais" /> Novo capítulo</button>
           <button class="botao" @click="novoSubtema"><Icone nome="mais" /> Novo subtema</button>
@@ -714,9 +734,19 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
 
 .rodape-tema h3 {
   margin: 0 0 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--texto-suave);
+  font-size: 1.0625rem;
+  font-weight: 650;
+  color: var(--texto);
+}
+
+.resumo-livro {
+  display: block;
+  font-size: 0.906rem;
+  line-height: 1.45;
+}
+
+.livros-do-tema li + li {
+  margin-top: 6px;
 }
 
 .rodape-tema ul {

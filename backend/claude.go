@@ -37,6 +37,7 @@ type pedidoClaude struct {
 	instrucao   string   // o pedido específico desta tarefa
 	ferramentas string
 	esquema     string // JSON Schema da resposta, quando a tarefa devolve dados
+	modelo      string // outro modelo só nesta chamada (ex.: "haiku" para marcar livros, D38)
 }
 
 type respostaClaude struct {
@@ -61,8 +62,8 @@ func (a *app) chamarClaude(ctx context.Context, p pedidoClaude) (respostaClaude,
 	if p.esquema != "" {
 		args = append(args, "--json-schema", p.esquema)
 	}
-	if a.cfg.modelo != "" {
-		args = append(args, "--model", a.cfg.modelo)
+	if modelo := primeiro(p.modelo, a.cfg.modelo); modelo != "" {
+		args = append(args, "--model", modelo)
 	}
 
 	cmd := exec.CommandContext(ctx, a.cfg.claude, args...)

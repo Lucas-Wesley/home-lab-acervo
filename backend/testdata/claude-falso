@@ -6,6 +6,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     -p) prompt="$2"; shift 2 ;;
     --allowedTools) ferramentas="$2"; shift 2 ;;
+    --model) modelo="$2"; shift 2 ;;
     *) shift ;;
   esac
 done
@@ -63,6 +64,13 @@ case "$prompt" in
     linha="Integrado ao texto (escolhas: ${escolhas}; modo: ${modo})."
     if [ -n "$(pasta)" ]; then printf '\n%s\n' "$linha" >> "$(pasta)/indice.md"; else printf '\n%s\n' "$linha" >> texto.md; fi
     ok ;;
+  *"Marque os capítulos"*)
+    tema=""; case "$prompt" in *"temas/clube"*) tema='"temas/clube"' ;; esac
+    itens=""
+    for n in $(grep -o '^## Capítulo [0-9]*' capitulos.md | awk '{print $3}'); do
+      itens="$itens{\"n\":$n,\"resumo\":\"Capítulo $n (modelo: $modelo).\",\"temas\":[$tema],\"pessoas\":[\"Pessoa $n\"],\"organizacoes\":[],\"lugares\":[\"Lugar $n\"],\"periodos\":[],\"eventos\":[],\"trechos\":[]},"
+    done
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"capitulos":[%s]}}\n' "${itens%,}" ;;
   *"Resolva as dúvidas de duvidas.md"*)
     n=$(grep -c '^## Dúvida ' duvidas.md)
     itens=""
@@ -78,7 +86,7 @@ case "$prompt" in
   *"e perguntou:"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
     lidos=$(ls | tr '\n' ' ' | sed 's/ $//')
-    printf '{"type":"result","result":"","is_error":false,"structured_output":{"cobertura":"em_parte","no_texto":"O texto diz 1930 (capítulo Fundação).","resposta":"Fundado em 1930 [1]. Leu: %s. Ferramentas: %s.","selo":"confirmado","divergencias":[{"tipo":"omissao","capitulo":"Fundação","no_texto":"","correto":"A data exata é 25 de janeiro.","selo":"confirmado","fontes":[1,2]}],"fontes":[{"titulo":"Fonte A","url":"https://exemplo.com/a"},{"titulo":"Fonte B","url":"https://exemplo.org/b"}]}}\n' "$lidos" "$ferramentas" ;;
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"cobertura":"em_parte","no_texto":"O texto diz 1930 (capítulo Fundação).","resposta":"Fundado em 1930 [1]. Leu: %s. Ferramentas: %s.%s","selo":"confirmado","divergencias":[{"tipo":"omissao","capitulo":"Fundação","no_texto":"","correto":"A data exata é 25 de janeiro.","selo":"confirmado","fontes":[1,2]}],"fontes":[{"titulo":"Fonte A","url":"https://exemplo.com/a"},{"titulo":"Fonte B","url":"https://exemplo.org/b"}]}}\n' "$lidos" "$ferramentas" "$(case "$prompt" in *"Livros da biblioteca do Lucas"*) printf ' Com livros da biblioteca.' ;; esac)" ;;
   *"selecionou um trecho"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
     sleep "${CLAUDE_FALSO_ESPERA:-0}"

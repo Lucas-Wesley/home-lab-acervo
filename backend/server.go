@@ -61,6 +61,9 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("GET /api/referencias/{id}/duvidas", a.handleDuvidas)
 	mux.HandleFunc("POST /api/referencias/{id}/duvidas", a.handleResolverDuvidas)
 	mux.HandleFunc("POST /api/duvidas/{id}/integrar", a.handleIntegrarDuvida)
+	// Livros marcados por assunto (D38)
+	mux.HandleFunc("GET /api/temas-livros", a.handleLivrosDoTema)
+	mux.HandleFunc("GET /api/livros-marcados", a.handleLivrosMarcados)
 
 	mux.HandleFunc("GET /api/flashcards", a.handleListarFlashcards)
 	mux.HandleFunc("POST /api/flashcards", a.handleEnviarFlashcards)
@@ -252,6 +255,16 @@ func (a *app) comTitulos(r *http.Request, lista []tarefa) []tarefaComTitulo {
 		}
 		if t.Tipo == "perguntar" {
 			saida = append(saida, a.tarefaDePergunta(r, t))
+			continue
+		}
+		if t.Tipo == "marcar_livro" {
+			var p struct {
+				Livro string `json:"livro"`
+			}
+			json.Unmarshal(t.Params, &p)
+			var titulo string
+			a.db.QueryRowContext(r.Context(), `SELECT titulo FROM livros_marcados WHERE livro = ?`, p.Livro).Scan(&titulo)
+			saida = append(saida, tarefaComTitulo{t, titulo, "#/ajustes/livros"})
 			continue
 		}
 		if t.Tipo == "integrar_texto" && t.ReferenciaID == "" {

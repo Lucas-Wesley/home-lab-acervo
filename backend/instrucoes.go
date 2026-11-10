@@ -37,6 +37,7 @@ var instrucoes = []instrucao{
 	{Arquivo: "perguntar.md", Nome: "Perguntar e verificar", Descricao: "Vê quanto o texto responde à sua pergunta, verifica a resposta na internet em mais de uma fonte e aponta o que está errado, desatualizado ou faltando."},
 	{Arquivo: "detalhar.md", Nome: "Mais informações", Descricao: "Pesquisa na internet sobre um trecho que você selecionou no texto e explica, com as fontes."},
 	{Arquivo: "resolver-duvidas.md", Nome: "Resolver as dúvidas", Descricao: "Compara a transcrição com o áudio ouvido de novo pelo Whisper e com a internet, e diz se cada dúvida foi resolvida, continua incerta ou é falta no material."},
+	{Arquivo: "marcar-livro.md", Nome: "Marcar livros por assunto", Descricao: "Lê os capítulos de cada livro da Biblioteca e marca o assunto, com as páginas: Temas do Acervo, pessoas, lugares, períodos e eventos."},
 	{Arquivo: "integrar-texto.md", Nome: "Integrar ao texto", Descricao: "Leva a resposta de uma pergunta ou um \"Mais informações\" para dentro do texto, no ponto certo, seguindo o que você escolheu em cada divergência."},
 }
 

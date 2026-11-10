@@ -306,12 +306,24 @@ func (a *app) perguntar(ctx context.Context, t *tarefa) (resultado, error) {
 	if titulo == "" {
 		titulo = p.Local
 	}
+	// D38: os livros da biblioteca do Lucas que tratam do Tema entram como pista de fonte.
+	livros := ""
+	if strings.HasPrefix(p.Local, "temas/") {
+		if lista, _ := a.livrosSobre(ctx, p.Local, p.Titulo, 6); len(lista) > 0 {
+			var s strings.Builder
+			s.WriteString("\n\nLivros da biblioteca do Lucas que tratam deste Tema (pista de fonte; cite com o capítulo e as páginas se usar):\n")
+			for _, l := range lista {
+				fmt.Fprintf(&s, "- %s (%s), capítulo %q, p. %d–%d: %s\n", l.Titulo, l.Autor, l.Capitulo, l.De, l.Ate, l.Resumo)
+			}
+			livros = s.String()
+		}
+	}
 	r, err := a.chamarClaude(ctx, pedidoClaude{
 		pasta: pasta,
 		regra: "perguntar.md",
 		instrucao: fmt.Sprintf("O Lucas está lendo o texto %q (os arquivos estão nesta pasta) e perguntou:\n\n%q\n\n"+
-			"Veja quanto o texto responde, verifique a resposta na internet e devolva o resultado. Hoje é %s.",
-			titulo, p.Pergunta, time.Now().Format("2006-01-02")),
+			"Veja quanto o texto responde, verifique a resposta na internet e devolva o resultado. Hoje é %s.%s",
+			titulo, p.Pergunta, time.Now().Format("2006-01-02"), livros),
 		ferramentas: ferramentasLeitura + "," + ferramentasInternet,
 		esquema:     esquemaPergunta,
 	})

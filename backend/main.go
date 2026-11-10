@@ -46,6 +46,7 @@ func main() {
 		log.Fatal(err)
 	}
 	go app.fila.rodar(ctx)
+	go app.marcarAosPoucos(ctx) // D38: os livros da Biblioteca, um lote por vez, com a fila parada
 
 	web, err := fs.Sub(webDist, "web/dist")
 	if err != nil {
@@ -209,6 +210,17 @@ CREATE TABLE IF NOT EXISTS perguntas (
 	atualizado_em TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS perguntas_local ON perguntas (local);
+-- Livros da Biblioteca marcados por assunto (D38): as marcas de cada capítulo, em JSON.
+CREATE TABLE IF NOT EXISTS livros_marcados (
+	livro         TEXT PRIMARY KEY,
+	titulo        TEXT NOT NULL DEFAULT '',
+	autor         TEXT NOT NULL DEFAULT '',
+	capitulos     TEXT NOT NULL DEFAULT '[]',
+	pendentes     TEXT NOT NULL DEFAULT '[]',
+	estado        TEXT NOT NULL DEFAULT 'marcando',
+	erro          TEXT NOT NULL DEFAULT '',
+	atualizado_em TEXT NOT NULL
+);
 -- Dúvidas resolvidas pelo áudio e pela internet (D37): uma por item de "## Dúvidas".
 CREATE TABLE IF NOT EXISTS duvidas (
 	id            TEXT PRIMARY KEY,

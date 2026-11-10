@@ -12,12 +12,28 @@ const props = defineProps({
 
 const SECOES = [
   { id: 'instrucoes', nome: 'Instruções da IA', descricao: 'O que o Claude segue em cada etapa: organizar, traduzir, integrar, pesquisar, perguntar.' },
+  { id: 'livros', nome: 'Livros marcados', descricao: 'Os livros da Biblioteca lidos por assunto, aos poucos, para aparecerem nos Temas.' },
   { id: 'sugestoes', nome: 'Sugestões de melhoria', descricao: 'Anote o que pode melhorar no Acervo; o Claude faz e responde aqui.' },
 ]
 const atual = computed(() => SECOES.find((s) => s.id === props.secao))
 
 const instrucoes = ref([])
+const livros = ref(null)
 const erro = ref('')
+const ESTADO_DO_LIVRO = { marcando: 'Marcando', pronto: 'Pronto', falhou: 'Não deu' }
+
+watch(
+  () => props.secao,
+  async (secao) => {
+    if (secao !== 'livros') return
+    try {
+      livros.value = await api('/api/livros-marcados')
+    } catch (e) {
+      erro.value = e.status === 0 ? 'Sem conexão: só abre na rede de casa.' : e.message
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   () => props.secao,
@@ -66,6 +82,25 @@ watch(
         </nav>
       </template>
 
+      <template v-else-if="atual.id === 'livros'">
+        <p class="descricao-da-pagina">
+          Quando a fila está parada, o Acervo pega um livro da Biblioteca e um modelo menor lê os capítulos, marcando o assunto de cada um com as páginas.
+          Cada Tema mostra os capítulos que falam dele, e o Perguntar usa como pista de fonte. Os livros novos entram sozinhos.
+        </p>
+        <div v-if="erro" class="aviso erro">{{ erro }}</div>
+        <p v-if="livros && !livros.length" class="vazio">Nenhum livro marcado ainda. O primeiro entra na próxima vez que a fila ficar parada.</p>
+        <ul v-if="livros?.length" class="lista-livros">
+          <li v-for="l in livros" :key="l.livro">
+            <span class="nome">{{ l.titulo }}<span v-if="l.autor" class="suave"> · {{ l.autor }}</span></span>
+            <span class="suave">
+              <span class="chip" :class="{ ok: l.estado === 'pronto', erro: l.estado === 'falhou' }">{{ ESTADO_DO_LIVRO[l.estado] || l.estado }}</span>
+              {{ l.marcados }} {{ l.marcados === 1 ? 'capítulo' : 'capítulos' }}<template v-if="l.faltam"> · faltam {{ l.faltam }} {{ l.faltam === 1 ? 'lote' : 'lotes' }}</template>
+              <template v-if="l.erro"> · {{ l.erro }}</template>
+            </span>
+          </li>
+        </ul>
+      </template>
+
       <template v-else-if="atual.id === 'sugestoes'">
         <p class="descricao-da-pagina">Anote o que pode melhorar no Acervo. Depois é só pedir ao Claude para ver as sugestões: ele faz as mudanças e responde aqui.</p>
         <Sugestoes :tela="tela" />
@@ -77,5 +112,29 @@ watch(
 <style scoped>
 .aviso {
   margin-bottom: 14px;
+}
+
+.lista-livros {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+.lista-livros li {
+  display: grid;
+  gap: 4px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--linha);
+}
+
+.lista-livros .nome {
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+
+.lista-livros .chip {
+  margin-right: 6px;
 }
 </style>
