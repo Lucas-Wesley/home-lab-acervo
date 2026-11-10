@@ -52,8 +52,8 @@ func TestDescricaoEmMarkdown(t *testing.T) {
 	}
 }
 
-// Um episódio do Spotify vira Referência: a página do episódio dá o título e o podcast, a busca do
-// Apple Podcasts dá o feed, o feed dá o áudio e a descrição, e o Whisper transcreve os pedaços.
+// Um episódio do Spotify vira Referência: o oEmbed do Spotify dá o título, a busca de episódios do
+// Apple Podcasts dá o podcast e o feed, o feed dá o áudio e a descrição, e o Whisper transcreve os pedaços.
 // Com o Whisper do Mac fora do ar, a transcrição vai para a reserva (o do servidor).
 func TestReferenciaDePodcast(t *testing.T) {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
@@ -72,14 +72,19 @@ func TestReferenciaDePodcast(t *testing.T) {
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/episode/5uWIuQMlrVbKvDucC8IRvz":
-			fmt.Fprint(w, `<html><head><meta property="og:title" content="#165 a fotografia foi inventada no Brasil"/><meta property="og:description" content="Podcast de Teste · Episode"/></head></html>`)
+		case "/oembed":
+			if r.URL.Query().Get("url") != "https://open.spotify.com/episode/5uWIuQMlrVbKvDucC8IRvz" {
+				http.NotFound(w, r)
+				return
+			}
+			fmt.Fprint(w, `{"title":"#165 a fotografia foi inventada no Brasil","provider_name":"Spotify"}`)
 		case "/search":
-			if r.URL.Query().Get("term") != "Podcast de Teste" {
+			q := r.URL.Query()
+			if q.Get("term") != "#165 a fotografia foi inventada no Brasil" || q.Get("entity") != "podcastEpisode" {
 				http.Error(w, "termo", 400)
 				return
 			}
-			fmt.Fprintf(w, `{"results":[{"collectionName":"Outro","feedUrl":"%s/outro.xml"},{"collectionName":"Podcast de teste","feedUrl":"%s/feed.xml"}]}`, srv.URL, srv.URL)
+			fmt.Fprintf(w, `{"results":[{"trackName":"#16 outro","collectionName":"Outro","feedUrl":"%s/outro.xml"},{"trackName":"#165 A fotografia foi inventada no Brasil","collectionName":"Podcast de Teste","feedUrl":"%s/feed.xml"}]}`, srv.URL, srv.URL)
 		case "/feed.xml":
 			fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?>
 <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel>
@@ -158,10 +163,10 @@ func TestPodcastSemFeed(t *testing.T) {
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/episode/AAAAAAAAAAAAAAAAAAAAAA":
-			fmt.Fprint(w, `<meta property="og:title" content="Exclusivo"/><meta property="og:description" content="Podcast X · Episode"/>`)
+		case "/oembed":
+			fmt.Fprint(w, `{"title":"Exclusivo"}`)
 		case "/search":
-			fmt.Fprintf(w, `{"results":[{"collectionName":"Podcast X","feedUrl":"%s/feed.xml"}]}`, srv.URL)
+			fmt.Fprintf(w, `{"results":[{"trackName":"Exclusivo","collectionName":"Podcast X","feedUrl":"%s/feed.xml"}]}`, srv.URL)
 		case "/feed.xml":
 			fmt.Fprint(w, `<rss><channel><title>Podcast X</title><item><title>Outro</title><enclosure url="x"/></item></channel></rss>`)
 		default:

@@ -113,8 +113,7 @@ func (a *app) pegar(ctx context.Context, cliente *http.Client, endereco string, 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 Acervo-homelab")
-	req.Header.Set("Accept-Language", "en")
+	req.Header.Set("User-Agent", "Acervo-homelab")
 	res, err := cliente.Do(req)
 	if err != nil {
 		return nil, err
@@ -126,37 +125,21 @@ func (a *app) pegar(ctx context.Context, cliente *http.Client, endereco string, 
 	return io.ReadAll(io.LimitReader(res.Body, limite))
 }
 
-// doSpotify lê da página do episódio o título e o nome do podcast (og:description é
-// "<podcast> · Episode").
-func (a *app) doSpotify(ctx context.Context, id string) (titulo, podcast string, err error) {
-	b, err := a.pegar(ctx, clienteDoPodcast, a.cfg.spotify+"/episode/"+id, 5<<20)
+// doSpotify pega o título do episódio pelo oEmbed, a API pública do Spotify para prévias de link
+// (a página do episódio é montada no navegador e não traz os dados).
+func (a *app) doSpotify(ctx context.Context, id string) (string, error) {
+	q := url.Values{"url": {"https://open.spotify.com/episode/" + id}}
+	b, err := a.pegar(ctx, clienteDoPodcast, a.cfg.spotify+"/oembed?"+q.Encode(), 1<<20)
 	if err != nil {
-		return "", "", fmt.Errorf("A página do episódio no Spotify não abriu: %v", err)
+		return "", fmt.Errorf("O Spotify não respondeu sobre o episódio: %v", err)
 	}
-	doc, err := nethtml.Parse(bytes.NewReader(b))
-	if err != nil {
-		return "", "", err
+	var r struct {
+		Titulo string `json:"title"`
 	}
-	meta := map[string]string{}
-	var andar func(*nethtml.Node)
-	andar = func(n *nethtml.Node) {
-		if n.Type == nethtml.ElementNode && n.Data == "meta" {
-			chave := primeiro(atributo(n, "property"), atributo(n, "name"))
-			meta[chave] = atributo(n, "content")
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			andar(c)
-		}
+	if json.Unmarshal(b, &r) != nil || strings.TrimSpace(r.Titulo) == "" {
+		return "", errors.New("O Spotify não disse o título do episódio.")
 	}
-	andar(doc)
-	titulo = meta["og:title"]
-	if p, _, ok := strings.Cut(meta["og:description"], " · "); ok {
-		podcast = strings.TrimSpace(p)
-	}
-	if titulo == "" || podcast == "" {
-		return "", "", errors.New("Não consegui ler o episódio na página do Spotify.")
-	}
-	return titulo, podcast, nil
+	return strings.TrimSpace(r.Titulo), nil
 }
 
 type resultadoDaApple struct {
@@ -184,23 +167,23 @@ func (a *app) apple(ctx context.Context, caminho string, q url.Values) ([]result
 	return r.Resultados, nil
 }
 
-// feedDoPodcast acha o feed pelo nome do podcast; prefere o nome igual (sem acento nem maiúscula).
-func (a *app) feedDoPodcast(ctx context.Context, nome string) (string, error) {
-	rs, err := a.apple(ctx, "/search", url.Values{"term": {nome}, "media": {"podcast"}, "country": {"BR"}, "limit": {"10"}})
+// feedDoEpisodio acha o podcast e o feed pelo título do episódio, na busca de episódios do Apple
+// Podcasts: primeiro o título igual (sem acento nem maiúscula), depois um contendo o outro.
+func (a *app) feedDoEpisodio(ctx context.Context, titulo string) (feed, podcast string, err error) {
+	rs, err := a.apple(ctx, "/search", url.Values{"term": {titulo}, "media": {"podcast"}, "entity": {"podcastEpisode"}, "country": {"BR"}, "limit": {"25"}})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	for _, r := range rs {
-		if r.Feed != "" && slug(r.Podcast) == slug(nome) {
-			return r.Feed, nil
+	alvo := slug(titulo)
+	for _, igual := range []bool{true, false} {
+		for _, r := range rs {
+			t := slug(r.Titulo)
+			if r.Feed != "" && t != "" && (t == alvo || !igual && (strings.Contains(t, alvo) || strings.Contains(alvo, t))) {
+				return r.Feed, r.Podcast, nil
+			}
 		}
 	}
-	for _, r := range rs {
-		if r.Feed != "" {
-			return r.Feed, nil
-		}
-	}
-	return "", errSemFeed
+	return "", "", errSemFeed
 }
 
 type itemDoFeed struct {
@@ -272,12 +255,12 @@ func (a *app) acharEpisodio(ctx context.Context, l linkDePodcast) (episodio, err
 	var titulo, feed string
 	switch l.Fonte {
 	case "spotify":
-		t, podcast, err := a.doSpotify(ctx, l.ID)
+		t, err := a.doSpotify(ctx, l.ID)
 		if err != nil {
 			return ep, err
 		}
-		titulo, ep.Podcast, ep.Titulo = t, podcast, t
-		if feed, err = a.feedDoPodcast(ctx, podcast); err != nil {
+		titulo, ep.Titulo = t, t
+		if feed, ep.Podcast, err = a.feedDoEpisodio(ctx, t); err != nil {
 			return ep, err
 		}
 	case "apple":
