@@ -24,6 +24,8 @@ import (
 
 const (
 	caracteresPorLote = 60_000
+	paginasPorBloco   = 20
+	caracteresPorPag  = 2_000 // estimativa, para juntar blocos de páginas em lotes
 	maxCaracteresLote = 90_000
 	modeloDasMarcas   = "haiku"
 	esperaDasMarcas   = 10 * time.Minute
@@ -74,6 +76,20 @@ func lotes(caps []marcaDeCapitulo, chars map[int]int) [][]int {
 		saida = append(saida, atual)
 	}
 	return saida
+}
+
+// blocosDePaginas: um livro sem sumário (um PDF sem índice) é lido em blocos de 20 páginas, cada
+// um marcado como se fosse um capítulo ("Páginas 21 a 40").
+func blocosDePaginas(paginas int) ([]marcaDeCapitulo, map[int]int) {
+	var caps []marcaDeCapitulo
+	chars := map[int]int{}
+	for de := 1; de <= paginas; de += paginasPorBloco {
+		ate := min(de+paginasPorBloco-1, paginas)
+		n := len(caps) + 1
+		caps = append(caps, marcaDeCapitulo{N: n, Titulo: fmt.Sprintf("Páginas %d a %d", de, ate), De: de, Ate: ate})
+		chars[n] = (ate - de + 1) * caracteresPorPag
+	}
+	return caps, chars
 }
 
 // marcarAosPoucos: de tempos em tempos, com a fila parada, põe na fila o próximo livro.
@@ -162,16 +178,29 @@ func (a *app) marcarLivro(ctx context.Context, t *tarefa) (resultado, error) {
 	if err := buscarJSON(ctx, a.cfg.biblioteca+"/api/books/"+url.PathEscape(p.Livro)+"/chapters", &s); err != nil {
 		return pronto, a.falhaNaMarca(p.Livro, fmt.Errorf("a Biblioteca não devolveu o sumário: %w", err))
 	}
-	if !s.Indexed || len(s.Chapters) == 0 {
-		return pronto, a.falhaNaMarca(p.Livro, errors.New("o livro ainda não foi indexado na Biblioteca, ou não tem capítulos"))
+	porPaginas := len(s.Chapters) == 0
+	switch {
+	case !s.Indexed:
+		msg := "o livro ainda não foi indexado na Biblioteca"
+		if s.Error != "" {
+			msg += ": " + s.Error
+		}
+		return pronto, a.falhaNaMarca(p.Livro, errors.New(msg))
+	case porPaginas && s.Pages == 0:
+		return pronto, a.falhaNaMarca(p.Livro, errors.New("o livro não tem capítulos nem páginas com texto"))
 	}
 	info := map[int]marcaDeCapitulo{}
 	chars := map[int]int{}
 	var caps []marcaDeCapitulo
+	if porPaginas {
+		caps, chars = blocosDePaginas(s.Pages)
+	}
 	for _, c := range s.Chapters {
-		m := marcaDeCapitulo{N: c.N, Titulo: c.Title, De: c.FirstPage, Ate: c.LastPage}
-		info[c.N], chars[c.N] = m, c.Chars
-		caps = append(caps, m)
+		caps = append(caps, marcaDeCapitulo{N: c.N, Titulo: c.Title, De: c.FirstPage, Ate: c.LastPage})
+		chars[c.N] = c.Chars
+	}
+	for _, c := range caps {
+		info[c.N] = c
 	}
 	// Primeira tarefa do livro: divide em lotes.
 	if len(feitos) == 0 && len(pendentes) == 0 {
@@ -188,7 +217,15 @@ func (a *app) marcarLivro(ctx context.Context, t *tarefa) (resultado, error) {
 	for i, n := range lote {
 		ns[i] = fmt.Sprint(n)
 	}
-	if err := buscarJSON(ctx, fmt.Sprintf("%s/api/books/%s/text?chapters=%s", a.cfg.biblioteca, url.PathEscape(p.Livro), strings.Join(ns, ",")), &texto); err != nil {
+	if porPaginas {
+		for _, n := range lote {
+			var bloco textoDoLivro
+			if err := buscarJSON(ctx, fmt.Sprintf("%s/api/books/%s/text?from=%d&to=%d", a.cfg.biblioteca, url.PathEscape(p.Livro), info[n].De, info[n].Ate), &bloco); err != nil {
+				return pronto, a.falhaNaMarca(p.Livro, fmt.Errorf("a Biblioteca não devolveu o texto: %w", err))
+			}
+			texto.Parts = append(texto.Parts, bloco.Parts...)
+		}
+	} else if err := buscarJSON(ctx, fmt.Sprintf("%s/api/books/%s/text?chapters=%s", a.cfg.biblioteca, url.PathEscape(p.Livro), strings.Join(ns, ",")), &texto); err != nil {
 		return pronto, a.falhaNaMarca(p.Livro, fmt.Errorf("a Biblioteca não devolveu o texto: %w", err))
 	}
 	var md strings.Builder

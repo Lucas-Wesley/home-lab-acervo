@@ -15,6 +15,7 @@ Para cada capítulo (`## Capítulo <n>: ...`), devolva:
 ## Regras gerais
 
 - Só o que o texto trata de fato; nada do seu conhecimento.
+- Livro sem sumário: cada "capítulo" é um bloco de 20 páginas (`Páginas 21 a 40`), que pode começar e terminar no meio de um assunto. Marque o bloco do mesmo jeito, e no `resumo` diga o assunto das páginas.
 - Capítulo quase sem texto (o título de uma parte, um prefácio curto): marque o que houver, mesmo vazio.
 - Listas curtas e úteis: o importante, não cada nome citado de passagem.
 - Não edite arquivos.
