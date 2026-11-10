@@ -36,6 +36,7 @@ export const NOMES_TAREFA = {
   integrar: 'Integrar ao Tema',
   detalhar: 'Mais informações',
   perguntar: 'Perguntar',
+  integrar_texto: 'Integrar ao texto',
   planejar: 'Montar o esboço',
   coletar: 'Coletar nas fontes',
   redigir: 'Escrever a pesquisa',

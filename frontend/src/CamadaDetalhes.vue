@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Icone from './Icone.vue'
+import { api } from './api.js'
 import { renderizar } from './markdown.js'
 import { trechoDaSelecao } from './detalhes.js'
 
@@ -111,6 +112,22 @@ function refazer() {
   agir(() => props.detalhes.refazer(m.value.id))
 }
 
+// Integrar ao texto (D36): vira proposta para revisar; o texto completo, como está aqui, ou só o que
+// serve ao texto. Só no texto principal (Tema, organizado ou tradução), não na transcrição.
+const podeIntegrar = computed(() => m.value?.estado === 'pronto' && /^temas\/|\/(organizado|traducao)$/.test(m.value.local))
+const integrando = ref(false)
+async function integrar(modo) {
+  integrando.value = true
+  try {
+    await api(`/api/detalhes/${m.value.id}/integrar`, { metodo: 'POST', corpo: { modo } })
+    mostrarRecado('Proposta na fila. Quando ficar pronta, aparece em Revisões para você aprovar.')
+  } catch (e) {
+    mostrarRecado(e.status === 0 ? 'Sem conexão com a rede de casa.' : e.message, true)
+  } finally {
+    integrando.value = false
+  }
+}
+
 function apagar() {
   if (confirm('Apagar esta marcação e a explicação?')) agir(() => props.detalhes.apagar(m.value.id))
 }
@@ -198,6 +215,14 @@ onBeforeUnmount(() => {
               </ol>
             </section>
             <p class="suave quando">Pesquisado em {{ data(m.atualizado_em) }}.</p>
+            <section v-if="podeIntegrar" class="integrar">
+              <h3>Integrar ao texto</h3>
+              <p class="suave">A IA encaixa no ponto certo do texto, e você revisa a mudança antes de entrar.</p>
+              <div class="linha-acoes">
+                <button class="botao" :disabled="integrando" @click="integrar('completo')">O texto completo, como está aqui</button>
+                <button class="botao" :disabled="integrando" @click="integrar('adaptado')">Só o que serve ao texto</button>
+              </div>
+            </section>
           </template>
         </div>
 
@@ -364,6 +389,23 @@ onBeforeUnmount(() => {
 .quando {
   margin: 12px 0 0;
   font-size: 0.8rem;
+}
+
+.integrar {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--linha);
+}
+
+.integrar h3 {
+  margin: 0 0 4px;
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+
+.integrar p {
+  margin: 0 0 10px;
+  font-size: 0.906rem;
 }
 
 .modal-detalhe footer {

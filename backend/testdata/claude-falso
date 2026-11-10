@@ -55,6 +55,14 @@ case "$prompt" in
   *"integrá-la ao Tema"*)
     [ -n "$CLAUDE_FALSO_NADA" ] && { ok "nada novo"; exit 0; }
     printf '\nParágrafo integrado.\n' >> "$(pasta)/indice.md"; ok ;;
+  *"pediu para integrar ao texto"*)
+    [ -n "$CLAUDE_FALSO_NADA" ] && { ok "nada novo"; exit 0; }
+    m=$(printf '%s' "$prompt" | sed -n 's/^O que integrar está em \([^ ]*material\.md\)\..*/\1/p')
+    escolhas=$(grep -o '^[0-9]*\. \*\*[^*]*\*\*' "$m" | sed 's/.*\*\*\(.*\)\*\*/\1/' | tr '\n' ',' | sed 's/,$//')
+    modo=$(grep -o 'Modo escolhido pelo Lucas: \*\*[^*]*\*\*' "$m" | sed 's/.*\*\*\(.*\)\*\*/\1/')
+    linha="Integrado ao texto (escolhas: ${escolhas}; modo: ${modo})."
+    if [ -n "$(pasta)" ]; then printf '\n%s\n' "$linha" >> "$(pasta)/indice.md"; else printf '\n%s\n' "$linha" >> texto.md; fi
+    ok ;;
   *"e perguntou:"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
     lidos=$(ls | tr '\n' ' ' | sed 's/ $//')

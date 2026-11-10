@@ -36,6 +36,7 @@ var instrucoes = []instrucao{
 	{Arquivo: "conferir.md", Nome: "Pesquisa: conferir", Descricao: "Na pesquisa detalhada, confere cada afirmação do texto contra o material guardado e corrige o que não se sustenta."},
 	{Arquivo: "perguntar.md", Nome: "Perguntar e verificar", Descricao: "Vê quanto o texto responde à sua pergunta, verifica a resposta na internet em mais de uma fonte e aponta o que está errado, desatualizado ou faltando."},
 	{Arquivo: "detalhar.md", Nome: "Mais informações", Descricao: "Pesquisa na internet sobre um trecho que você selecionou no texto e explica, com as fontes."},
+	{Arquivo: "integrar-texto.md", Nome: "Integrar ao texto", Descricao: "Leva a resposta de uma pergunta ou um \"Mais informações\" para dentro do texto, no ponto certo, seguindo o que você escolheu em cada divergência."},
 }
 
 func instrucaoConhecida(arquivo string) (instrucao, bool) {

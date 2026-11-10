@@ -59,7 +59,25 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await expect(janela.getByText('Falta no texto')).toBeVisible()
   await expect(janela.getByRole('link', { name: 'Fonte A' })).toBeVisible()
   if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/perguntar.png` })
-  await janela.getByRole('button', { name: 'Fechar' }).click()
+
+  // Integrar ao texto (D36): a escolha de cada divergência, e a proposta vai para Revisões.
+  await janela.getByRole('button', { name: 'Integrar ao texto' }).click()
+  await expect(janela.getByRole('radio', { name: 'Acrescentar' })).toHaveAttribute('aria-checked', 'true')
+  await janela.getByRole('radio', { name: 'Ignorar' }).click()
+  await janela.getByLabel('Levar a resposta verificada para o texto').uncheck()
+  await expect(janela.getByRole('button', { name: 'Preparar a proposta' })).toBeDisabled()
+  await janela.getByRole('radio', { name: 'Acrescentar' }).click()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/integrar.png` })
+  await janela.getByRole('button', { name: 'Preparar a proposta' }).click()
+  await janela.getByRole('link', { name: 'Revisões' }).click()
+  await expect(page.getByRole('button', { name: 'Revisões 1' })).toBeVisible({ timeout: 15000 })
+  await page.reload()
+  await page.getByRole('link', { name: /Integrar ao texto: Tema de Teste/ }).click({ timeout: 15000 })
+  await expect(page.getByRole('heading', { name: /Integrar ao texto/ })).toBeVisible()
+  await expect(page.locator('pre.diff')).toContainText('Integrado ao texto (escolhas: Acrescentar')
+  // Rejeitada, o Tema fica como estava (os outros testes leem este Tema).
+  await page.getByRole('button', { name: 'Rejeitar' }).click()
+  await expect(page).toHaveURL(/#\/ler\/temas\/tema-de-teste\/indice\.md$/)
 })
 
 test('lê o Tema numa página só, com sumário de capítulos', async ({ page }) => {
@@ -329,7 +347,7 @@ test('Mais informações: seleciona um trecho, a IA pesquisa e o trecho vira lin
 
   // A instrução nova aparece em Ajustes.
   await page.goto('/#/ajustes/instrucoes')
-  await expect(page.getByRole('link', { name: /Mais informações/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Mais informações/ })).toBeVisible()
 
   await page.goto('/#/ler/temas/tema-de-teste/indice.md')
   await marca.click()

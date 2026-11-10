@@ -14,14 +14,15 @@ import (
 
 func (a *app) executores() map[string]executor {
 	return map[string]executor{
-		"extrair":    a.naReferencia(a.extrair, true),
-		"organizar":  a.naReferencia(a.organizar, true),
-		"traduzir":   a.naReferencia(a.traduzir, true),
-		"sugerir":    a.naReferencia(a.sugerir, false),
-		"criar_tema": a.naReferencia(a.criarTema, false),
-		"integrar":   a.naReferencia(a.integrar, false),
-		"detalhar":   a.detalhar,
-		"perguntar":  a.perguntar, // D35
+		"extrair":        a.naReferencia(a.extrair, true),
+		"organizar":      a.naReferencia(a.organizar, true),
+		"traduzir":       a.naReferencia(a.traduzir, true),
+		"sugerir":        a.naReferencia(a.sugerir, false),
+		"criar_tema":     a.naReferencia(a.criarTema, false),
+		"integrar":       a.naReferencia(a.integrar, false),
+		"detalhar":       a.detalhar,
+		"perguntar":      a.perguntar,     // D35
+		"integrar_texto": a.integrarTexto, // D36
 		// Pesquisador (D27)
 		"planejar": a.naReferencia(a.planejar, true),
 		"coletar":  a.naReferencia(a.coletar, true),

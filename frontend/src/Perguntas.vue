@@ -80,6 +80,49 @@ async function apagar(p) {
   }
 }
 
+// Integrar ao texto (D36): o Lucas escolhe o que fazer com cada divergência e se a resposta entra.
+// As opções dependem do tipo: o que está errado se substitui ou se mantém ao lado; o que falta se
+// acrescenta. A escolha já vem marcada com o mais comum, mas é sempre dele.
+const OPCOES = {
+  erro: [['substituir', 'Substituir'], ['manter', 'Manter as duas versões'], ['ignorar', 'Ignorar']],
+  desatualizado: [['substituir', 'Substituir'], ['manter', 'Manter as duas versões'], ['ignorar', 'Ignorar']],
+  omissao: [['acrescentar', 'Acrescentar'], ['ignorar', 'Ignorar']],
+  melhoria: [['acrescentar', 'Acrescentar'], ['ignorar', 'Ignorar']],
+}
+const integrando = ref(null) // { id, resposta, escolhas: [acao por divergência] }
+const enviandoIntegracao = ref(false)
+const integradas = ref({}) // id → recado depois de mandar
+
+const podeIntegrar = (p) => p.resultado && (p.resultado.cobertura !== 'responde' || p.resultado.divergencias.length)
+
+function abrirIntegracao(p) {
+  integrando.value = {
+    id: p.id,
+    resposta: p.resultado.cobertura !== 'responde',
+    escolhas: p.resultado.divergencias.map((d) => (OPCOES[d.tipo] || OPCOES.melhoria)[0][0]),
+  }
+}
+
+const algoParaIntegrar = computed(() => integrando.value && (integrando.value.resposta || integrando.value.escolhas.some((a) => a !== 'ignorar')))
+
+async function integrar() {
+  const i = integrando.value
+  enviandoIntegracao.value = true
+  erro.value = ''
+  try {
+    await api(`/api/perguntas/${i.id}/integrar`, {
+      metodo: 'POST',
+      corpo: { resposta: i.resposta, escolhas: i.escolhas.map((acao, divergencia) => ({ divergencia, acao })) },
+    })
+    integradas.value = { ...integradas.value, [i.id]: true }
+    integrando.value = null
+  } catch (e) {
+    erro.value = e.status === 0 ? 'Integrar só funciona na rede de casa.' : e.message
+  } finally {
+    enviandoIntegracao.value = false
+  }
+}
+
 // Com o texto respondendo por inteiro e sem divergência, a resposta da IA fica recolhida.
 const textoBasta = (r) => r.cobertura === 'responde' && !r.divergencias.length
 
@@ -166,7 +209,34 @@ onBeforeUnmount(() => {
             </details>
           </template>
 
+          <section v-if="integrando?.id === p.id" class="integrar">
+            <h3>Integrar ao texto</h3>
+            <p class="suave">A IA encaixa no capítulo e no ponto certos, nunca colado no fim, e você revisa a mudança antes de entrar.</p>
+            <label class="marcar"><input v-model="integrando.resposta" type="checkbox" /> Levar a resposta verificada para o texto</label>
+            <div v-for="(d, i) in p.resultado.divergencias" :key="i" class="escolha">
+              <span class="suave">{{ TIPO[d.tipo] || d.tipo }}<template v-if="d.capitulo"> · {{ d.capitulo }}</template>: {{ d.correto }}</span>
+              <div class="opcoes" role="radiogroup" :aria-label="`O que fazer com: ${d.correto}`">
+                <button
+                  v-for="[valor, nome] in OPCOES[d.tipo] || OPCOES.melhoria"
+                  :key="valor"
+                  type="button"
+                  role="radio"
+                  class="opcao"
+                  :aria-checked="integrando.escolhas[i] === valor"
+                  :class="{ ativa: integrando.escolhas[i] === valor }"
+                  @click="integrando.escolhas[i] = valor"
+                >{{ nome }}</button>
+              </div>
+            </div>
+            <div class="linha-acoes">
+              <button class="botao principal" :disabled="enviandoIntegracao || !algoParaIntegrar" @click="integrar">{{ enviandoIntegracao ? 'Enviando…' : 'Preparar a proposta' }}</button>
+              <button class="botao" @click="integrando = null">Cancelar</button>
+            </div>
+          </section>
+          <p v-else-if="integradas[p.id]" class="aviso">Proposta na fila. Quando ficar pronta, aparece em <a href="#/revisoes">Revisões</a> para você aprovar.</p>
+
           <div v-if="p.estado !== 'processando'" class="acoes">
+            <button v-if="podeIntegrar(p) && integrando?.id !== p.id" class="botao discreto marca" @click="abrirIntegracao(p)">Integrar ao texto</button>
             <button class="botao discreto" @click="refazer(p)">Verificar de novo</button>
             <button class="botao discreto perigo" @click="apagar(p)">Apagar</button>
           </div>
@@ -379,5 +449,64 @@ p {
 
 .botao.discreto.perigo {
   color: var(--perigo);
+}
+
+.botao.discreto.marca {
+  color: var(--marca);
+}
+
+.integrar {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--raio);
+  background: var(--superficie);
+}
+
+.integrar h3 {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+
+.integrar > p {
+  font-size: 0.906rem;
+}
+
+.marcar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.95rem;
+}
+
+.escolha {
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.opcao {
+  padding: 6px 12px;
+  border: 1px solid var(--linha-forte);
+  border-radius: 999px;
+  background: var(--fundo);
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.opcao.ativa {
+  border-color: var(--marca);
+  background: var(--marca-fundo);
+  color: var(--marca);
+  font-weight: 600;
 }
 </style>

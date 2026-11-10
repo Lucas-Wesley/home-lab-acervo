@@ -54,6 +54,9 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("POST /api/perguntas", a.handlePerguntar)
 	mux.HandleFunc("POST /api/perguntas/{id}/refazer", a.handleRefazerPergunta)
 	mux.HandleFunc("DELETE /api/perguntas/{id}", a.handleApagarPergunta)
+	// Integrar ao texto (D36)
+	mux.HandleFunc("POST /api/perguntas/{id}/integrar", a.handleIntegrarPergunta)
+	mux.HandleFunc("POST /api/detalhes/{id}/integrar", a.handleIntegrarDetalhe)
 
 	mux.HandleFunc("GET /api/flashcards", a.handleListarFlashcards)
 	mux.HandleFunc("POST /api/flashcards", a.handleEnviarFlashcards)
@@ -247,6 +250,12 @@ func (a *app) comTitulos(r *http.Request, lista []tarefa) []tarefaComTitulo {
 			saida = append(saida, a.tarefaDePergunta(r, t))
 			continue
 		}
+		if t.Tipo == "integrar_texto" && t.ReferenciaID == "" {
+			var p paramsIntegrarTexto
+			json.Unmarshal(t.Params, &p)
+			saida = append(saida, tarefaComTitulo{t, p.Titulo, "#/ler/" + p.Tema + "/indice.md"})
+			continue
+		}
 		titulo, ok := titulos[t.ReferenciaID]
 		if !ok {
 			if ref, err := a.referencia(r.Context(), t.ReferenciaID); err == nil {
@@ -342,7 +351,13 @@ func (a *app) handleRevisao(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	diff, err := a.conteudo.diff(r.Context(), t.ID)
+	var diff string
+	var err error
+	if t.Tipo == "integrar_texto" && t.ReferenciaID != "" {
+		diff, err = a.diffDaProposta(r.Context(), t)
+	} else {
+		diff, err = a.conteudo.diff(r.Context(), t.ID)
+	}
 	if err != nil {
 		falha(w, err)
 		return
@@ -357,6 +372,10 @@ func (a *app) handleDecidir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	if t.Tipo == "integrar_texto" {
+		a.decidirIntegracao(w, r, t)
+		return
+	}
 	ref, err := a.referencia(ctx, t.ReferenciaID)
 	if err != nil {
 		falha(w, err)

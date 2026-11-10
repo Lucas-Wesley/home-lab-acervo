@@ -51,7 +51,8 @@ async function decidir(decisao) {
   erro.value = ''
   try {
     const { tema } = await api(`/api/revisoes/${props.id}/${decisao}`, { metodo: 'POST' })
-    location.hash = decisao === 'aprovar' ? `#/ler/${tema}/indice.md` : `#/referencia/${revisao.value.tarefa.referencia_id}`
+    const refId = revisao.value.tarefa.referencia_id
+    location.hash = decisao === 'aprovar' && tema ? `#/ler/${tema}/indice.md` : refId ? `#/referencia/${refId}` : tema ? `#/ler/${tema}/indice.md` : '#/revisoes'
   } catch (e) {
     erro.value = e.message
   } finally {
@@ -79,20 +80,25 @@ onMounted(carregar)
       <a href="#/revisoes" class="voltar suave">← Revisões</a>
       <div v-if="erro" class="aviso erro">{{ erro }}</div>
       <template v-if="revisao">
-        <h1>{{ revisao.tarefa.tipo === 'criar_tema' ? 'Novo Tema' : 'Integração' }}: {{ revisao.tarefa.params.titulo || destino }}</h1>
-        <p class="suave">
+        <h1>{{ { criar_tema: 'Novo Tema', integrar_texto: 'Integrar ao texto' }[revisao.tarefa.tipo] || 'Integração' }}: {{ revisao.tarefa.params.titulo || revisao.referencia?.titulo || destino }}</h1>
+        <p v-if="revisao.tarefa.tipo === 'integrar_texto'" class="suave">
+          {{ revisao.tarefa.params.origem === 'detalhe' ? 'De um “Mais informações”' : 'Da resposta a uma pergunta' }},
+          <template v-if="destino">no Tema <code>{{ destino }}</code>.</template>
+          <template v-else>no texto da Referência <a :href="`#/referencia/${revisao.referencia?.id}`">{{ revisao.referencia?.titulo }}</a>; aprovando, o texto de agora fica como Versão anterior.</template>
+        </p>
+        <p v-else class="suave">
           A partir de <a :href="`#/referencia/${revisao.referencia.id}`">{{ revisao.referencia.titulo }}</a>, na pasta <code>{{ destino }}</code>.
           {{ arquivos.length }} {{ arquivos.length === 1 ? 'arquivo' : 'arquivos' }}.
         </p>
 
         <div class="linha-acoes decisao">
-          <button class="botao principal" :disabled="decidindo" @click="decidir('aprovar')">Aprovar e incluir no Acervo</button>
+          <button class="botao principal" :disabled="decidindo" @click="decidir('aprovar')">{{ revisao.tarefa.tipo === 'integrar_texto' ? 'Aprovar a mudança' : 'Aprovar e incluir no Acervo' }}</button>
           <button class="botao perigo" :disabled="decidindo" @click="decidir('rejeitar')">Rejeitar</button>
         </div>
 
         <section v-for="a in arquivos" :key="a.caminho" class="arquivo">
           <header>
-            <code>{{ a.caminho.replace(destino + '/', '') }}</code>
+            <code>{{ destino ? a.caminho.replace(destino + '/', '') : a.caminho.split('/').pop() }}</code>
             <span class="chip" :class="{ ok: a.novo }">{{ a.novo ? 'novo' : `+${a.mais} −${a.menos}` }}</span>
             <button class="botao" @click="modoArquivo = { ...modoArquivo, [a.caminho]: modo(a) === 'diff' ? 'texto' : 'diff' }">
               {{ modo(a) === 'diff' ? 'Ver como texto' : 'Ver diferenças' }}
