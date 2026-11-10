@@ -57,6 +57,10 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	// Integrar ao texto (D36)
 	mux.HandleFunc("POST /api/perguntas/{id}/integrar", a.handleIntegrarPergunta)
 	mux.HandleFunc("POST /api/detalhes/{id}/integrar", a.handleIntegrarDetalhe)
+	// Dúvidas pelo áudio (D37)
+	mux.HandleFunc("GET /api/referencias/{id}/duvidas", a.handleDuvidas)
+	mux.HandleFunc("POST /api/referencias/{id}/duvidas", a.handleResolverDuvidas)
+	mux.HandleFunc("POST /api/duvidas/{id}/integrar", a.handleIntegrarDuvida)
 
 	mux.HandleFunc("GET /api/flashcards", a.handleListarFlashcards)
 	mux.HandleFunc("POST /api/flashcards", a.handleEnviarFlashcards)

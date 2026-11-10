@@ -39,7 +39,15 @@ test('pesquisa um tema no YouTube, com o esboço revisado antes de buscar', asyn
   await expect(page.locator('.cabeca .chip').first()).toHaveText('Organizado')
   await expect(page.locator('article.texto')).toContainText('Conferência: 1 afirmação')
   await page.getByRole('button', { name: 'Dúvidas' }).click()
-  await expect(page.locator('article.texto')).toContainText('Uma dúvida de teste')
+  await expect(page.locator('.duvida').first()).toContainText('Uma dúvida de teste')
+  // Resolver (D37): numa pesquisa não há áudio; a falta no material vira "Pesquisar isto", que abre
+  // o Aprofundar com a dúvida como foco.
+  await page.getByRole('button', { name: 'Resolver as dúvidas' }).click()
+  await expect(page.locator('.duvida .chip').first()).toHaveText('Falta no material', { timeout: 15000 })
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/duvidas.png` })
+  await page.getByRole('button', { name: 'Pesquisar isto' }).first().click()
+  await expect(page.getByPlaceholder('Ex.: as variedades e como escolher no mercado')).toHaveValue(/Uma dúvida de teste/)
+  await page.getByRole('button', { name: 'Cancelar' }).first().click()
   await page.getByRole('button', { name: 'Mais ações' }).click()
   await page.getByRole('menuitem', { name: 'Material coletado' }).click()
   await expect(page.locator('article.texto')).toContainText('De onde vem a laranja?')
@@ -78,7 +86,7 @@ test('aprofunda uma pesquisa pronta, e o texto de antes fica na Versão anterior
   await expect(page.locator('article.texto')).toContainText('Partiu de anterior.md.')
   await page.getByRole('button', { name: 'Versão anterior' }).click()
   await expect(page.locator('article.texto')).not.toContainText('Partiu de anterior.md.')
-  await expect(page.getByText('O texto antes de aprofundar a pesquisa')).toBeVisible()
+  await expect(page.getByText('O texto antes da última mudança')).toBeVisible()
 })
 
 // Resumo de capítulos (D30, D32): escolher o livro na lista e os capítulos; a IA resume e sugere o Tema.

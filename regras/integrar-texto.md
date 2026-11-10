@@ -31,6 +31,10 @@ A **resposta verificada** só entra se `material.md` disser que sim.
 - **O texto completo:** a explicação entra **inteira, como está**, logo depois do parágrafo do trecho selecionado (ou no ponto mais próximo que faça sentido). Pode ajustar só os títulos (`#`) para o nível certo e as marcas de fonte.
 - **Só o que serve ao texto:** use apenas o que acrescenta ao texto, reescrito no estilo dele, espalhado nos pontos certos.
 
+## Dúvida resolvida
+
+Quando `material.md` traz uma dúvida resolvida (pelo áudio ou pela internet): faça a correção indicada no lugar, tire a dúvida da seção "## Dúvidas" (e a seção, se ficar vazia) e a marca `[?]` do trecho corrigido. Uma correção vinda só do áudio não precisa de fonte da internet.
+
 ## Fontes
 
 - Cada trecho novo ou corrigido leva as fontes da internet, curtas e com link: `<sub>Fontes: [Título](url), [Título](url)</sub>`.

@@ -209,6 +209,19 @@ CREATE TABLE IF NOT EXISTS perguntas (
 	atualizado_em TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS perguntas_local ON perguntas (local);
+-- Dúvidas resolvidas pelo áudio e pela internet (D37): uma por item de "## Dúvidas".
+CREATE TABLE IF NOT EXISTS duvidas (
+	id            TEXT PRIMARY KEY,
+	referencia_id TEXT NOT NULL,
+	texto         TEXT NOT NULL,
+	momento       TEXT NOT NULL DEFAULT '',
+	audio         TEXT NOT NULL DEFAULT '',
+	resultado     TEXT NOT NULL DEFAULT '',
+	tarefa_id     INTEGER NOT NULL DEFAULT 0,
+	criado_em     TEXT NOT NULL,
+	atualizado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS duvidas_referencia ON duvidas (referencia_id);
 -- Textos mandados ao Flashcards (D28): alvo = "arquivo:<caminho>[#<capítulo>]" ou "referencia:<id>".
 CREATE TABLE IF NOT EXISTS flashcards (
 	id         INTEGER PRIMARY KEY AUTOINCREMENT,

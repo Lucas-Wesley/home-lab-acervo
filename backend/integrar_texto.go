@@ -216,6 +216,21 @@ func (a *app) materialDaIntegracao(ctx context.Context, p paramsIntegrarTexto) (
 		}
 		fmt.Fprintf(&s, "## O trecho selecionado\n\n> %s\n\n(antes: “…%s”; depois: “%s…”)\n\n## A explicação\n\n%s\n\n",
 			strings.ReplaceAll(d.Trecho, "\n", "\n> "), d.Antes, d.Depois, d.Explicacao)
+	case "duvida":
+		d, err := lerDuvida(a.db.QueryRowContext(ctx, consultaDuvida+` WHERE d.id = ?`, p.ID))
+		if err != nil || d.Resultado == nil {
+			return "", errors.New("a dúvida não existe mais")
+		}
+		res := d.Resultado
+		fontes = res.Fontes
+		fmt.Fprintf(&s, "# Integrar ao texto: uma dúvida resolvida\n\n## A dúvida (item de \"## Dúvidas\")\n\n%s\n\n## O que se apurou\n\n%s\n\n", d.Texto, res.Explicacao)
+		if res.NoAudio != "" {
+			fmt.Fprintf(&s, "No áudio: %s\n\n", res.NoAudio)
+		}
+		if res.Trecho != "" {
+			fmt.Fprintf(&s, "## A correção (escolha do Lucas: **Substituir**)\n\nOnde o texto diz %q, passa a dizer %q.\n\n", res.Trecho, res.Correto)
+		}
+		s.WriteString("Depois de corrigir, **tire esta dúvida da seção \"## Dúvidas\"** (e a seção inteira, se ficar vazia) e a marca [?] do trecho corrigido.\n")
 	default:
 		return "", errors.New("origem desconhecida")
 	}

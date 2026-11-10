@@ -246,3 +246,29 @@ func marcaDeTempo(ms int64) string {
 	}
 	return fmt.Sprintf("%02d:%02d", m, seg)
 }
+
+// transcreverVideo: vídeo sem legenda (D37) é transcrito inteiro pelo Whisper (o do Mac mini; com o
+// Mac fora, o do servidor). O áudio é baixado pelo yt-dlp e não fica guardado.
+func (a *app) transcreverVideo(ctx context.Context, info infoVideo, link, pasta string) error {
+	tmp, err := os.MkdirTemp("", "video-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmp)
+	if _, err := a.ytdlp(ctx, "-q", "--no-playlist", "-f", "bestaudio/best", "-o", filepath.Join(tmp, "audio.%(ext)s"), link); err != nil {
+		return err
+	}
+	achados, _ := filepath.Glob(filepath.Join(tmp, "audio.*"))
+	if len(achados) == 0 {
+		return errors.New("o yt-dlp não baixou o áudio do vídeo")
+	}
+	trechos, quem, _, err := a.transcreverAudio(ctx, achados[0], tmp, info.Idioma, cortar(info.Titulo+". "+info.Canal, 300, false))
+	if err != nil {
+		return err
+	}
+	var s strings.Builder
+	fmt.Fprintf(&s, "# %s\n\n- Canal: %s\n- URL: %s\n- Duração: %s\n- Publicado: %s\n- Transcrição: %s (o vídeo não tem legenda)\n\n",
+		info.Titulo, info.Canal, info.URL, info.Duracao, info.Publicado, quem)
+	s.WriteString(falasEmBlocos(trechos))
+	return os.WriteFile(filepath.Join(pasta, "cru.md"), []byte(s.String()), 0o644)
+}

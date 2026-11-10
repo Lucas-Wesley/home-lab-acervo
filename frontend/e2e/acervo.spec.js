@@ -70,9 +70,12 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/integrar.png` })
   await janela.getByRole('button', { name: 'Preparar a proposta' }).click()
   await janela.getByRole('link', { name: 'Revisões' }).click()
-  await expect(page.getByRole('button', { name: 'Revisões 1' })).toBeVisible({ timeout: 15000 })
-  await page.reload()
-  await page.getByRole('link', { name: /Integrar ao texto: Tema de Teste/ }).click({ timeout: 15000 })
+  const proposta = page.getByRole('link', { name: /Integrar ao texto: Tema de Teste/ })
+  await expect(async () => {
+    await page.reload()
+    await expect(proposta).toBeVisible({ timeout: 1000 })
+  }).toPass({ timeout: 20000 })
+  await proposta.click()
   await expect(page.getByRole('heading', { name: /Integrar ao texto/ })).toBeVisible()
   await expect(page.locator('pre.diff')).toContainText('Integrado ao texto (escolhas: Acrescentar')
   // Rejeitada, o Tema fica como estava (os outros testes leem este Tema).

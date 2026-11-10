@@ -45,12 +45,13 @@ Você recebe `cru.md`: a transcrição bruta de um vídeo ou de um episódio de 
 
 ## Dúvidas
 
-- <trechos marcados com [?] e o que ficou incerto; omitir a seção se não houver>
+- "<trecho como está>" [mm:ss]: <o que ficou incerto; omitir a seção se não houver>
 ```
 
 - Cada seção termina com as marcas de tempo de onde veio o conteúdo, para conferir no vídeo.
 - **Linha do tempo:** só se o assunto tiver datas ou períodos.
 - **Citados no vídeo:** omitir a seção se o vídeo não citar nenhuma fonte.
+- **Dúvidas:** cada uma com o trecho entre aspas, como está na transcrição, e **sempre** a marca `[mm:ss]` do momento da fala (a do bloco onde está). O app usa a marca para ouvir de novo o áudio daquele ponto e resolver a dúvida.
 
 ## Podcast
 

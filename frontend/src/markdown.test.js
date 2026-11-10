@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { duvidas, eLinkInterno, relativo, renderizar, resolver, semCabecalho, tituloDoTexto, trocarFontes, urlNoTempo } from './markdown.js'
+import { duvidas, eLinkInterno, relativo, renderizar, resolver, semCabecalho, tituloDoTexto, trocarFontes, urlNoTempo, listaDeDuvidas } from './markdown.js'
 
 describe('links entre arquivos', () => {
   it('resolve caminhos relativos a partir do arquivo atual', () => {
@@ -55,6 +55,7 @@ describe('renderizar', () => {
 
   it('separa a seção de dúvidas e acha o título', () => {
     const texto = '# Café\n\n## História\n\nTexto.\n\n## Dúvidas\n\n- nome incerto\n'
+    expect(listaDeDuvidas(texto + '- outro, em\n  duas linhas\n')).toEqual(['nome incerto', 'outro, em duas linhas'])
     expect(duvidas(texto)).toBe('- nome incerto')
     expect(duvidas('# Sem\n\n## Outra\n')).toBe('')
     expect(tituloDoTexto(texto)).toBe('Café')

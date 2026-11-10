@@ -14,15 +14,16 @@ import (
 
 func (a *app) executores() map[string]executor {
 	return map[string]executor{
-		"extrair":        a.naReferencia(a.extrair, true),
-		"organizar":      a.naReferencia(a.organizar, true),
-		"traduzir":       a.naReferencia(a.traduzir, true),
-		"sugerir":        a.naReferencia(a.sugerir, false),
-		"criar_tema":     a.naReferencia(a.criarTema, false),
-		"integrar":       a.naReferencia(a.integrar, false),
-		"detalhar":       a.detalhar,
-		"perguntar":      a.perguntar,     // D35
-		"integrar_texto": a.integrarTexto, // D36
+		"extrair":          a.naReferencia(a.extrair, true),
+		"organizar":        a.naReferencia(a.organizar, true),
+		"traduzir":         a.naReferencia(a.traduzir, true),
+		"sugerir":          a.naReferencia(a.sugerir, false),
+		"criar_tema":       a.naReferencia(a.criarTema, false),
+		"integrar":         a.naReferencia(a.integrar, false),
+		"detalhar":         a.detalhar,
+		"perguntar":        a.perguntar,                              // D35
+		"integrar_texto":   a.integrarTexto,                          // D36
+		"resolver_duvidas": a.naReferencia(a.resolverDuvidas, false), // D37
 		// Pesquisador (D27)
 		"planejar": a.naReferencia(a.planejar, true),
 		"coletar":  a.naReferencia(a.coletar, true),
@@ -84,6 +85,9 @@ func (a *app) extrair(ctx context.Context, t *tarefa, ref *referencia) (resultad
 		return pronto, err
 	}
 	info, lingua, err := a.baixarLegenda(ctx, ref.URL, pasta)
+	if errors.Is(err, errSemLegenda) && info.Titulo != "" && (a.cfg.whisper != "" || a.cfg.whisperReserva != "") {
+		err = a.transcreverVideo(ctx, info, ref.URL, pasta) // D37: sem legenda, o Whisper transcreve
+	}
 	if info.Titulo != "" {
 		idioma := info.Idioma
 		if idioma == "" {

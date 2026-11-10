@@ -431,28 +431,13 @@ func (a *app) extrairPodcast(ctx context.Context, ref *referencia, pasta string)
 	if err := a.baixarAudio(ctx, ep.Audio, audio); err != nil {
 		return err
 	}
-	pedacos, err := a.cortarAudio(ctx, audio, tmp)
+	trechos, quem, pedacos, err := a.transcreverAudio(ctx, audio, tmp, ep.Idioma, promptDoEpisodio(ep))
 	if err != nil {
 		return err
 	}
-	prompt := promptDoEpisodio(ep)
-	var trechos []trechoFalado
-	for i, p := range pedacos {
-		ts, quem, err := a.transcrever(ctx, p, ep.Idioma, prompt)
-		if err != nil {
-			return fmt.Errorf("A transcrição do pedaço %d de %d falhou: %v", i+1, len(pedacos), err)
-		}
-		ep.Transcrito = quem
-		for _, t := range ts {
-			t.Inicio += float64(i * segundosPorPedaco)
-			trechos = append(trechos, t)
-		}
-	}
-	if len(trechos) == 0 {
-		return errors.New("A transcrição voltou vazia: o áudio pode estar sem fala.")
-	}
+	ep.Transcrito = quem
 	if ep.Duracao == "" {
-		ep.Duracao = marcaDeTempo(int64(len(pedacos)*segundosPorPedaco) * 1000)
+		ep.Duracao = marcaDeTempo(int64(pedacos*segundosPorPedaco) * 1000)
 	}
 	info, _ := json.MarshalIndent(ep, "", "  ")
 	if err := os.WriteFile(filepath.Join(pasta, "info.json"), info, 0o644); err != nil {
@@ -500,6 +485,32 @@ func (a *app) cortarAudio(ctx context.Context, audio, pasta string) ([]string, e
 		return nil, errors.New("O áudio do episódio está vazio.")
 	}
 	return pedacos, nil
+}
+
+// transcreverAudio corta o áudio em pedaços de 10 min e transcreve um por um; os tempos voltam
+// contados desde o começo do áudio.
+func (a *app) transcreverAudio(ctx context.Context, audio, pasta, idioma, prompt string) ([]trechoFalado, string, int, error) {
+	pedacos, err := a.cortarAudio(ctx, audio, pasta)
+	if err != nil {
+		return nil, "", 0, err
+	}
+	var trechos []trechoFalado
+	quem := ""
+	for i, p := range pedacos {
+		ts, q, err := a.transcrever(ctx, p, idioma, prompt)
+		if err != nil {
+			return nil, "", 0, fmt.Errorf("A transcrição do pedaço %d de %d falhou: %v", i+1, len(pedacos), err)
+		}
+		quem = q
+		for _, t := range ts {
+			t.Inicio += float64(i * segundosPorPedaco)
+			trechos = append(trechos, t)
+		}
+	}
+	if len(trechos) == 0 {
+		return nil, "", 0, errors.New("A transcrição voltou vazia: o áudio pode estar sem fala.")
+	}
+	return trechos, quem, len(pedacos), nil
 }
 
 // promptDoEpisodio ajuda o Whisper com os nomes: o podcast, o título e o começo da descrição.
@@ -610,6 +621,16 @@ func podcastParaCru(ep episodio, trechos []trechoFalado) string {
 		fmt.Fprintf(&s, "- Capa: %s\n", ep.Capa)
 	}
 	fmt.Fprintf(&s, "- Transcrição: %s\n\n", ep.Transcrito)
+	s.WriteString(falasEmBlocos(trechos))
+	if ep.Descricao != "" {
+		fmt.Fprintf(&s, "## Descrição do episódio\n\n%s\n", ep.Descricao)
+	}
+	return s.String()
+}
+
+// falasEmBlocos: uma marca [mm:ss] a cada ~30 s, como a transcrição de um vídeo.
+func falasEmBlocos(trechos []trechoFalado) string {
+	var s strings.Builder
 	inicio := -1.0
 	var bloco []string
 	fechar := func() {
@@ -626,9 +647,6 @@ func podcastParaCru(ep episodio, trechos []trechoFalado) string {
 		bloco = append(bloco, t.Texto)
 	}
 	fechar()
-	if ep.Descricao != "" {
-		fmt.Fprintf(&s, "## Descrição do episódio\n\n%s\n", ep.Descricao)
-	}
 	return s.String()
 }
 

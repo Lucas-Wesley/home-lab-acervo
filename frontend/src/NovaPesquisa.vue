@@ -8,7 +8,7 @@ import { FONTES, PROFUNDIDADES } from './pesquisa.js'
 // Referência, é para aprofundar a pesquisa dela (D29): as escolhas começam pelas da última rodada.
 // Com "pagina", é a página Pesquisar um tema (D34): as opções em linhas, com a explicação de cada
 // uma, e o botão numa barra fixa no pé.
-const props = defineProps({ referencia: { type: Object, default: null }, pagina: { type: Boolean, default: false } })
+const props = defineProps({ referencia: { type: Object, default: null }, pagina: { type: Boolean, default: false }, focoInicial: { type: String, default: '' } })
 const emit = defineEmits(['fechar', 'enviado'])
 
 // As últimas escolhas voltam na próxima pesquisa.
@@ -24,7 +24,7 @@ const aprofundando = !!props.referencia
 const salvas = aprofundando ? props.referencia.pesquisa : lerEscolhas()
 
 const tema = ref('')
-const foco = ref('')
+const foco = ref(props.focoInicial) // "Pesquisar isto" numa dúvida (D37) já vem com ela
 const fontes = ref(salvas.fontes ?? ['livros', 'wikipedia'])
 const profundidade = ref(salvas.profundidade ?? 'rapida')
 const revisarEsboco = ref(salvas.revisar_esboco ?? false)

@@ -6,6 +6,7 @@ import CartoesDaReferencia from './CartoesDaReferencia.vue'
 import EsbocoPesquisa from './EsbocoPesquisa.vue'
 import Icone from './Icone.vue'
 import NovaPesquisa from './NovaPesquisa.vue'
+import Duvidas from './Duvidas.vue'
 import Perguntas from './Perguntas.vue'
 import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 import { marcar, usarDetalhes } from './detalhes.js'
@@ -18,6 +19,24 @@ const erro = ref('')
 const aba = ref('')
 const temas = ref([])
 const acao = ref(null) // 'criar' | 'integrar' | 'aprofundar'
+const focoDoAprofundar = ref('') // "Pesquisar isto" numa dúvida de pesquisa (D37)
+const perguntasVersao = ref(0)
+
+// "Pesquisar isto" (D37): a dúvida vira uma pergunta (D35), e a aba Perguntar abre com ela.
+async function perguntarSobre(texto) {
+  try {
+    await api('/api/perguntas', { metodo: 'POST', corpo: { local: `referencias/${props.id}`, titulo: ref_.value.titulo, pergunta: texto } })
+    perguntasVersao.value++
+    aba.value = 'perguntar'
+  } catch (e) {
+    erro.value = e.message
+  }
+}
+function aprofundarSobre(texto) {
+  focoDoAprofundar.value = texto
+  acao.value = 'aprofundar'
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 const novoTema = ref({ titulo: '', pai: '' })
 const temaAlvo = ref('')
 const ocupado = ref(false)
@@ -41,13 +60,12 @@ const abas = computed(() => {
 // A transcrição e o histórico abrem pelo menu ⋯, para as abas ficarem com o que se usa na leitura.
 const nomeDoCru = computed(() => (ehPesquisa.value ? 'Material coletado' : ehLivro.value ? 'Texto do livro' : ref_.value?.tipo === 'artigo' ? 'Texto da página' : 'Transcrição'))
 const doMenu = computed(() => ({ cru: nomeDoCru.value, historico: 'Histórico' })[aba.value])
-const semTexto = (a) => ['historico', 'perguntar', 'estudar'].includes(a)
+const semTexto = (a) => ['historico', 'duvidas', 'perguntar', 'estudar'].includes(a)
 const abaAtual = computed(() => aba.value || abas.value[0]?.[0])
 const htmlDaAba = computed(() => {
   const r = ref_.value
   if (!r) return ''
   const opcoes = { url: r.url }
-  if (abaAtual.value === 'duvidas') return renderizar(duvidas(textoPrincipal.value), opcoes)
   if (abaAtual.value === 'cru') return renderizar(r.textos.cru.replace(/^\[(\d[\d:]*)\]/gm, '<sub>Trechos: [$1]</sub>\n\n'), opcoes)
   return renderizar(r.textos[abaAtual.value] ?? '', opcoes)
 })
@@ -249,7 +267,7 @@ onBeforeUnmount(() => {
         <button class="botao principal" :disabled="ocupado || andando" @click="executar('reprocessar')">Tentar de novo</button>
       </div>
 
-      <NovaPesquisa v-if="acao === 'aprofundar'" :referencia="ref_" @fechar="acao = null" @enviado="acao = null; carregar()" />
+      <NovaPesquisa v-if="acao === 'aprofundar'" :referencia="ref_" :foco-inicial="focoDoAprofundar" @fechar="acao = null; focoDoAprofundar = ''" @enviado="acao = null; focoDoAprofundar = ''; carregar()" />
 
       <form v-if="acao === 'criar'" class="cartao formulario" @submit.prevent="executar('criar-tema', novoTema)">
         <strong>Criar um Tema com esta Referência</strong>
@@ -292,7 +310,8 @@ onBeforeUnmount(() => {
         <button class="botao discreto" @click="aba = null">Voltar ao texto</button>
       </p>
 
-      <Perguntas v-if="abaAtual === 'perguntar'" embutido :local="`referencias/${ref_.id}`" :titulo="ref_.titulo" />
+      <Duvidas v-if="abaAtual === 'duvidas'" :referencia="ref_" :texto="textoPrincipal" @perguntar="perguntarSobre" @aprofundar="aprofundarSobre" />
+      <Perguntas v-else-if="abaAtual === 'perguntar'" :key="perguntasVersao" embutido :local="`referencias/${ref_.id}`" :titulo="ref_.titulo" />
       <p v-else-if="abaAtual === 'estudar'" class="suave nota">Em breve.</p>
       <ul v-else-if="abaAtual === 'historico'" class="historico">
         <li v-for="t in ref_.tarefas" :key="t.id">
@@ -303,7 +322,7 @@ onBeforeUnmount(() => {
         </li>
       </ul>
       <p v-else-if="abaAtual === 'organizado' && traduzida" class="suave nota">Versão original, só para consulta. No Acervo entra a versão em português.</p>
-      <p v-else-if="abaAtual === 'anterior'" class="suave nota">O texto antes de aprofundar a pesquisa, só para consulta.</p>
+      <p v-else-if="abaAtual === 'anterior'" class="suave nota">O texto antes da última mudança (aprofundar a pesquisa ou integrar ao texto), só para consulta.</p>
       <template v-if="!semTexto(abaAtual)">
         <article ref="textoEl" class="texto" @click="detalhes.aoClicar" v-html="marcado.htmls[0]" />
         <CamadaDetalhes :detalhes="detalhes" :raizes="() => [textoEl]" :titulo="ref_.titulo" :sem-lugar="marcado.semLugar" />

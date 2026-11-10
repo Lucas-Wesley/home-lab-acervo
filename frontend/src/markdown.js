@@ -104,6 +104,17 @@ export function duvidas(texto) {
   return achado ? achado[2].trim() : ''
 }
 
+// Os itens da seção "## Dúvidas" (um item pode ocupar várias linhas), igual ao servidor (duvidas.go).
+export function listaDeDuvidas(texto) {
+  const itens = []
+  for (const bruta of duvidas(texto).split('\n')) {
+    const l = bruta.trim()
+    if (l.startsWith('- ') || l.startsWith('* ')) itens.push(l.slice(2).trim())
+    else if (l && itens.length) itens[itens.length - 1] += ` ${l}`
+  }
+  return itens
+}
+
 // Título do Markdown: o "# " do texto ou o do cabeçalho.
 export function tituloDoTexto(texto) {
   const cabecalho = texto.match(/^---\n(?:[^]*?\n)?titulo:[ \t]*(.+?)[ \t]*\n(?:[^]*?\n)?---/)

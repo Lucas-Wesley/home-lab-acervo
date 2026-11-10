@@ -63,6 +63,18 @@ case "$prompt" in
     linha="Integrado ao texto (escolhas: ${escolhas}; modo: ${modo})."
     if [ -n "$(pasta)" ]; then printf '\n%s\n' "$linha" >> "$(pasta)/indice.md"; else printf '\n%s\n' "$linha" >> texto.md; fi
     ok ;;
+  *"Resolva as dúvidas de duvidas.md"*)
+    n=$(grep -c '^## Dúvida ' duvidas.md)
+    itens=""
+    for i in $(seq 0 $((n-1))); do
+      bloco=$(awk -v i="$i" '/^## Dúvida /{d=($3==i)} d' duvidas.md)
+      if printf '%s' "$bloco" | grep -q 'Whisper large-v3 ouviu'; then estado=resolvida_audio; ouvido=$(printf '%s\n' "$bloco" | awk '/ouviu/{o=1;next} o && /^\[/{print;exit}'); else estado=lacuna; ouvido=""; fi
+      trecho=""; correto=""
+      [ "$i" = 0 ] && { trecho="Texto organizado."; correto="Texto corrigido pelo áudio."; }
+      ouvido=$(printf '%s' "$ouvido" | tr -d '"\\')
+      itens="$itens{\"indice\":$i,\"estado\":\"$estado\",\"no_audio\":\"$ouvido\",\"explicacao\":\"Apurado $i.\",\"trecho\":\"$trecho\",\"correto\":\"$correto\",\"fontes\":[]},"
+    done
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"duvidas":[%s]}}\n' "${itens%,}" ;;
   *"e perguntou:"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
     lidos=$(ls | tr '\n' ' ' | sed 's/ $//')
