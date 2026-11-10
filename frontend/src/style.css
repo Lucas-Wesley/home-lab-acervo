@@ -461,11 +461,9 @@ mark.detalhe.falhou {
   display: grid;
   min-width: 200px;
   padding: 6px;
-  border: 1px solid var(--linha);
+  border: 1px solid var(--linha-forte);
   border-radius: var(--raio);
-  background: var(--vidro);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
+  background: var(--fundo);
   box-shadow: var(--sombra);
 }
 

@@ -18,8 +18,20 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Vídeo AAAAAAAAAAA' })).toBeVisible()
   await expect(page.locator('article.texto')).toContainText('Conteúdo.')
-  await page.getByRole('button', { name: 'Transcrição' }).click()
+  await page.getByRole('button', { name: 'Mais ações' }).click()
+  await page.getByRole('menuitem', { name: 'Transcrição' }).click()
   await expect(page.locator('article.texto')).toContainText('Tratado de Tordesilhas')
+  await page.getByRole('button', { name: 'Voltar ao texto' }).click()
+  // Perguntar e Estudar ficam nas abas, ao lado de Dúvidas.
+  await expect(page.locator('.abas')).toContainText('Perguntar')
+  await page.locator('.abas').getByRole('button', { name: 'Perguntar' }).click()
+  await expect(page.getByPlaceholder('O que você quer saber sobre este texto?')).toBeVisible()
+  if (process.env.CAPTURAS) {
+    await page.getByRole('button', { name: 'Mais ações' }).click()
+    await page.screenshot({ path: `${process.env.CAPTURAS}/referencia.png` })
+    await page.keyboard.press('Escape')
+  }
+  await page.locator('.abas').getByRole('button', { name: 'Organizado' }).click()
 
   await page.getByRole('button', { name: 'Mais ações' }).click()
   await page.getByRole('menuitem', { name: 'Sugerir Tema' }).click()

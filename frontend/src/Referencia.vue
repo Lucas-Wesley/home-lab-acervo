@@ -22,7 +22,6 @@ const novoTema = ref({ titulo: '', pai: '' })
 const temaAlvo = ref('')
 const ocupado = ref(false)
 const menuAberto = ref(false)
-const perguntando = ref(false) // janela de Perguntar (D35)
 const cartoes = ref(null) // CartoesDaReferencia: o "Gerar flashcards" do menu abre a janela dele
 
 const ehPesquisa = computed(() => ref_.value?.tipo === 'pesquisa')
@@ -35,11 +34,14 @@ const abas = computed(() => {
   if (t.traducao) lista.push(['traducao', 'Português'])
   if (t.organizado) lista.push(['organizado', t.traducao ? 'Original' : 'Organizado'])
   if (duvidas(textoPrincipal.value)) lista.push(['duvidas', 'Dúvidas'])
-  if (t.cru) lista.push(['cru', ehPesquisa.value ? 'Material coletado' : ehLivro.value ? 'Texto do livro' : ref_.value.tipo === 'artigo' ? 'Texto da página' : 'Transcrição'])
+  if (textoPrincipal.value) lista.push(['perguntar', 'Perguntar'], ['estudar', 'Estudar'])
   if (t.anterior) lista.push(['anterior', 'Versão anterior'])
-  lista.push(['historico', 'Histórico'])
   return lista
 })
+// A transcrição e o histórico abrem pelo menu ⋯, para as abas ficarem com o que se usa na leitura.
+const nomeDoCru = computed(() => (ehPesquisa.value ? 'Material coletado' : ehLivro.value ? 'Texto do livro' : ref_.value?.tipo === 'artigo' ? 'Texto da página' : 'Transcrição'))
+const doMenu = computed(() => ({ cru: nomeDoCru.value, historico: 'Histórico' })[aba.value])
+const semTexto = (a) => ['historico', 'perguntar', 'estudar'].includes(a)
 const abaAtual = computed(() => aba.value || abas.value[0]?.[0])
 const htmlDaAba = computed(() => {
   const r = ref_.value
@@ -51,7 +53,7 @@ const htmlDaAba = computed(() => {
 })
 // Cada aba é um texto, com as suas marcações de "Mais informações".
 const textoEl = ref(null)
-const detalhes = usarDetalhes(() => (ref_.value && abaAtual.value !== 'historico' ? `referencias/${props.id}/${abaAtual.value}` : ''))
+const detalhes = usarDetalhes(() => (ref_.value && !semTexto(abaAtual.value) ? `referencias/${props.id}/${abaAtual.value}` : ''))
 const marcado = computed(() => marcar([htmlDaAba.value], detalhes.lista.value))
 const pronta = computed(() => ['organizado', 'validado', 'integrado'].includes(ref_.value?.estado))
 const andando = computed(() => {
@@ -180,7 +182,6 @@ onBeforeUnmount(() => {
             </button>
             <div v-if="menuAberto" class="painel-menu" role="menu">
               <template v-if="pronta">
-                <button role="menuitem" @click="escolher(() => (perguntando = true))">Perguntar</button>
                 <button v-if="cartoes?.disponivel" role="menuitem" @click="escolher(cartoes.gerar)">Gerar flashcards</button>
                 <button role="menuitem" :disabled="ocupado || andando" @click="escolher(() => executar('sugerir'))">{{ sugestao ? 'Sugerir Tema de novo' : 'Sugerir Tema' }}</button>
                 <button role="menuitem" :disabled="ocupado || andando" @click="escolher(abrirCriar)">Criar Tema</button>
@@ -188,6 +189,9 @@ onBeforeUnmount(() => {
                 <button v-if="ehPesquisa" role="menuitem" :disabled="ocupado || andando" @click="escolher(() => (acao = 'aprofundar'))">Aprofundar</button>
                 <hr />
               </template>
+              <button v-if="ref_.textos.cru" role="menuitem" @click="escolher(() => (aba = 'cru'))">{{ nomeDoCru }}</button>
+              <button role="menuitem" @click="escolher(() => (aba = 'historico'))">Histórico</button>
+              <hr />
               <button role="menuitem" class="perigo" :disabled="ocupado || andando" @click="escolher(excluir)">Excluir</button>
             </div>
           </div>
@@ -245,7 +249,6 @@ onBeforeUnmount(() => {
         <button class="botao principal" :disabled="ocupado || andando" @click="executar('reprocessar')">Tentar de novo</button>
       </div>
 
-      <Perguntas v-if="perguntando" :local="`referencias/${ref_.id}`" :titulo="ref_.titulo" @fechar="perguntando = false" />
       <NovaPesquisa v-if="acao === 'aprofundar'" :referencia="ref_" @fechar="acao = null" @enviado="acao = null; carregar()" />
 
       <form v-if="acao === 'criar'" class="cartao formulario" @submit.prevent="executar('criar-tema', novoTema)">
@@ -284,7 +287,14 @@ onBeforeUnmount(() => {
         <button v-for="[chave, nome] in abas" :key="chave" :class="{ ativa: abaAtual === chave }" @click="aba = chave">{{ nome }}</button>
       </nav>
 
-      <ul v-if="abaAtual === 'historico'" class="historico">
+      <p v-if="doMenu" class="aba-do-menu">
+        <strong>{{ doMenu }}</strong>
+        <button class="botao discreto" @click="aba = null">Voltar ao texto</button>
+      </p>
+
+      <Perguntas v-if="abaAtual === 'perguntar'" embutido :local="`referencias/${ref_.id}`" :titulo="ref_.titulo" />
+      <p v-else-if="abaAtual === 'estudar'" class="suave nota">Em breve.</p>
+      <ul v-else-if="abaAtual === 'historico'" class="historico">
         <li v-for="t in ref_.tarefas" :key="t.id">
           <span>{{ NOMES_TAREFA[t.tipo] || t.tipo }}</span>
           <span class="chip" :class="{ erro: t.estado === 'falhou', ok: t.estado === 'concluida' }">{{ NOMES_ESTADO_TAREFA[t.estado] || t.estado }}</span>
@@ -294,7 +304,7 @@ onBeforeUnmount(() => {
       </ul>
       <p v-else-if="abaAtual === 'organizado' && traduzida" class="suave nota">Versão original, só para consulta. No Acervo entra a versão em português.</p>
       <p v-else-if="abaAtual === 'anterior'" class="suave nota">O texto antes de aprofundar a pesquisa, só para consulta.</p>
-      <template v-if="abaAtual !== 'historico'">
+      <template v-if="!semTexto(abaAtual)">
         <article ref="textoEl" class="texto" @click="detalhes.aoClicar" v-html="marcado.htmls[0]" />
         <CamadaDetalhes :detalhes="detalhes" :raizes="() => [textoEl]" :titulo="ref_.titulo" :sem-lugar="marcado.semLugar" />
       </template>
@@ -391,6 +401,21 @@ onBeforeUnmount(() => {
   color: var(--texto-suave);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.aba-do-menu {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.aba-do-menu .discreto {
+  border-color: transparent;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 0.88rem;
 }
 
 .abas button.ativa {

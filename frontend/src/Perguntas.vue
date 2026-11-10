@@ -9,6 +9,7 @@ import { renderizar } from './markdown.js'
 const props = defineProps({
   local: { type: String, required: true }, // temas/<pasta> ou referencias/<id>
   titulo: { type: String, default: '' },
+  embutido: { type: Boolean, default: false }, // numa aba da página, em vez de janela
 })
 const emit = defineEmits(['fechar'])
 
@@ -91,7 +92,7 @@ function quando(iso) {
 }
 
 function aoTeclar(ev) {
-  if (ev.key === 'Escape') emit('fechar')
+  if (ev.key === 'Escape' && !props.embutido) emit('fechar')
 }
 onMounted(() => {
   document.addEventListener('keydown', aoTeclar)
@@ -104,10 +105,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="veu" @click="emit('fechar')">
-      <div class="janela" role="dialog" aria-modal="true" aria-labelledby="titulo-perguntas" @click.stop>
-        <header>
+  <Teleport to="body" :disabled="embutido">
+    <div :class="embutido ? 'embutido' : 'veu'" @click="embutido || emit('fechar')">
+      <div class="janela" :role="embutido ? null : 'dialog'" :aria-modal="embutido ? null : 'true'" :aria-labelledby="embutido ? null : 'titulo-perguntas'" @click.stop>
+        <header v-if="!embutido">
           <h2 id="titulo-perguntas">Perguntar<span v-if="titulo" class="suave"> · {{ titulo }}</span></h2>
           <button type="button" class="botao icone" aria-label="Fechar" @click="emit('fechar')"><Icone nome="fechar" /></button>
         </header>
@@ -199,6 +200,16 @@ onBeforeUnmount(() => {
   border-radius: var(--raio-g) var(--raio-g) 0 0;
   background: var(--fundo);
   box-shadow: var(--sombra);
+}
+
+.embutido .janela {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
 }
 
 @media (min-width: 640px) {
