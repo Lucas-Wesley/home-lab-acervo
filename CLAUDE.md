@@ -7,7 +7,7 @@ o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
 **Comece lendo:**
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **a fonte da verdade do projeto.** Conceitos, fluxo
-  completo, decisões (D1–D38), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
+  completo, decisões (D1–D39), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
 
 ## Em uma frase
 Duas áreas: **Acervo** (base permanente por **Temas**, Markdown multi-arquivo, cumulativa) e
@@ -41,6 +41,9 @@ disponível pra inferência local (Whisper) quando precisar.
 - **Internet só em "Mais informações"** (D26), **em "Perguntar"** (D35, só leitura de uma cópia do texto) **e na escrita de uma pesquisa com "Sites"** (D27): as
   outras etapas continuam sem `WebSearch`/`WebFetch`. A coleta do Pesquisador (livros, Wikipédia,
   YouTube) é feita pelo servidor, sem a IA.
+- **Podcasts** (D39): o áudio vem do feed RSS aberto do podcast (o do Spotify é protegido), sem IA; a
+  transcrição é do Whisper large-v3 no Mac mini (`WHISPER_URL`), com o Whisper do servidor de reserva
+  (`WHISPER_RESERVA_URL`). Nos testes, servidores falsos (`podcast_test.go`): nada do Spotify, da Apple ou do Whisper de verdade.
 - **Artigos** (D34): o servidor lê a página sem IA (`artigo.go`), sem nada específico de um site;
   o que sobrar do site, a etapa de organizar tira (`regras/organizar-artigo.md`).
 - **Flashcards** (D28, D31): o Acervo só manda o texto (com o baralho escolhido e o link de cada capítulo) ao app Flashcards (`FLASHCARDS_URL`); a IA e as regras dos

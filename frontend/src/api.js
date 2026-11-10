@@ -76,7 +76,8 @@ export function nomeDoEstado(r) {
 export function situacao(ref) {
   const t = ref.tarefa
   if (!t) return ''
-  const nome = NOMES_TAREFA[t.tipo] || t.tipo
+  // Num podcast, extrair é baixar e transcrever o áudio: leva minutos (D39).
+  const nome = ref.tipo === 'podcast' && t.tipo === 'extrair' ? 'Transcrever o áudio' : NOMES_TAREFA[t.tipo] || t.tipo
   if (t.estado === 'rodando') return `${nome}…`
   if (t.estado === 'na_fila') return `${nome}: na fila${t.posicao > 1 ? ` (${t.posicao}ª)` : ''}`
   if (t.estado === 'em_revisao') return `${nome}: aguardando sua revisão`

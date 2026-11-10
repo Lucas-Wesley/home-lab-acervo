@@ -10,13 +10,14 @@ const link = ref('')
 const enviando = ref(false)
 const erro = ref('')
 const filtro = ref('todas')
-const novo = ref('') // 'video' ou 'artigo': o campo do link aberto pelo menu ⋯
+const novo = ref('') // 'video', 'podcast' ou 'artigo': o campo do link aberto pelo menu ⋯
 const menuAberto = ref(false)
 const campo = ref(null)
 
 // D34: as entradas novas ficam no menu ⋯, para a lista vir primeiro.
 const ENTRADAS = {
   video: { placeholder: 'Cole o link de um vídeo do YouTube', rotulo: 'Link do vídeo' },
+  podcast: { placeholder: 'Cole o link de um episódio do Spotify ou do Apple Podcasts', rotulo: 'Link do episódio' },
   artigo: { placeholder: 'Cole o link de um artigo, blog ou site', rotulo: 'Link da página' },
 }
 
@@ -98,6 +99,7 @@ onBeforeUnmount(() => {
         </button>
         <div v-if="menuAberto" class="painel-menu" role="menu">
           <button role="menuitem" @click="abrir('video')"><Icone nome="referencias" /> Link de vídeo</button>
+          <button role="menuitem" @click="abrir('podcast')"><Icone nome="podcast" /> Episódio de podcast</button>
           <button role="menuitem" @click="abrir('artigo')"><Icone nome="link" /> Link de artigo ou site</button>
           <hr />
           <a role="menuitem" href="#/pesquisar"><Icone nome="pesquisar" /> Pesquisar um tema</a>
@@ -118,7 +120,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-if="carregou && !visiveis.length" class="vazio">
-      {{ referencias.length ? 'Nada neste filtro.' : 'Nenhuma Referência ainda. No ⋯ acima, mande o link de um vídeo ou de um artigo, pesquise um tema ou resuma capítulos de um livro: tudo é organizado sozinho, na fila.' }}
+      {{ referencias.length ? 'Nada neste filtro.' : 'Nenhuma Referência ainda. No ⋯ acima, mande o link de um vídeo, de um podcast ou de um artigo, pesquise um tema ou resuma capítulos de um livro: tudo é organizado sozinho, na fila.' }}
     </div>
 
     <div v-if="visiveis.length" class="lista">
@@ -126,6 +128,7 @@ onBeforeUnmount(() => {
       <span v-if="r.tipo === 'pesquisa'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="pesquisar" /></span>
       <span v-else-if="r.tipo === 'livro'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="livro" /></span>
       <span v-else-if="r.tipo === 'artigo'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="link" /></span>
+      <span v-else-if="r.tipo === 'podcast'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="podcast" /></span>
       <img v-else :src="`https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`" alt="" class="miniatura" loading="lazy" />
       <div class="info">
         <strong>{{ r.titulo || r.url }}</strong>

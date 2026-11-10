@@ -24,7 +24,7 @@ onMounted(async () => {
   try {
     const r = await api('/api/referencias', { metodo: 'POST', corpo: { url: enviado } })
     estado.value = 'feito'
-    mensagem.value = r.tipo === 'artigo' ? 'Página enviada para a fila.' : 'Vídeo enviado para a fila.'
+    mensagem.value = { artigo: 'Página enviada para a fila.', podcast: 'Episódio enviado para a fila.' }[r.tipo] || 'Vídeo enviado para a fila.'
     abrir.value = `/#/referencia/${r.id}`
   } catch (e) {
     if (e.status === 409 && e.dados?.id) {

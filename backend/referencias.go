@@ -28,7 +28,7 @@ type referencia struct {
 	AtualizadoEm string          `json:"atualizado_em"`
 	Tarefa       *tarefaAtiva    `json:"tarefa"`
 	Temas        []string        `json:"temas"`
-	Tipo         string          `json:"tipo"`     // video, artigo (D34), pesquisa (D27) ou livro (D30)
+	Tipo         string          `json:"tipo"`     // video, artigo (D34), podcast (D39), pesquisa (D27) ou livro (D30)
 	Pesquisa     json.RawMessage `json:"pesquisa"` // o pedido, o esboço e a coleta; null num vídeo
 	Livro        json.RawMessage `json:"livro"`    // o livro e os capítulos escolhidos (D30); null nos outros
 }
@@ -141,8 +141,9 @@ func novoID() string {
 	return hex.EncodeToString(b)
 }
 
-// handleCriarReferencia: POST /api/referencias {url, tipo}. Um link do YouTube vira vídeo; qualquer
-// outro link de página vira artigo (D34). tipo "video" recusa o que não for do YouTube.
+// handleCriarReferencia: POST /api/referencias {url, tipo}. Um link do YouTube vira vídeo; um
+// episódio do Spotify ou do Apple Podcasts vira podcast (D39); qualquer outro link de página vira
+// artigo (D34). tipo "video" recusa o que não for do YouTube.
 func (a *app) handleCriarReferencia(w http.ResponseWriter, r *http.Request) {
 	var corpo struct {
 		URL  string `json:"url"`
@@ -155,6 +156,8 @@ func (a *app) handleCriarReferencia(w http.ResponseWriter, r *http.Request) {
 	var id, link, tipo, video string
 	if v, err := videoDoYouTube(corpo.URL); err == nil {
 		tipo, video, link = "video", v, "https://www.youtube.com/watch?v="+v
+	} else if p, err := episodioDoLink(corpo.URL); err == nil {
+		tipo, link = "podcast", p.URL
 	} else if corpo.Tipo == "video" {
 		erroJSON(w, http.StatusBadRequest, "Cole um link de vídeo do YouTube.")
 		return
@@ -168,12 +171,14 @@ func (a *app) handleCriarReferencia(w http.ResponseWriter, r *http.Request) {
 	if tipo == "video" {
 		a.db.QueryRowContext(ctx, `SELECT id FROM referencias WHERE video_id = ?`, video).Scan(&existente)
 	} else {
-		a.db.QueryRowContext(ctx, `SELECT id FROM referencias WHERE tipo = 'artigo' AND url = ?`, link).Scan(&existente)
+		a.db.QueryRowContext(ctx, `SELECT id FROM referencias WHERE tipo = ? AND url = ?`, tipo, link).Scan(&existente)
 	}
 	if existente != "" {
 		msg := "Este vídeo já está nas Referências."
 		if tipo == "artigo" {
 			msg = "Esta página já está nas Referências."
+		} else if tipo == "podcast" {
+			msg = "Este episódio já está nas Referências."
 		}
 		writeJSON(w, http.StatusConflict, map[string]string{"erro": msg, "id": existente})
 		return

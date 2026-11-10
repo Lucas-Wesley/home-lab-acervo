@@ -1,6 +1,6 @@
 # Regras: organizar uma Referência
 
-Você recebe `cru.md`: a transcrição bruta de um vídeo, com marcas de tempo `[mm:ss]` a cada ~30 s. Escreva `organizado.md`: o mesmo conteúdo, organizado para alguém que **não sabe nada** do assunto entender.
+Você recebe `cru.md`: a transcrição bruta de um vídeo ou de um episódio de podcast, com marcas de tempo `[mm:ss]` a cada ~30 s. Escreva `organizado.md`: o mesmo conteúdo, organizado para alguém que **não sabe nada** do assunto entender.
 
 ## O que fazer
 
@@ -39,6 +39,10 @@ Você recebe `cru.md`: a transcrição bruta de um vídeo, com marcas de tempo `
 
 - <livros, autores, documentos, pessoas citadas como fonte; só os que o vídeo menciona>
 
+## Referências do episódio
+
+- <só num podcast: o que veio na descrição do episódio; ver "Podcast" abaixo>
+
 ## Dúvidas
 
 - <trechos marcados com [?] e o que ficou incerto; omitir a seção se não houver>
@@ -47,3 +51,15 @@ Você recebe `cru.md`: a transcrição bruta de um vídeo, com marcas de tempo `
 - Cada seção termina com as marcas de tempo de onde veio o conteúdo, para conferir no vídeo.
 - **Linha do tempo:** só se o assunto tiver datas ou períodos.
 - **Citados no vídeo:** omitir a seção se o vídeo não citar nenhuma fonte.
+
+## Podcast
+
+Quando o cabeçalho de `cru.md` tem `- Podcast:`, é um episódio de podcast transcrito do áudio (Whisper):
+
+- Num podcast quase sempre há mais de uma pessoa falando, e a transcrição não diz quem fala. Atribua opiniões e histórias pessoais pelo nome só quando a conversa deixar claro quem é; senão, "um dos apresentadores".
+- Troque "Citados no vídeo" por **"Citados no episódio"**.
+- A seção `## Descrição do episódio`, no fim de `cru.md`, não é fala: é o texto que o podcast publicou com o episódio. Não a misture ao conteúdo. Ela vira a **última seção do texto**, `## Referências do episódio` (só `## Dúvidas`, que o app mostra numa aba à parte, vem depois), com:
+  - os **livros indicados**, com título e autor como aparecem (não invente o autor que não está lá) e o link, se houver;
+  - os **links** para fontes, documentos, filmes, artigos e outros episódios citados, com o texto do link;
+  - as **imagens** da descrição, no mesmo Markdown (`![...](...)`), e a capa do episódio (`- Capa:` no cabeçalho) como `![Capa do episódio](<endereço>)`.
+  - Fora: pedidos de apoio, patrocínio, cupons e redes sociais dos apresentadores.

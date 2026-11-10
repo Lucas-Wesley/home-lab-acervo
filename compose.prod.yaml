@@ -8,6 +8,10 @@ services:
       # Pesquisador (D27): a busca nos livros, pela rede interna do Docker.
       BIBLIOTECA_URL: http://biblioteca:8080
       FLASHCARDS_URL: http://flashcards:8080
+      # Podcasts (D39): o Whisper large-v3 no Mac mini (homelab/whisper-mac) e, com o Mac fora,
+      # o Whisper do servidor com o large-v3-turbo.
+      WHISPER_URL: http://192.168.1.160:8000
+      WHISPER_RESERVA_URL: http://whisper:8000
     networks:
       - proxy
 

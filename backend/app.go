@@ -27,6 +27,13 @@ type config struct {
 	flashcards     string
 	flashcardsLink string
 	acervoLink     string
+	// Podcasts (D39): de onde vêm o episódio e o feed, e quem transcreve o áudio (o Whisper do Mac
+	// mini; com o Mac fora, o do servidor).
+	spotify        string
+	itunes         string
+	whisper        string
+	whisperReserva string
+	ffmpeg         string
 }
 
 func configDoAmbiente(dados string) config {
@@ -47,6 +54,12 @@ func configDoAmbiente(dados string) config {
 		flashcards:     strings.TrimSuffix(os.Getenv("FLASHCARDS_URL"), "/"),
 		flashcardsLink: strings.TrimSuffix(env("FLASHCARDS_LINK", "https://192.168.1.20:8445"), "/"),
 		acervoLink:     strings.TrimSuffix(env("ACERVO_LINK", "https://192.168.1.20:8444"), "/"),
+
+		spotify:        strings.TrimSuffix(env("SPOTIFY_URL", "https://open.spotify.com"), "/"),
+		itunes:         strings.TrimSuffix(env("ITUNES_URL", "https://itunes.apple.com"), "/"),
+		whisper:        strings.TrimSuffix(os.Getenv("WHISPER_URL"), "/"),
+		whisperReserva: strings.TrimSuffix(os.Getenv("WHISPER_RESERVA_URL"), "/"),
+		ffmpeg:         env("FFMPEG_BIN", "ffmpeg"),
 	}
 }
 
