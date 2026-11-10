@@ -62,7 +62,7 @@ onMounted(carregar)
 
 <template>
   <div class="pagina">
-    <a href="#/ajustes" class="voltar"><Icone nome="voltar" /> Ajustes</a>
+    <a href="#/ajustes/instrucoes" class="voltar"><Icone nome="voltar" /> Instruções da IA</a>
     <div v-if="erro" class="aviso erro">{{ erro }}</div>
 
     <template v-if="instrucao">

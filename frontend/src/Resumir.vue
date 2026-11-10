@@ -497,8 +497,13 @@ onMounted(() => {
   display: grid;
 }
 
+/* Rótulo de campo, não título de seção. */
 .foco .rotulo {
-  margin-top: 20px;
+  margin: 20px 0 8px;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .opcional {

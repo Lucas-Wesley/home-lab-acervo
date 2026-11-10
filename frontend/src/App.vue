@@ -156,7 +156,7 @@ onBeforeUnmount(() => {
       <Pesquisar v-else-if="rota.nome === 'pesquisar'" />
       <Fila v-else-if="rota.nome === 'fila'" />
       <Instrucao v-else-if="rota.nome === 'ajustes' && rota.param.startsWith('instrucoes/')" :key="rota.param" :arquivo="rota.param.slice('instrucoes/'.length)" />
-      <Ajustes v-else-if="rota.nome === 'ajustes'" :tela="telaAnterior" />
+      <Ajustes v-else-if="rota.nome === 'ajustes'" :tela="telaAnterior" :secao="rota.param" />
       <Revisoes v-else-if="rota.nome === 'revisoes' || rota.nome === 'revisao'" :key="rota.param" :id="rota.param" />
       <Acervo v-else :so-baixados="rota.nome === 'baixados'" />
     </main>

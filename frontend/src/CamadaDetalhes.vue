@@ -278,9 +278,11 @@ onBeforeUnmount(() => {
 }
 
 .rotulo {
+  margin: 0;
   color: var(--texto-fraco);
   font-size: 0.8rem;
   font-weight: 600;
+  letter-spacing: 0;
 }
 
 .modal-detalhe h2 {

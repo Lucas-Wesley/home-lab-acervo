@@ -240,6 +240,10 @@ test('Ajustes: anota uma sugestão e edita a instrução que o Claude segue', as
   await page.goto('/#/fila')
   await page.getByRole('button', { name: 'Ajustes' }).click()
   await expect(page.getByRole('heading', { name: 'Ajustes' })).toBeVisible()
+  // A primeira tela só lista as seções (em níveis, design system).
+  await expect(page.getByLabel('Sugestão de melhoria')).toHaveCount(0)
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/ajustes.png` })
+  await page.getByRole('link', { name: /Sugestões de melhoria/ }).click()
 
   // Sugestão: vai com a tela de onde se veio.
   await page.getByLabel('Sugestão de melhoria').fill('Mostrar o tempo de cada tarefa na fila')
@@ -249,6 +253,9 @@ test('Ajustes: anota uma sugestão e edita a instrução que o Claude segue', as
   expect(sugestao.tela).toBe('#/fila')
 
   // Instrução: abre o texto em vigor, edita e volta ao padrão.
+  await page.getByRole('link', { name: 'Ajustes' }).first().click()
+  await page.getByRole('link', { name: /Instruções da IA/ }).click()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/instrucoes.png` })
   await page.getByRole('link', { name: /Organizar a transcrição/ }).click()
   await expect(page.locator('article.texto')).toContainText('Remover o que não é conteúdo')
   await expect(page.getByText('Texto original')).toBeVisible()
@@ -259,8 +266,8 @@ test('Ajustes: anota uma sugestão e edita a instrução que o Claude segue', as
   await expect(page.getByText(/Editada em/)).toBeVisible()
   await expect(page.locator('article.texto')).toContainText('Nunca usar a palavra')
 
-  await page.getByRole('link', { name: 'Ajustes' }).first().click()
-  await expect(page.locator('.instrucao', { hasText: 'Organizar a transcrição' })).toContainText('Editada')
+  await page.getByRole('link', { name: 'Instruções da IA' }).first().click()
+  await expect(page.getByRole('link', { name: /Organizar a transcrição/ })).toContainText('Editada')
   await page.getByRole('link', { name: /Organizar a transcrição/ }).click()
   page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Voltar ao padrão' }).click()
@@ -321,7 +328,7 @@ test('Mais informações: seleciona um trecho, a IA pesquisa e o trecho vira lin
   await expect(page.getByRole('link', { name: '“Tordesilhas”' }).first()).toHaveAttribute('href', '#/ler/temas/tema-de-teste/indice.md')
 
   // A instrução nova aparece em Ajustes.
-  await page.goto('/#/ajustes')
+  await page.goto('/#/ajustes/instrucoes')
   await expect(page.getByRole('link', { name: /Mais informações/ })).toBeVisible()
 
   await page.goto('/#/ler/temas/tema-de-teste/indice.md')
