@@ -71,10 +71,12 @@ func (a *app) extrair(ctx context.Context, t *tarefa, ref *referencia) (resultad
 	if err := os.MkdirAll(pasta, 0o755); err != nil {
 		return pronto, err
 	}
-	if ref.Tipo == "artigo" || ref.Tipo == "podcast" {
+	if ref.Tipo == "artigo" || ref.Tipo == "podcast" || ref.Tipo == "reel" {
 		extrair := a.extrairPagina
 		if ref.Tipo == "podcast" {
 			extrair = a.extrairPodcast
+		} else if ref.Tipo == "reel" {
+			extrair = a.extrairReel
 		}
 		if err := extrair(ctx, ref, pasta); err != nil {
 			return pronto, err

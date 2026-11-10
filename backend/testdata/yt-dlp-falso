@@ -3,6 +3,18 @@
 #   AAAAAAAAAAA português com legenda manual · EEEEEEEEEEE inglês só com legenda automática
 #   SSSSSSSSSSS sem legenda · FFFFFFFFFFF vídeo indisponível
 url="${!#}"
+# Reel do Instagram (D40): LOGIN... pede login; os outros baixam um vídeo de 10 s com som e o info.json.
+case "$url" in
+  *instagram.com/reel/*)
+    [ -n "$YTDLP_FALSO_ARGS" ] && printf '%s\n' "$*" >> "$YTDLP_FALSO_ARGS"
+    id="${url%/}"; id="${id##*/}"
+    case "$id" in LOGIN*) echo "ERROR: [Instagram] $id: Requested content is not available, rate-limit reached or login required. Use --cookies" >&2; exit 1 ;; esac
+    out=""; while [ $# -gt 0 ]; do [ "$1" = -o ] && out="$2"; shift; done
+    base="${out%.%(ext)s}"
+    ffmpeg -v error -f lavfi -i testsrc=duration=10:size=320x240:rate=10 -f lavfi -i sine=duration=10 -shortest -pix_fmt yuv420p "$base.mp4" || exit 1
+    printf '{"id":"%s","title":"Video by conta","channel":"conta","uploader":"Conta de Teste","description":"Três dicas de estudo\\n\\nMais na legenda. #estudo","duration":10.0,"upload_date":"20260301","webpage_url":"%s"}\n' "$id" "$url" > "$base.info.json"
+    exit 0 ;;
+esac
 # Busca de vídeos (Pesquisador): um curto demais, um com legenda e um sem legenda.
 case "$url" in
   ytsearch*)

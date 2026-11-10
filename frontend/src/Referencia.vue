@@ -225,7 +225,7 @@ onBeforeUnmount(() => {
         </div>
         <div v-else class="suave meta">
           {{ [ref_.canal, ref_.duracao, ref_.idioma && `idioma: ${ref_.idioma}`].filter(Boolean).join(' · ') }}
-          · <a :href="ref_.url" target="_blank" rel="noopener">{{ { artigo: 'abrir a página', podcast: ref_.url.includes('spotify') ? 'ouvir no Spotify' : 'ouvir no Apple Podcasts' }[ref_.tipo] || 'abrir no YouTube' }}</a>
+          · <a :href="ref_.url" target="_blank" rel="noopener">{{ { artigo: 'abrir a página', reel: 'abrir no Instagram', podcast: ref_.url.includes('spotify') ? 'ouvir no Spotify' : 'ouvir no Apple Podcasts' }[ref_.tipo] || 'abrir no YouTube' }}</a>
         </div>
         <div class="linha-acoes estado">
           <span class="chip" :class="{ erro: ref_.estado === 'erro', ok: ref_.estado === 'integrado' }">{{ nomeDoEstado(ref_) }}</span>

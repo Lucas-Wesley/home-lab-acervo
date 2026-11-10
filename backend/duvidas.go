@@ -300,7 +300,7 @@ func (a *app) handleResolverDuvidas(w http.ResponseWriter, r *http.Request) {
 func (a *app) trechoDeAudio(ctx context.Context, ref *referencia, pasta string, n int, inicio, fim float64) (string, error) {
 	base := filepath.Join(pasta, fmt.Sprintf("trecho-%02d", n))
 	switch ref.Tipo {
-	case "video":
+	case "video", "reel":
 		secao := fmt.Sprintf("*%.0f-%.0f", inicio, fim)
 		if _, err := a.ytdlp(ctx, "-q", "--no-playlist", "-f", "bestaudio/best", "--download-sections", secao, "-o", base+".%(ext)s", ref.URL); err != nil {
 			return "", err
@@ -347,7 +347,7 @@ func (a *app) resolverDuvidas(ctx context.Context, t *tarefa, ref *referencia) (
 	pastaRef := a.pastaReferencia(ref.ID)
 	cru, _ := os.ReadFile(filepath.Join(pastaRef, "cru.md"))
 	blocos := blocosDoCru(string(cru))
-	temAudio := (ref.Tipo == "video" || ref.Tipo == "podcast") && (a.cfg.whisper != "" || a.cfg.whisperReserva != "")
+	temAudio := (ref.Tipo == "video" || ref.Tipo == "podcast" || ref.Tipo == "reel") && (a.cfg.whisper != "" || a.cfg.whisperReserva != "")
 
 	tmp, err := os.MkdirTemp("", "duvidas-")
 	if err != nil {

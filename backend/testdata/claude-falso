@@ -13,6 +13,10 @@ done
 ok() { printf '{"type":"result","result":"%s","is_error":false}\n' "${1:-ok}"; }
 pasta() { printf '%s' "$prompt" | sed -n 's/.*pasta \([^ ]*\)\/ (caminho.*/\1/p' | head -1; }
 case "$prompt" in
+  *"escreva tela.md nesta pasta"*)
+    { for q in quadros/*.jpg; do n=$(basename "$q" .jpg); printf '[%s] Texto na tela: "quadro %s".\n\n' "${n/-/:}" "$n"; done
+      grep -q 'Três dicas de estudo' contexto.md && printf 'Leu o contexto.\n'; } > tela.md
+    ok ;;
   *"Monte o esboço da pesquisa"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
     printf '{"type":"result","result":"","is_error":false,"structured_output":{"titulo":"A origem da laranja","perguntas":[{"pergunta":"De onde vem a laranja?","livros":"laranja Ásia","wikipedia":"Laranja (fruta)","youtube":"origem da laranja"},{"pergunta":"Como chegou ao Brasil?","livros":"","wikipedia":"Citricultura no Brasil","youtube":"laranja no Brasil"},{"pergunta":"   ","livros":"x","wikipedia":"x","youtube":"x"}],"relacionados":["temas/laranja","temas/nao-existe"]}}\n' ;;

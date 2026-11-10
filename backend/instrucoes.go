@@ -26,6 +26,7 @@ type instrucao struct {
 var instrucoes = []instrucao{
 	{Arquivo: "organizar.md", Nome: "Organizar a transcrição", Descricao: "Transforma a transcrição bruta num texto organizado: tira propaganda e conversa, junta cada assunto num lugar e mantém tudo o que é conteúdo."},
 	{Arquivo: "organizar-artigo.md", Nome: "Organizar um artigo", Descricao: "Faz o mesmo com o texto de uma página da web (artigo, blog): tira o que é do site e não do artigo e mantém tudo o que é conteúdo."},
+	{Arquivo: "ver-quadros.md", Nome: "Ler a tela de um Reel", Descricao: "Olha os quadros de um Reel do Instagram e escreve o que aparece na tela e não está na fala: texto sobreposto, listas, código, o que é mostrado."},
 	{Arquivo: "traduzir.md", Nome: "Traduzir", Descricao: "Passa o texto organizado para o português, quando o vídeo ou o artigo é em outra língua."},
 	{Arquivo: "sugerir.md", Nome: "Sugerir o Tema", Descricao: "Propõe em qual Tema a Referência entra, ou se ela vira um Tema novo."},
 	{Arquivo: "criar-tema.md", Nome: "Criar um Tema", Descricao: "Escreve a página de um Tema novo a partir da Referência."},

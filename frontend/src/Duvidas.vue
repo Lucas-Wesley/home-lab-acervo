@@ -25,7 +25,7 @@ const pedindo = ref(false)
 const recados = ref({}) // texto da dúvida → recado depois de uma ação
 let espera = null
 
-const temAudio = computed(() => ['video', 'podcast'].includes(props.referencia.tipo))
+const temAudio = computed(() => ['video', 'podcast', 'reel'].includes(props.referencia.tipo))
 const itens = computed(() => {
   const porTexto = Object.fromEntries(resolvidas.value.map((d) => [d.texto, d]))
   return listaDeDuvidas(props.texto).map((texto) => ({ texto, d: porTexto[texto] }))

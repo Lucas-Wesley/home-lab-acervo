@@ -34,6 +34,8 @@ type config struct {
 	whisper        string
 	whisperReserva string
 	ffmpeg         string
+	// Reels (D40): os cookies da conta secundária do Instagram, quando ele pede login.
+	instagramCookies string
 }
 
 func configDoAmbiente(dados string) config {
@@ -60,6 +62,8 @@ func configDoAmbiente(dados string) config {
 		whisper:        strings.TrimSuffix(os.Getenv("WHISPER_URL"), "/"),
 		whisperReserva: strings.TrimSuffix(os.Getenv("WHISPER_RESERVA_URL"), "/"),
 		ffmpeg:         env("FFMPEG_BIN", "ffmpeg"),
+
+		instagramCookies: env("INSTAGRAM_COOKIES", filepath.Join(absoluto(dados), "instagram-cookies.txt")),
 	}
 }
 

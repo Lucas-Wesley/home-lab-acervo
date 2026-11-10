@@ -125,7 +125,12 @@ func idiomaBase(l string) string {
 }
 
 func (a *app) ytdlp(ctx context.Context, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, a.cfg.ytdlp, append(append([]string{}, a.cfg.ytdlpExtra...), args...)...)
+	extra := append([]string{}, a.cfg.ytdlpExtra...)
+	// Reel (D40): com os cookies da conta secundária, se estiverem no servidor.
+	if cookies := a.cookiesDoInstagram(); cookies != "" && len(args) > 0 && ehDoInstagram(args[len(args)-1]) {
+		extra = append(extra, "--cookies", cookies)
+	}
+	cmd := exec.CommandContext(ctx, a.cfg.ytdlp, append(extra, args...)...)
 	var saida, erros bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &saida, &erros
 	if err := cmd.Run(); err != nil {

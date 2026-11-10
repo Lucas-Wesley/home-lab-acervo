@@ -1,13 +1,13 @@
 # Acervo
 
 App do **ecossistema de apps pessoais do Lucas**. Gerenciador de conhecimento: transforma conteúdos
-(vídeos do YouTube, artigos e páginas da web, pesquisas e capítulos de livros) numa **base de conhecimento permanente, organizada,
+(vídeos do YouTube, Reels do Instagram, podcasts, artigos e páginas da web, pesquisas e capítulos de livros) numa **base de conhecimento permanente, organizada,
 verificada, cronológica e versionada**. **Não é um "resumidor de vídeo"** — o vídeo é matéria-prima;
 o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
 **Comece lendo:**
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **a fonte da verdade do projeto.** Conceitos, fluxo
-  completo, decisões (D1–D39), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
+  completo, decisões (D1–D40), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
 
 ## Em uma frase
 Duas áreas: **Acervo** (base permanente por **Temas**, Markdown multi-arquivo, cumulativa) e
@@ -44,6 +44,9 @@ disponível pra inferência local (Whisper) quando precisar.
 - **Podcasts** (D39): o áudio vem do feed RSS aberto do podcast (o do Spotify é protegido), sem IA; a
   transcrição é do Whisper large-v3 no Mac mini (`WHISPER_URL`), com o Whisper do servidor de reserva
   (`WHISPER_RESERVA_URL`). Nos testes, servidores falsos (`podcast_test.go`): nada do Spotify, da Apple ou do Whisper de verdade.
+- **Reels do Instagram** (D40): yt-dlp (público sem login; com os cookies da conta secundária em
+  `DATA_DIR/instagram-cookies.txt` quando o Instagram pede, ver `docs/INSTAGRAM.md`), Whisper para a fala
+  e o Claude lendo os quadros do ffmpeg (`regras/ver-quadros.md`). Nos testes, o `yt-dlp-falso` gera o vídeo com o ffmpeg.
 - **Artigos** (D34): o servidor lê a página sem IA (`artigo.go`), sem nada específico de um site;
   o que sobrar do site, a etapa de organizar tira (`regras/organizar-artigo.md`).
 - **Flashcards** (D28, D31): o Acervo só manda o texto (com o baralho escolhido e o link de cada capítulo) ao app Flashcards (`FLASHCARDS_URL`); a IA e as regras dos

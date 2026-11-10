@@ -400,6 +400,10 @@ func limparLinhas(s string) string {
 type trechoFalado struct {
 	Inicio float64
 	Texto  string
+	Idioma string // o que o Whisper reconheceu, ex.: "pt" (no Reel, D40, o idioma não é conhecido antes)
+	// SemFala: o Whisper acha que ali não há fala (no_speech_prob alto) ou repetiu demais
+	// (compression_ratio alto). Sobre música, ele inventa texto assim; o Reel descarta esses trechos.
+	SemFala bool
 }
 
 // extrairPodcast é a etapa "extrair" de um podcast: acha, baixa, transcreve e grava cru.md.
@@ -508,7 +512,7 @@ func (a *app) transcreverAudio(ctx context.Context, audio, pasta, idioma, prompt
 		}
 	}
 	if len(trechos) == 0 {
-		return nil, "", 0, errors.New("A transcrição voltou vazia: o áudio pode estar sem fala.")
+		return nil, "", 0, errSemFala
 	}
 	return trechos, quem, len(pedacos), nil
 }
@@ -535,7 +539,10 @@ func (a *app) transcrever(ctx context.Context, arquivo, idioma, prompt string) (
 	return ts, "Whisper large-v3-turbo (servidor)", err
 }
 
-var errServicoFora = errors.New("serviço de transcrição fora do ar")
+var (
+	errServicoFora = errors.New("serviço de transcrição fora do ar")
+	errSemFala     = errors.New("A transcrição voltou vazia: o áudio pode estar sem fala.")
+)
 
 // noAr: o Mac desligado não responde, e a conexão poderia ficar pendurada; pergunta antes, rápido.
 func (a *app) noAr(ctx context.Context, base string) bool {
@@ -592,9 +599,12 @@ func (a *app) pedirTranscricao(ctx context.Context, base, modelo, arquivo, idiom
 		return nil, fmt.Errorf("o Whisper respondeu %d: %s", res.StatusCode, cortar(string(b), 200, false))
 	}
 	var r struct {
+		Idioma    string `json:"language"`
 		Segmentos []struct {
-			Inicio float64 `json:"start"`
-			Texto  string  `json:"text"`
+			Inicio     float64 `json:"start"`
+			Texto      string  `json:"text"`
+			SemFala    float64 `json:"no_speech_prob"`
+			Compressao float64 `json:"compression_ratio"`
 		} `json:"segments"`
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
@@ -603,7 +613,7 @@ func (a *app) pedirTranscricao(ctx context.Context, base, modelo, arquivo, idiom
 	var ts []trechoFalado
 	for _, s := range r.Segmentos {
 		if t := strings.TrimSpace(s.Texto); t != "" {
-			ts = append(ts, trechoFalado{Inicio: s.Inicio, Texto: t})
+			ts = append(ts, trechoFalado{Inicio: s.Inicio, Texto: t, Idioma: r.Idioma, SemFala: s.SemFala >= 0.5 || s.Compressao > 2.4})
 		}
 	}
 	return ts, nil

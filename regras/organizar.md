@@ -1,6 +1,6 @@
 # Regras: organizar uma Referência
 
-Você recebe `cru.md`: a transcrição bruta de um vídeo ou de um episódio de podcast, com marcas de tempo `[mm:ss]` a cada ~30 s. Escreva `organizado.md`: o mesmo conteúdo, organizado para alguém que **não sabe nada** do assunto entender.
+Você recebe `cru.md`: a transcrição bruta de um vídeo, de um episódio de podcast ou de um Reel do Instagram, com marcas de tempo `[mm:ss]` a cada ~30 s. Escreva `organizado.md`: o mesmo conteúdo, organizado para alguém que **não sabe nada** do assunto entender.
 
 ## O que fazer
 
@@ -64,3 +64,13 @@ Quando o cabeçalho de `cru.md` tem `- Podcast:`, é um episódio de podcast tra
   - os **links** para fontes, documentos, filmes, artigos e outros episódios citados, com o texto do link;
   - as **imagens** da descrição, no mesmo Markdown (`![...](...)`), e a capa do episódio (`- Capa:` no cabeçalho) como `![Capa do episódio](<endereço>)`.
   - Fora: pedidos de apoio, patrocínio, cupons e redes sociais dos apresentadores.
+
+## Reel do Instagram
+
+Quando o cabeçalho de `cru.md` tem `- Reel:`, é um vídeo curto do Instagram. O `cru.md` tem três partes, e o texto organizado junta as três num conteúdo só:
+
+- `## Fala`: o que é dito, transcrito do áudio (Whisper). Pode não haver fala (só música). Se houver música com letra, ou frases soltas sem relação com o resto, é ruído da transcrição: fica de fora.
+- `## Na tela`: o que aparece no vídeo e não está na fala (texto sobreposto, listas, código, o que é mostrado), lido dos quadros, com a marca `[mm:ss]` de cada um. **É conteúdo como a fala**: entra no texto, no lugar do assunto a que pertence. Um texto copiado da tela continua entre aspas quando a forma exata importa (código, nome, citação).
+- `## Legenda do post`: o texto que o autor publicou com o Reel. O que nela for conteúdo (uma explicação, uma lista, a fonte de um dado) entra no texto; hashtags, pedidos de seguir/salvar/comentar, "link na bio" e marcações de contas ficam de fora. Livros, links e fontes citados vão para **"Citados no Reel"** (no lugar de "Citados no vídeo").
+
+Um Reel é curto: o texto organizado também é, e pode ter uma seção só. As marcas `[mm:ss]` no fim das seções valem para a fala e para a tela.
