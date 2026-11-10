@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import CamadaDetalhes from './CamadaDetalhes.vue'
 import EnviarFlashcards from './EnviarFlashcards.vue'
+import Estudar from './Estudar.vue'
 import Perguntas from './Perguntas.vue'
 import Icone from './Icone.vue'
 import { api } from './api.js'
@@ -19,6 +20,7 @@ const capituloPedido = opcao.startsWith('capitulo=') ? opcao.slice('capitulo='.l
 const arquivo = ref(null)
 const erro = ref('')
 const modo = ref(opcao === 'editar' ? 'editar' : 'ler')
+const abaTema = ref(opcao === 'estudar' ? 'estudar' : 'ler') // D41: na página do Tema, Ler ou Estudar
 const texto = ref('')
 const base = ref('')
 const capituloEditado = ref(null) // editando só um capítulo da página
@@ -75,6 +77,7 @@ const vizinhos = computed(() => {
   return { anterior: caps[i - 1], proximo: caps[i + 1] }
 })
 const temaBaixado = computed(() => marcaBaixados.value >= 0 && !!arquivo.value?.tema && estaBaixado(arquivo.value.tema))
+const temAbas = computed(() => eIndice.value && !!arquivo.value?.tema && modo.value === 'ler')
 const temaRaiz = computed(() => arquivo.value?.migalhas?.[0])
 const tituloDoTema = computed(() => arquivo.value?.migalhas?.find((m) => m.caminho === arquivo.value.tema)?.titulo || tituloAtual.value)
 
@@ -227,6 +230,18 @@ function gerarFlashcards(capitulo) {
     titulo: capitulo ? `do capítulo “${capitulo}”` : eIndice.value ? 'do Tema inteiro' : 'deste capítulo',
     aviso: antes ? `Já foi enviado em ${quando(antes.criado_em)}. No mesmo baralho, os cartões de mesma pergunta são atualizados, não repetidos.` : '',
   }
+}
+
+// "?estudar" no endereço: recarregar (ou o link de uma tarefa da fila) volta para a aba.
+function trocarAba(aba) {
+  abaTema.value = aba
+  trocarEndereco(aba === 'estudar' ? `#/ler/${caminhoArquivo}?estudar` : `#/ler/${caminhoArquivo}`)
+  window.scrollTo(0, 0)
+}
+
+// Flashcards pedidos na aba Estudar: do Tema, dos conceitos anteriores ou do que se errou.
+function flashcardsDoEstudo({ origem, titulo }) {
+  envioAberto.value = { origem, titulo, aviso: '' }
 }
 
 function flashcardsEnviados(e) {
@@ -488,6 +503,11 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <a v-if="linkDosCartoes" :href="linkDosCartoes" target="_blank" rel="noopener">Abrir no Flashcards</a>
       </div>
 
+      <nav v-if="temAbas && !conflito" class="abas" aria-label="Ler ou estudar">
+        <button :class="{ ativa: abaTema === 'ler' }" @click="trocarAba('ler')">Ler</button>
+        <button :class="{ ativa: abaTema === 'estudar' }" @click="trocarAba('estudar')">Estudar</button>
+      </nav>
+
       <section v-if="conflito" class="conflito">
         <div class="aviso erro">Este arquivo mudou no servidor depois da sua edição. Escolha qual versão fica.</div>
         <div class="versoes">
@@ -518,6 +538,12 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <article v-if="previa" class="texto" v-html="previaHtml" />
         <textarea v-else ref="editor" v-model="texto" class="editor" spellcheck="true" @keydown="aoTeclar" />
         <p class="suave dica">Markdown: <code>## Capítulo</code>, <code>### Seção</code>, <code>**negrito**</code>, <code>[texto](arquivo.md)</code>. Cmd/Ctrl+S salva.</p>
+      </template>
+
+      <template v-else-if="arquivo && temAbas && abaTema === 'estudar'">
+        <h1 class="titulo-estudar">{{ tituloDoTema }}</h1>
+        <Estudar :tema="arquivo.tema" :titulo="tituloDoTema" :flashcards="flashcards.disponivel" @flashcards="flashcardsDoEstudo" />
+        <EnviarFlashcards v-if="envioAberto" v-bind="envioAberto" @fechar="envioAberto = null" @enviado="flashcardsEnviados" />
       </template>
 
       <template v-else-if="arquivo">
@@ -724,6 +750,36 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
 
 .vizinhos .proximo {
   text-align: right;
+}
+
+.abas {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 20px;
+  border-bottom: 1px solid var(--linha);
+}
+
+.abas button {
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--texto-suave);
+  font: inherit;
+  cursor: pointer;
+}
+
+.abas button.ativa {
+  border-bottom-color: var(--destaque);
+  color: var(--texto);
+  font-weight: 600;
+}
+
+.titulo-estudar {
+  margin: 0 0 12px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.022em;
 }
 
 .rodape-tema {

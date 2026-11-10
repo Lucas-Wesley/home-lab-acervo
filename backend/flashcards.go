@@ -390,11 +390,24 @@ type origemDosCartoes struct {
 	Arquivo    string `json:"arquivo"`
 	Capitulo   string `json:"capitulo"`
 	Referencia string `json:"referencia"`
+	Estudo     string `json:"estudo"` // D41: o Tema; com Parte = anteriores ou simulado:<id>
+	Parte      string `json:"parte"`
 }
 
 // texto monta o texto da origem; em caso de erro, já respondeu.
 func (a *app) texto(w http.ResponseWriter, r *http.Request, o origemDosCartoes) (string, textoParaCartoes, bool) {
 	ctx := r.Context()
+	if o.Estudo != "" {
+		alvo, t, err := a.textoDoEstudo(ctx, strings.TrimSuffix(o.Estudo, "/"), o.Parte)
+		if errors.Is(err, errNaoEncontrado) {
+			erroJSON(w, http.StatusNotFound, "Texto não encontrado.")
+			return "", t, false
+		} else if err != nil {
+			erroJSON(w, http.StatusConflict, err.Error())
+			return "", t, false
+		}
+		return alvo, t, true
+	}
 	if o.Referencia != "" {
 		ref, err := a.referencia(ctx, o.Referencia)
 		if err != nil {
@@ -448,12 +461,13 @@ func (a *app) handleEnviarFlashcards(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, e)
 }
 
-// handleBaralhosDoFlashcards: GET /api/flashcards/baralhos?arquivo=&capitulo= (ou ?referencia=) —
+// handleBaralhosDoFlashcards: GET /api/flashcards/baralhos?arquivo=&capitulo= (ou ?referencia=, ou ?estudo=&parte=) —
 // os baralhos que existem lá, para escolher, e o nome sugerido para um novo (o do Tema principal).
 func (a *app) handleBaralhosDoFlashcards(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	sugestao := ""
-	if o := (origemDosCartoes{Arquivo: q.Get("arquivo"), Capitulo: q.Get("capitulo"), Referencia: q.Get("referencia")}); o.Arquivo != "" || o.Referencia != "" {
+	o := origemDosCartoes{Arquivo: q.Get("arquivo"), Capitulo: q.Get("capitulo"), Referencia: q.Get("referencia"), Estudo: q.Get("estudo"), Parte: q.Get("parte")}
+	if o.Arquivo != "" || o.Referencia != "" || o.Estudo != "" {
 		_, t, ok := a.texto(w, r, o)
 		if !ok {
 			return

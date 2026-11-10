@@ -14,17 +14,19 @@ import (
 
 func (a *app) executores() map[string]executor {
 	return map[string]executor{
-		"extrair":          a.naReferencia(a.extrair, true),
-		"organizar":        a.naReferencia(a.organizar, true),
-		"traduzir":         a.naReferencia(a.traduzir, true),
-		"sugerir":          a.naReferencia(a.sugerir, false),
-		"criar_tema":       a.naReferencia(a.criarTema, false),
-		"integrar":         a.naReferencia(a.integrar, false),
-		"detalhar":         a.detalhar,
-		"perguntar":        a.perguntar,                              // D35
-		"integrar_texto":   a.integrarTexto,                          // D36
-		"resolver_duvidas": a.naReferencia(a.resolverDuvidas, false), // D37
-		"marcar_livro":     a.marcarLivro,                            // D38
+		"extrair":           a.naReferencia(a.extrair, true),
+		"organizar":         a.naReferencia(a.organizar, true),
+		"traduzir":          a.naReferencia(a.traduzir, true),
+		"sugerir":           a.naReferencia(a.sugerir, false),
+		"criar_tema":        a.naReferencia(a.criarTema, false),
+		"integrar":          a.naReferencia(a.integrar, false),
+		"detalhar":          a.detalhar,
+		"perguntar":         a.perguntar,                              // D35
+		"integrar_texto":    a.integrarTexto,                          // D36
+		"resolver_duvidas":  a.naReferencia(a.resolverDuvidas, false), // D37
+		"marcar_livro":      a.marcarLivro,                            // D38
+		"estudar":           a.estudar,                                // D41
+		"corrigir_simulado": a.corrigirSimulado,                       // D41
 		// Pesquisador (D27)
 		"planejar": a.naReferencia(a.planejar, true),
 		"coletar":  a.naReferencia(a.coletar, true),

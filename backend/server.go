@@ -51,6 +51,10 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("DELETE /api/detalhes/{id}", a.handleApagarDetalhe)
 
 	mux.HandleFunc("GET /api/perguntas", a.handlePerguntas)
+	mux.HandleFunc("GET /api/estudos", a.handleEstudos)
+	mux.HandleFunc("POST /api/estudos", a.handlePrepararEstudo)
+	mux.HandleFunc("POST /api/simulados", a.handleEntregarSimulado)
+	mux.HandleFunc("GET /api/simulados/{id}", a.handleSimulado)
 	mux.HandleFunc("POST /api/perguntas", a.handlePerguntar)
 	mux.HandleFunc("POST /api/perguntas/{id}/refazer", a.handleRefazerPergunta)
 	mux.HandleFunc("DELETE /api/perguntas/{id}", a.handleApagarPergunta)
@@ -265,6 +269,10 @@ func (a *app) comTitulos(r *http.Request, lista []tarefa) []tarefaComTitulo {
 			var titulo string
 			a.db.QueryRowContext(r.Context(), `SELECT titulo FROM livros_marcados WHERE livro = ?`, p.Livro).Scan(&titulo)
 			saida = append(saida, tarefaComTitulo{t, titulo, "#/ajustes/livros"})
+			continue
+		}
+		if t.Tipo == "estudar" || t.Tipo == "corrigir_simulado" {
+			saida = append(saida, a.tarefaDeEstudo(r, t))
 			continue
 		}
 		if t.Tipo == "integrar_texto" && t.ReferenciaID == "" {

@@ -83,6 +83,48 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await expect(page).toHaveURL(/#\/ler\/temas\/tema-de-teste\/indice\.md$/)
 })
 
+// Estudar (D41): resumo, conceitos anteriores e simulado respondido por voz (o ditado do
+// navegador é falso aqui: devolve uma frase fixa).
+test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ page }) => {
+  await page.addInitScript(() => {
+    class Falso {
+      start() {
+        setTimeout(() => this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: 'foi fundado em 1930' }], { isFinal: true })] }), 50)
+      }
+      stop() {
+        setTimeout(() => this.onend?.(), 10)
+      }
+    }
+    window.SpeechRecognition = window.webkitSpeechRecognition = Falso
+  })
+  await page.goto('/#/ler/temas/tema-de-teste/indice.md')
+  await page.locator('.abas').getByRole('button', { name: 'Estudar' }).click()
+  await expect(page).toHaveURL(/indice\.md\?estudar$/)
+
+  await page.getByRole('button', { name: 'Preparar o resumo' }).click()
+  await expect(page.locator('.resumo')).toContainText('Resumo de teste.', { timeout: 15000 })
+  await page.getByRole('button', { name: 'Achar os conceitos anteriores' }).click()
+  await expect(page.getByRole('heading', { name: 'Conceito base' })).toBeVisible({ timeout: 15000 })
+  await page.getByText('Entender o conceito').first().click()
+  await expect(page.getByText(/Explicação base/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Preparar as perguntas' }).click()
+  await page.getByRole('button', { name: 'Começar o simulado' }).click({ timeout: 15000 })
+  await page.getByRole('button', { name: 'Falar a resposta' }).click()
+  await expect(page.locator('.resposta textarea')).toHaveValue('foi fundado em 1930')
+  await page.getByRole('button', { name: 'Parar' }).click()
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Próxima' }).click()
+  await page.getByRole('button', { name: /Entregar \(1 de 5\)/ }).click()
+  await expect(page.locator('.nota strong')).toHaveText('20', { timeout: 15000 })
+  await expect(page.getByText('Teve resposta falada.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Flashcards do que errei' })).toBeVisible()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/estudar.png`, fullPage: true })
+
+  // Recarregar volta para a aba, com o histórico do simulado.
+  await page.reload()
+  await expect(page.getByText(/5 perguntas/)).toBeVisible()
+})
+
 test('lê o Tema numa página só, com sumário de capítulos', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('2 capítulos')).toBeVisible()

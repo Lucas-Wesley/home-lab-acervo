@@ -39,6 +39,8 @@ export const NOMES_TAREFA = {
   integrar_texto: 'Integrar ao texto',
   resolver_duvidas: 'Resolver as dúvidas',
   marcar_livro: 'Marcar livro por assunto',
+  estudar: 'Preparar o estudo',
+  corrigir_simulado: 'Corrigir o simulado',
   planejar: 'Montar o esboço',
   coletar: 'Coletar nas fontes',
   redigir: 'Escrever a pesquisa',

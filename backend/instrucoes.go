@@ -39,6 +39,10 @@ var instrucoes = []instrucao{
 	{Arquivo: "detalhar.md", Nome: "Mais informações", Descricao: "Pesquisa na internet sobre um trecho que você selecionou no texto e explica, com as fontes."},
 	{Arquivo: "resolver-duvidas.md", Nome: "Resolver as dúvidas", Descricao: "Compara a transcrição com o áudio ouvido de novo pelo Whisper e com a internet, e diz se cada dúvida foi resolvida, continua incerta ou é falta no material."},
 	{Arquivo: "marcar-livro.md", Nome: "Marcar livros por assunto", Descricao: "Lê os capítulos de cada livro da Biblioteca e marca o assunto, com as páginas: Temas do Acervo, pessoas, lugares, períodos e eventos."},
+	{Arquivo: "estudar-resumo.md", Nome: "Estudar: resumo inteligente", Descricao: "Resume o Tema inteiro para estudo: a ideia central, o essencial, como as partes se ligam, os termos-chave e o que costuma confundir."},
+	{Arquivo: "estudar-anteriores.md", Nome: "Estudar: conceitos anteriores", Descricao: "Diz o que ajuda a entender o Tema e não está explicado nele, com uma explicação curta de cada conceito e as fontes."},
+	{Arquivo: "estudar-simulado.md", Nome: "Estudar: perguntas do simulado", Descricao: "Monta o banco de perguntas abertas do simulado, com a resposta esperada e o capítulo de cada uma."},
+	{Arquivo: "corrigir-simulado.md", Nome: "Estudar: corrigir o simulado", Descricao: "Corrige as suas respostas do simulado (digitadas ou faladas) contra o Tema: o que acertou, o que faltou e o que revisar."},
 	{Arquivo: "integrar-texto.md", Nome: "Integrar ao texto", Descricao: "Leva a resposta de uma pergunta ou um \"Mais informações\" para dentro do texto, no ponto certo, seguindo o que você escolheu em cada divergência."},
 }
 

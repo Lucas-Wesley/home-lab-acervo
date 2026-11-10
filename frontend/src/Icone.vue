@@ -69,5 +69,11 @@ defineProps({ nome: { type: String, required: true } })
       <circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" />
       <path d="M8 12.5l2.7 2.7L16 9.5" stroke="var(--fundo)" />
     </template>
+    <template v-else-if="nome === 'microfone'">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21" />
+    </template>
+    <rect v-else-if="nome === 'parar'" x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none" />
+    <path v-else-if="nome === 'ouvir'" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11" />
   </svg>
 </template>

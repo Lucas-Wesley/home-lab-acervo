@@ -13,6 +13,22 @@ done
 ok() { printf '{"type":"result","result":"%s","is_error":false}\n' "${1:-ok}"; }
 pasta() { printf '%s' "$prompt" | sed -n 's/.*pasta \([^ ]*\)\/ (caminho.*/\1/p' | head -1; }
 case "$prompt" in
+  *"Escreva o resumo inteligente do Tema inteiro"*)
+    arqs=$(find . -name '*.md' | sort | tr '\n' ' ')
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"texto":"## Em uma frase\\n\\nResumo de teste. Arquivos: %s"}}\n' "$arqs" ;;
+  *"Diga os conceitos anteriores"*)
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"conceitos":[{"nome":"Conceito base","tipo":"base","por_que":"Ajuda.","explicacao":"Explicação base (ferramentas: %s).","tema":"temas/outro","fontes":[{"titulo":"Fonte","url":"https://exemplo.com"}]},{"nome":"Vizinho","tipo":"vizinho","por_que":"Contexto.","explicacao":"Explicação vizinha.","tema":"temas/nao-existe","fontes":[]}]}}\n' "$ferramentas" ;;
+  *"Monte o banco de perguntas do simulado"*)
+    itens=""
+    for n in 1 2 3 4 5 6; do itens="$itens{\"pergunta\":\"Pergunta $n?\",\"esperada\":\"Resposta $n.\",\"capitulo\":\"Fundação\",\"nivel\":\"entender\"},"; done
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"perguntas":[%s]}}\n' "${itens%,}" ;;
+  *"Corrija o simulado em simulado.md"*)
+    n=$(grep -c '^## Pergunta ' simulado.md)
+    voz=""; grep -q '(falada' simulado.md && voz=" Teve resposta falada."
+    [ -f tema/indice.md ] || voz="$voz Sem o Tema."
+    itens='{"n":1,"avaliacao":"certa","comentario":"Isso.","faltou":""}'
+    for i in $(seq 2 "$n"); do itens="$itens,{\"n\":$i,\"avaliacao\":\"errada\",\"comentario\":\"Não.\",\"faltou\":\"Faltou $i.\"}"; done
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"nota":%d,"comentario":"Corrigido.%s","itens":[%s],"revisar":["Fundação"]}}\n' $((100 / n)) "$voz" "$itens" ;;
   *"escreva tela.md nesta pasta"*)
     { for q in quadros/*.jpg; do n=$(basename "$q" .jpg); printf '[%s] Texto na tela: "quadro %s".\n\n' "${n/-/:}" "$n"; done
       grep -q 'Três dicas de estudo' contexto.md && printf 'Leu o contexto.\n'; } > tela.md
