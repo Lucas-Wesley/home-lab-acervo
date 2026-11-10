@@ -1,0 +1,372 @@
+<script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import Icone from './Icone.vue'
+import { api } from './api.js'
+import { renderizar } from './markdown.js'
+
+// Janela de "Perguntar" (D35): a pergunta sobre o texto, a resposta verificada na internet e as
+// divergências com o texto. Fica a lista das perguntas já feitas, a mais nova em cima.
+const props = defineProps({
+  local: { type: String, required: true }, // temas/<pasta> ou referencias/<id>
+  titulo: { type: String, default: '' },
+})
+const emit = defineEmits(['fechar'])
+
+const COBERTURA = {
+  responde: ['Seu texto responde', 'ok'],
+  em_parte: ['Seu texto responde em parte', 'meio'],
+  toca: ['Seu texto só toca no assunto', 'meio'],
+  nao_responde: ['Seu texto não responde', 'erro'],
+}
+const SELO = {
+  confirmado: 'Confirmado em mais de uma fonte',
+  uma_fonte: 'Uma fonte só',
+  divergem: 'As fontes divergem',
+  nao_encontrado: 'Não encontrado nas fontes',
+}
+const TIPO = { erro: 'Erro', desatualizado: 'Desatualizado', omissao: 'Falta no texto', melhoria: 'Pode melhorar' }
+
+const perguntas = ref([])
+const texto = ref('')
+const enviando = ref(false)
+const erro = ref('')
+const aberta = ref(null) // id da resposta verificada aberta quando o texto já responde
+let espera = null
+
+const processando = computed(() => perguntas.value.some((p) => p.estado === 'processando'))
+
+async function carregar() {
+  try {
+    perguntas.value = await api(`/api/perguntas?local=${encodeURIComponent(props.local)}`)
+  } catch (e) {
+    erro.value = e.status === 0 ? 'Perguntar só funciona na rede de casa.' : e.message
+  }
+  clearTimeout(espera)
+  if (processando.value) espera = setTimeout(carregar, 4000)
+}
+
+async function perguntar() {
+  if (!texto.value.trim()) return
+  enviando.value = true
+  erro.value = ''
+  try {
+    await api('/api/perguntas', { metodo: 'POST', corpo: { local: props.local, titulo: props.titulo, pergunta: texto.value } })
+    texto.value = ''
+    await carregar()
+  } catch (e) {
+    erro.value = e.status === 0 ? 'Perguntar só funciona na rede de casa.' : e.message
+  } finally {
+    enviando.value = false
+  }
+}
+
+async function refazer(p) {
+  try {
+    await api(`/api/perguntas/${p.id}/refazer`, { metodo: 'POST' })
+    await carregar()
+  } catch (e) {
+    erro.value = e.message
+  }
+}
+
+async function apagar(p) {
+  if (!confirm('Apagar esta pergunta?')) return
+  try {
+    await api(`/api/perguntas/${p.id}`, { metodo: 'DELETE' })
+    await carregar()
+  } catch (e) {
+    erro.value = e.message
+  }
+}
+
+// Com o texto respondendo por inteiro e sem divergência, a resposta da IA fica recolhida.
+const textoBasta = (r) => r.cobertura === 'responde' && !r.divergencias.length
+
+function html(md) {
+  return renderizar(md)
+}
+
+function quando(iso) {
+  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function aoTeclar(ev) {
+  if (ev.key === 'Escape') emit('fechar')
+}
+onMounted(() => {
+  document.addEventListener('keydown', aoTeclar)
+  carregar()
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', aoTeclar)
+  clearTimeout(espera)
+})
+</script>
+
+<template>
+  <Teleport to="body">
+    <div class="veu" @click="emit('fechar')">
+      <div class="janela" role="dialog" aria-modal="true" aria-labelledby="titulo-perguntas" @click.stop>
+        <header>
+          <h2 id="titulo-perguntas">Perguntar<span v-if="titulo" class="suave"> · {{ titulo }}</span></h2>
+          <button type="button" class="botao icone" aria-label="Fechar" @click="emit('fechar')"><Icone nome="fechar" /></button>
+        </header>
+        <form class="nova" @submit.prevent="perguntar">
+          <textarea v-model="texto" class="campo" rows="2" maxlength="500" placeholder="O que você quer saber sobre este texto?" @keydown.enter.exact.prevent="perguntar" />
+          <button class="botao principal" :disabled="enviando || !texto.trim()">{{ enviando ? 'Enviando…' : 'Perguntar' }}</button>
+        </form>
+        <p class="suave">A IA vê quanto o seu texto responde e verifica a resposta na internet, em mais de uma fonte. Leva alguns minutos; pode fechar e voltar depois.</p>
+        <div v-if="erro" class="aviso erro">{{ erro }}</div>
+
+        <article v-for="p in perguntas" :key="p.id" class="pergunta">
+          <div class="cabeca">
+            <strong>{{ p.pergunta }}</strong>
+            <span class="suave quando">{{ quando(p.criado_em) }}</span>
+          </div>
+
+          <p v-if="p.estado === 'processando'" class="chip andando">Verificando…</p>
+          <template v-else-if="p.estado === 'falhou'">
+            <p class="aviso erro">{{ p.erro }}</p>
+          </template>
+
+          <template v-else-if="p.resultado">
+            <div class="selos">
+              <span class="chip" :class="COBERTURA[p.resultado.cobertura]?.[1]">{{ COBERTURA[p.resultado.cobertura]?.[0] }}</span>
+              <span class="chip" :class="{ ok: p.resultado.selo === 'confirmado' }">{{ SELO[p.resultado.selo] }}</span>
+            </div>
+            <p v-if="p.resultado.no_texto" class="no-texto"><span class="suave">No seu texto:</span> {{ p.resultado.no_texto }}</p>
+
+            <template v-if="textoBasta(p.resultado)">
+              <button class="botao discreto" @click="aberta = aberta === p.id ? null : p.id">
+                {{ aberta === p.id ? 'Esconder a resposta verificada' : 'Ver a resposta verificada' }}
+              </button>
+              <div v-if="aberta === p.id" class="texto resposta" v-html="html(p.resultado.resposta)" />
+            </template>
+            <div v-else class="texto resposta" v-html="html(p.resultado.resposta)" />
+
+            <section v-if="p.resultado.divergencias.length" class="divergencias">
+              <h3>O que difere do seu texto</h3>
+              <div v-for="(d, i) in p.resultado.divergencias" :key="i" class="divergencia" :class="d.tipo">
+                <div class="linha">
+                  <span class="tipo">{{ TIPO[d.tipo] || d.tipo }}</span>
+                  <span v-if="d.capitulo" class="suave">· {{ d.capitulo }}</span>
+                </div>
+                <p v-if="d.no_texto"><span class="suave">O texto diz:</span> “{{ d.no_texto }}”</p>
+                <p><span class="suave">As fontes dizem:</span> {{ d.correto }}</p>
+                <p class="suave pequeno">{{ SELO[d.selo] }}<template v-if="d.fontes?.length"> · {{ d.fontes.map((n) => `[${n}]`).join(' ') }}</template></p>
+              </div>
+            </section>
+
+            <details v-if="p.resultado.fontes.length" class="fontes" :open="!textoBasta(p.resultado)">
+              <summary class="suave">Fontes ({{ p.resultado.fontes.length }})</summary>
+              <ol>
+                <li v-for="f in p.resultado.fontes" :key="f.url"><a :href="f.url" target="_blank" rel="noopener">{{ f.titulo || f.url }}</a></li>
+              </ol>
+            </details>
+          </template>
+
+          <div v-if="p.estado !== 'processando'" class="acoes">
+            <button class="botao discreto" @click="refazer(p)">Verificar de novo</button>
+            <button class="botao discreto perigo" @click="apagar(p)">Apagar</button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </Teleport>
+</template>
+
+<style scoped>
+.veu {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 22%);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.janela {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  width: min(640px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 16px 20px max(16px, env(safe-area-inset-bottom));
+  border-radius: var(--raio-g) var(--raio-g) 0 0;
+  background: var(--fundo);
+  box-shadow: var(--sombra);
+}
+
+@media (min-width: 640px) {
+  .veu {
+    align-items: center;
+  }
+
+  .janela {
+    border-radius: var(--raio-g);
+  }
+}
+
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-right: -8px;
+}
+
+h2 {
+  margin: 4px 0 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+p {
+  margin: 0;
+}
+
+.nova {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.nova textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 44px;
+  font: inherit;
+}
+
+.pergunta {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--linha);
+}
+
+.cabeca {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cabeca strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.quando {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+
+.selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip.meio {
+  color: var(--texto);
+  background: var(--superficie-forte);
+}
+
+.chip.andando {
+  justify-self: start;
+}
+
+.no-texto {
+  font-size: 0.92rem;
+}
+
+.resposta {
+  font-size: 0.98rem;
+}
+
+.resposta :deep(p:first-child) {
+  margin-top: 0;
+}
+
+.resposta :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.divergencias {
+  display: grid;
+  gap: 8px;
+}
+
+.divergencias h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.divergencia {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--raio);
+  background: var(--superficie);
+  font-size: 0.92rem;
+}
+
+.divergencia.erro,
+.divergencia.desatualizado {
+  background: var(--vermelho-fundo);
+}
+
+.divergencia .linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.divergencia .tipo {
+  font-weight: 600;
+}
+
+.pequeno {
+  font-size: 0.8rem;
+}
+
+.fontes summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.fontes ol {
+  margin: 6px 0 0;
+  padding-left: 22px;
+  font-size: 0.88rem;
+}
+
+.fontes a {
+  overflow-wrap: anywhere;
+}
+
+.acoes {
+  display: flex;
+  gap: 4px;
+  margin-left: -8px;
+}
+
+.botao.discreto {
+  justify-self: start;
+  border-color: transparent;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.botao.discreto.perigo {
+  color: var(--perigo);
+}
+</style>

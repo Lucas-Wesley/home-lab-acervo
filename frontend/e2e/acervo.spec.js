@@ -37,6 +37,17 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await expect(page).toHaveURL(/#\/ler\/temas\/tema-de-teste\/indice\.md$/)
   await expect(page.locator('article.texto h1').first()).toHaveText('Tema de Teste')
   await expect(page.getByText('Referências deste Tema')).toBeVisible()
+
+  // Perguntar (D35): o quanto o texto responde, a resposta verificada e o que difere.
+  await page.getByRole('button', { name: 'Perguntar sobre este Tema' }).click()
+  await page.getByPlaceholder('O que você quer saber sobre este texto?').fill('Quando foi fundado?')
+  await page.getByRole('button', { name: 'Perguntar', exact: true }).click()
+  const janela = page.getByRole('dialog', { name: /Perguntar/ })
+  await expect(janela.getByText('Seu texto responde em parte')).toBeVisible({ timeout: 15000 })
+  await expect(janela.getByText('Falta no texto')).toBeVisible()
+  await expect(janela.getByRole('link', { name: 'Fonte A' })).toBeVisible()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/perguntar.png` })
+  await janela.getByRole('button', { name: 'Fechar' }).click()
 })
 
 test('lê o Tema numa página só, com sumário de capítulos', async ({ page }) => {

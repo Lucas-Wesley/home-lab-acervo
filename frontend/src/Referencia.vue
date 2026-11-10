@@ -6,6 +6,7 @@ import CartoesDaReferencia from './CartoesDaReferencia.vue'
 import EsbocoPesquisa from './EsbocoPesquisa.vue'
 import Icone from './Icone.vue'
 import NovaPesquisa from './NovaPesquisa.vue'
+import Perguntas from './Perguntas.vue'
 import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 import { marcar, usarDetalhes } from './detalhes.js'
 import { duvidas, renderizar, tituloDoTexto } from './markdown.js'
@@ -21,6 +22,7 @@ const novoTema = ref({ titulo: '', pai: '' })
 const temaAlvo = ref('')
 const ocupado = ref(false)
 const menuAberto = ref(false)
+const perguntando = ref(false) // janela de Perguntar (D35)
 const cartoes = ref(null) // CartoesDaReferencia: o "Gerar flashcards" do menu abre a janela dele
 
 const ehPesquisa = computed(() => ref_.value?.tipo === 'pesquisa')
@@ -178,6 +180,7 @@ onBeforeUnmount(() => {
             </button>
             <div v-if="menuAberto" class="painel-menu" role="menu">
               <template v-if="pronta">
+                <button role="menuitem" @click="escolher(() => (perguntando = true))">Perguntar</button>
                 <button v-if="cartoes?.disponivel" role="menuitem" @click="escolher(cartoes.gerar)">Gerar flashcards</button>
                 <button role="menuitem" :disabled="ocupado || andando" @click="escolher(() => executar('sugerir'))">{{ sugestao ? 'Sugerir Tema de novo' : 'Sugerir Tema' }}</button>
                 <button role="menuitem" :disabled="ocupado || andando" @click="escolher(abrirCriar)">Criar Tema</button>
@@ -242,6 +245,7 @@ onBeforeUnmount(() => {
         <button class="botao principal" :disabled="ocupado || andando" @click="executar('reprocessar')">Tentar de novo</button>
       </div>
 
+      <Perguntas v-if="perguntando" :local="`referencias/${ref_.id}`" :titulo="ref_.titulo" @fechar="perguntando = false" />
       <NovaPesquisa v-if="acao === 'aprofundar'" :referencia="ref_" @fechar="acao = null" @enviado="acao = null; carregar()" />
 
       <form v-if="acao === 'criar'" class="cartao formulario" @submit.prevent="executar('criar-tema', novoTema)">

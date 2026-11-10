@@ -50,6 +50,11 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("POST /api/detalhes/{id}/refazer", a.handleRefazerDetalhe)
 	mux.HandleFunc("DELETE /api/detalhes/{id}", a.handleApagarDetalhe)
 
+	mux.HandleFunc("GET /api/perguntas", a.handlePerguntas)
+	mux.HandleFunc("POST /api/perguntas", a.handlePerguntar)
+	mux.HandleFunc("POST /api/perguntas/{id}/refazer", a.handleRefazerPergunta)
+	mux.HandleFunc("DELETE /api/perguntas/{id}", a.handleApagarPergunta)
+
 	mux.HandleFunc("GET /api/flashcards", a.handleListarFlashcards)
 	mux.HandleFunc("POST /api/flashcards", a.handleEnviarFlashcards)
 	mux.HandleFunc("GET /api/flashcards/baralhos", a.handleBaralhosDoFlashcards)
@@ -238,6 +243,10 @@ func (a *app) comTitulos(r *http.Request, lista []tarefa) []tarefaComTitulo {
 			saida = append(saida, a.tarefaDeDetalhe(r, t))
 			continue
 		}
+		if t.Tipo == "perguntar" {
+			saida = append(saida, a.tarefaDePergunta(r, t))
+			continue
+		}
 		titulo, ok := titulos[t.ReferenciaID]
 		if !ok {
 			if ref, err := a.referencia(r.Context(), t.ReferenciaID); err == nil {
@@ -266,6 +275,20 @@ func (a *app) tarefaDeDetalhe(r *http.Request, t tarefa) tarefaComTitulo {
 		link = "#/referencia/" + partes[1]
 	}
 	return tarefaComTitulo{t, "“" + cortar(d.Trecho, 80, false) + "”", link}
+}
+
+func (a *app) tarefaDePergunta(r *http.Request, t tarefa) tarefaComTitulo {
+	var p paramsPergunta
+	json.Unmarshal(t.Params, &p)
+	q, err := a.perguntaFeita(r.Context(), p.Pergunta)
+	if err != nil {
+		return tarefaComTitulo{t, "(pergunta apagada)", ""}
+	}
+	link := "#/ler/" + q.Local + "/indice.md"
+	if id, ok := strings.CutPrefix(q.Local, "referencias/"); ok {
+		link = "#/referencia/" + id
+	}
+	return tarefaComTitulo{t, "“" + cortar(q.Pergunta, 80, false) + "”", link}
 }
 
 func idDoPedido(w http.ResponseWriter, r *http.Request) (int64, bool) {

@@ -21,6 +21,7 @@ func (a *app) executores() map[string]executor {
 		"criar_tema": a.naReferencia(a.criarTema, false),
 		"integrar":   a.naReferencia(a.integrar, false),
 		"detalhar":   a.detalhar,
+		"perguntar":  a.perguntar, // D35
 		// Pesquisador (D27)
 		"planejar": a.naReferencia(a.planejar, true),
 		"coletar":  a.naReferencia(a.coletar, true),

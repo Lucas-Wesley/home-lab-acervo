@@ -7,7 +7,7 @@ o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
 **Comece lendo:**
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **a fonte da verdade do projeto.** Conceitos, fluxo
-  completo, decisões (D1–D22), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
+  completo, decisões (D1–D38), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
 
 ## Em uma frase
 Duas áreas: **Acervo** (base permanente por **Temas**, Markdown multi-arquivo, cumulativa) e
@@ -38,7 +38,7 @@ disponível pra inferência local (Whisper) quando precisar.
 - Antes de automatizar, **validar as regras de cada etapa em modo manual** (elas viram o futuro
   `CLAUDE.md` que define a qualidade — hoje ainda em aberto).
 - Toda chamada ao Claude ou ao `yt-dlp` passa pela **fila** (uma tarefa por vez, D14).
-- **Internet só em "Mais informações"** (D26) **e na escrita de uma pesquisa com "Sites"** (D27): as
+- **Internet só em "Mais informações"** (D26), **em "Perguntar"** (D35, só leitura de uma cópia do texto) **e na escrita de uma pesquisa com "Sites"** (D27): as
   outras etapas continuam sem `WebSearch`/`WebFetch`. A coleta do Pesquisador (livros, Wikipédia,
   YouTube) é feita pelo servidor, sem a IA.
 - **Artigos** (D34): o servidor lê a página sem IA (`artigo.go`), sem nada específico de um site;

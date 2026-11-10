@@ -35,6 +35,7 @@ export const NOMES_TAREFA = {
   criar_tema: 'Criar Tema',
   integrar: 'Integrar ao Tema',
   detalhar: 'Mais informações',
+  perguntar: 'Perguntar',
   planejar: 'Montar o esboço',
   coletar: 'Coletar nas fontes',
   redigir: 'Escrever a pesquisa',

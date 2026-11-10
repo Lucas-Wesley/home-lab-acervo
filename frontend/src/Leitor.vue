@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import CamadaDetalhes from './CamadaDetalhes.vue'
 import EnviarFlashcards from './EnviarFlashcards.vue'
+import Perguntas from './Perguntas.vue'
 import Icone from './Icone.vue'
 import { api } from './api.js'
 import { capitulos, eLinkInterno, inserirCapitulo, relativo, renderizar, resolver, tituloDoTexto, trocarCapitulo } from './markdown.js'
@@ -28,6 +29,7 @@ const conflito = ref(null) // { atual, minha }
 const temas = ref([])
 const capitulosDoTema = ref([]) // numa página de capítulo separado: os capítulos do Tema
 const menu = ref(null) // capítulo com o menu aberto
+const perguntando = ref(false) // janela de Perguntar (D35)
 const ocupado = ref(false)
 const baixando = ref(false)
 const editor = ref(null)
@@ -73,6 +75,7 @@ const vizinhos = computed(() => {
 })
 const temaBaixado = computed(() => marcaBaixados.value >= 0 && !!arquivo.value?.tema && estaBaixado(arquivo.value.tema))
 const temaRaiz = computed(() => arquivo.value?.migalhas?.[0])
+const tituloDoTema = computed(() => arquivo.value?.migalhas?.find((m) => m.caminho === arquivo.value.tema)?.titulo || tituloAtual.value)
 
 // Cada capítulo ganha um botão de menu ao lado do título (só na página do Tema).
 function comAcoes(html) {
@@ -445,6 +448,9 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <button v-if="flashcards.disponivel && arquivo.tema" class="botao icone" :disabled="ocupado" :aria-label="eIndice ? 'Gerar flashcards do Tema inteiro' : 'Gerar flashcards deste capítulo'" :title="eIndice ? 'Gerar flashcards do Tema inteiro' : 'Gerar flashcards deste capítulo'" @click="gerarFlashcards()">
           <Icone nome="cartoes" />
         </button>
+        <button v-if="arquivo.tema" class="botao icone" aria-label="Perguntar sobre este Tema" title="Perguntar sobre este Tema" @click="perguntando = true">
+          <Icone nome="pergunta" />
+        </button>
         <button class="botao" @click="editar"><Icone nome="nota" /> Editar</button>
       </div>
     </header>
@@ -523,6 +529,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <article ref="corpoEl" class="texto" :class="{ 'com-acoes': podeMexerNosCapitulos }" @click="aoClicarNoTexto" v-html="partes.corpo" />
         <CamadaDetalhes :detalhes="detalhes" :raizes="() => [introEl, corpoEl]" :titulo="tituloAtual" :sem-lugar="partes.semLugar" />
         <EnviarFlashcards v-if="envioAberto" v-bind="envioAberto" @fechar="envioAberto = null" @enviado="flashcardsEnviados" />
+        <Perguntas v-if="perguntando" :local="arquivo.tema" :titulo="tituloDoTema" @fechar="perguntando = false" />
 
         <nav v-if="vizinhos.anterior || vizinhos.proximo" class="vizinhos">
           <a v-if="vizinhos.anterior" href="#" class="cartao" @click.prevent="abrirCapituloDoTema(vizinhos.anterior)">

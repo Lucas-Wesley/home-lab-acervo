@@ -197,6 +197,18 @@ CREATE TABLE IF NOT EXISTS detalhes (
 	atualizado_em TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS detalhes_local ON detalhes (local);
+-- Perguntas sobre um texto (D35): local = temas/<pasta> ou referencias/<id>; resultado em JSON.
+CREATE TABLE IF NOT EXISTS perguntas (
+	id            TEXT PRIMARY KEY,
+	local         TEXT NOT NULL,
+	titulo        TEXT NOT NULL DEFAULT '',
+	pergunta      TEXT NOT NULL,
+	resultado     TEXT NOT NULL DEFAULT '',
+	tarefa_id     INTEGER NOT NULL DEFAULT 0,
+	criado_em     TEXT NOT NULL,
+	atualizado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS perguntas_local ON perguntas (local);
 -- Textos mandados ao Flashcards (D28): alvo = "arquivo:<caminho>[#<capítulo>]" ou "referencia:<id>".
 CREATE TABLE IF NOT EXISTS flashcards (
 	id         INTEGER PRIMARY KEY AUTOINCREMENT,

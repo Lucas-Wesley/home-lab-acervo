@@ -34,6 +34,7 @@ var instrucoes = []instrucao{
 	{Arquivo: "pesquisar.md", Nome: "Pesquisa: escrever", Descricao: "Escreve o texto da pesquisa a partir do material coletado (e dos sites, se escolhidos), com a fonte de cada parte."},
 	{Arquivo: "resumir-livro.md", Nome: "Resumir capítulos de um livro", Descricao: "Sintetiza um ou mais capítulos de um livro da Biblioteca: fica o que o livro ensina, saem repetições e enchimento, e cada parte leva as páginas."},
 	{Arquivo: "conferir.md", Nome: "Pesquisa: conferir", Descricao: "Na pesquisa detalhada, confere cada afirmação do texto contra o material guardado e corrige o que não se sustenta."},
+	{Arquivo: "perguntar.md", Nome: "Perguntar e verificar", Descricao: "Vê quanto o texto responde à sua pergunta, verifica a resposta na internet em mais de uma fonte e aponta o que está errado, desatualizado ou faltando."},
 	{Arquivo: "detalhar.md", Nome: "Mais informações", Descricao: "Pesquisa na internet sobre um trecho que você selecionou no texto e explica, com as fontes."},
 }
 
