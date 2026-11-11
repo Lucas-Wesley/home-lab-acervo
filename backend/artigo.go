@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -105,8 +106,8 @@ func (a *app) baixarPagina(ctx context.Context, link string) (paginaDaWeb, error
 
 const maxPDF = 30 << 20
 
-// lerPDF tira o texto de um PDF da web com o pdftotext (D49). O título vem dos metadados do PDF ou
-// do nome do arquivo.
+// lerPDF tira o texto de um PDF da web com o pdftotext (D49). O título vem dos metadados do PDF; sem
+// eles, fica vazio, e quem chamou usa o que tiver (o título da busca, ou o nome do arquivo).
 func lerPDF(ctx context.Context, corpo io.Reader, endereco *url.URL) (paginaDaWeb, error) {
 	p := paginaDaWeb{URL: endereco.String(), Site: strings.TrimPrefix(endereco.Hostname(), "www.")}
 	if _, err := exec.LookPath("pdftotext"); err != nil {
@@ -136,9 +137,6 @@ func lerPDF(ctx context.Context, corpo io.Reader, endereco *url.URL) (paginaDaWe
 				p.Titulo = strings.TrimSpace(v)
 			}
 		}
-	}
-	if p.Titulo == "" {
-		p.Titulo, _ = url.PathUnescape(filepath.Base(endereco.Path))
 	}
 	if utf8.RuneCountInString(p.Texto) < minTextoWeb {
 		return p, errors.New("O PDF não tem texto (pode ser escaneado).")
@@ -457,6 +455,11 @@ func paginaParaCru(p paginaDaWeb) string {
 // extrairPagina é a etapa "extrair" de um artigo.
 func (a *app) extrairPagina(ctx context.Context, ref *referencia, pasta string) error {
 	p, err := a.baixarPagina(ctx, ref.URL)
+	if p.Titulo == "" && p.Texto != "" {
+		if u, e := url.Parse(ref.URL); e == nil {
+			p.Titulo, _ = url.PathUnescape(path.Base(u.Path))
+		}
+	}
 	if p.Titulo != "" {
 		a.db.ExecContext(ctx, `UPDATE referencias SET titulo = ?, canal = ?, idioma = ? WHERE id = ?`,
 			cortar(p.Titulo, 200, false), p.Site, p.Idioma, ref.ID)
