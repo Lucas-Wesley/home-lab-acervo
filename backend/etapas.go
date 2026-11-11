@@ -291,12 +291,17 @@ func (a *app) sugerir(ctx context.Context, t *tarefa, ref *referencia) (resultad
 	if len(temas) == 0 {
 		lista.WriteString("(o Acervo ainda não tem Temas)\n")
 	}
+	pedido := ""
+	if p, err := a.pedidoDe(ref); err == nil && p.ParaTema != "" {
+		// D49: a pesquisa foi pedida de dentro de um Tema.
+		pedido = fmt.Sprintf("\n\nO Lucas fez esta pesquisa para completar o Tema %s: sugira integrar nele, a menos que o texto trate de outro assunto.", p.ParaTema)
+	}
 	r, err := a.chamarClaude(ctx, pedidoClaude{
 		pasta:  a.conteudo.raiz,
 		extras: []string{filepath.Dir(texto)},
 		regra:  "sugerir.md",
 		instrucao: fmt.Sprintf("A Referência está em %s. Os Temas do Acervo (pasta — título: resumo) são:\n\n%s\n"+
-			"Os arquivos dos Temas estão em temas/ nesta pasta.", texto, lista.String()),
+			"Os arquivos dos Temas estão em temas/ nesta pasta.%s", texto, lista.String(), pedido),
 		ferramentas: ferramentasLeitura,
 		esquema:     esquemaSugestao,
 	})

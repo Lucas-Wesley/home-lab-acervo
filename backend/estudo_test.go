@@ -98,12 +98,17 @@ func TestEstudarUmTema(t *testing.T) {
 	}
 
 	// Flashcards: dos conceitos anteriores e do que se errou no simulado.
-	for _, parte := range []string{"anteriores", "simulado:" + sim.ID} {
+	for _, parte := range []string{"anteriores", "simulado:" + sim.ID, "anteriores:Vizinho"} {
 		if s := e.pedir("POST", "/api/flashcards", map[string]string{"estudo": "temas/clube", "parte": parte, "baralho": "Clube"}, nil); s != http.StatusCreated {
 			t.Fatalf("flashcards de %s: %d", parte, s)
 		}
 	}
-	if len(f.textos) != 2 || !strings.Contains(f.textos[0].Texto, "## Conceito base") ||
+	if s := e.pedir("POST", "/api/flashcards", map[string]string{"estudo": "temas/clube", "parte": "anteriores:Não existe", "baralho": "Clube"}, nil); s != http.StatusNotFound {
+		t.Errorf("conceito que não existe: %d", s)
+	}
+	if len(f.textos) != 3 || !strings.Contains(f.textos[0].Texto, "## Conceito base") ||
+		!strings.HasPrefix(f.textos[2].Texto, "# Vizinho\n\nExplicação vizinha.") || strings.Contains(f.textos[2].Texto, "Conceito base") ||
+		!strings.HasSuffix(f.textos[2].Titulo, "› Vizinho") ||
 		!strings.Contains(f.textos[1].Texto, "Faltou 2.") || strings.Contains(f.textos[1].Texto, banco.Perguntas[0].Pergunta) ||
 		!strings.HasSuffix(f.textos[1].Link, "/#/ler/temas/clube/indice.md?estudar") {
 		t.Errorf("textos para o Flashcards: %+v", f.textos)

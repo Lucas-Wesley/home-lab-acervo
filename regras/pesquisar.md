@@ -1,10 +1,10 @@
 # Regras: escrever uma pesquisa
 
-O Lucas pediu uma pesquisa sobre um tema. O servidor já coletou material das fontes que ele escolheu e guardou em `fontes/`; `cru.md` lista cada arquivo e de onde ele veio. Você escreve `organizado.md`: um texto sobre o tema para alguém que **não sabe nada** do assunto entender, apoiado nesse material. É a matéria-prima de um Tema do Acervo, uma base de conhecimento permanente.
+O Lucas pediu uma pesquisa sobre um tema. O servidor já coletou material das fontes que ele escolheu e guardou em `fontes/`; `cru.md` lista cada arquivo, de onde ele veio e a que pergunta serve. Você escreve `organizado.md`: um texto sobre o tema para alguém que **não sabe nada** do assunto entender, apoiado nesse material. É a matéria-prima de um Tema do Acervo, uma base de conhecimento permanente.
 
 ## O que fazer
 
-1. **Ler o material antes de escrever.** Comece por `cru.md` e leia os arquivos de `fontes/` que tratam de cada pergunta. As transcrições de vídeo são longas: use a busca (Grep) para achar as partes que importam.
+1. **Ler o material antes de escrever.** Comece por `cru.md` e leia os arquivos de `fontes/` que tratam de cada pergunta. Transcrições de vídeo e capítulos de livro são longos: use a busca (Grep) para achar as partes que importam.
 2. **Responder às perguntas do esboço**, na ordem mais didática. Cada pergunta costuma virar uma seção.
 3. **Toda afirmação vem de uma fonte.** Datas, nomes, números, lugares, causas e consequências: só o que o material diz. Se o material não responde a uma pergunta, diga isso na seção "Dúvidas"; não preencha com o que você acha que sabe.
 4. **Confirmar em mais de uma fonte** o que for importante. Quando as fontes discordarem, mostre as versões e quem diz cada uma, e registre a divergência em "Dúvidas".
@@ -12,19 +12,37 @@ O Lucas pediu uma pesquisa sobre um tema. O servidor já coletou material das fo
 6. **Escrever em prosa clara**, em português do Brasil, em parágrafos. Lista só quando o conteúdo for de fato uma lista.
 7. **Na cozinha e em tudo o que é técnico,** copie quantidades, temperaturas, tempos e proporções **exatamente** como a fonte diz, com a unidade. Nunca arredonde nem converta sem dizer.
 
+## Escreva sobre o assunto, não sobre o material
+
+O texto vai virar parte de uma base de conhecimento: ele explica o assunto, e o número entre colchetes diz de onde veio. O leitor não precisa saber como a pesquisa foi feita.
+
+- **Escreva o fato direto, com a fonte no fim:** "O Cinema Novo surgiu no início dos anos 1960, influenciado pelo neorrealismo italiano [1]." E **não**: "Segundo o vídeo do canal X, o Cinema Novo teria surgido…" nem "O artigo da Wikipédia diz que…".
+- Use "segundo …" **só** para opinião, interpretação, número disputado ou quando as fontes divergem, e aí nomeie o autor ou a obra ("segundo Eduardo Bueno", "para o crítico Paulo Emílio Salles Gomes"), e não o tipo de material ("o vídeo", "o artigo").
+- **Nada sobre o material no corpo do texto:** sem "o material coletado não diz", "as fontes não trazem", "a busca falhou", "o trecho consultado". O que falta vai **só** em "Dúvidas". O resumo do topo diz do que o assunto trata, e não de quantas fontes vieram.
+- Se uma pergunta ficou quase sem resposta, escreva o pouco que se sabe numa seção curta (ou junte com outra) e ponha a lacuna em "Dúvidas"; não escreva uma seção inteira explicando que não há informação.
+
+## O material
+
+- **Capítulos de livro** (`fontes/livro-*.md`): o capítulo inteiro, com o link de cada página (`[p. N](link)`). Quando houver "Marcações do Lucas" no fim, são os trechos que ele destacou ao ler: dê atenção a eles.
+- **Trechos de livro** (`fontes/livros-*.md`): pedaços de uma página achados pela busca; cada um com o "Link:" da página.
+- **Wikipédia** (`fontes/wikipedia-*.md`). Os arquivos `wikipedia-en-*.md` são da Wikipédia em inglês: traduza o que usar, sem copiar em inglês.
+- **Vídeos** (`fontes/video-*.md`): transcrições, às vezes automáticas e com erros de reconhecimento; na dúvida sobre um nome ou número, confira em outra fonte.
+- **Páginas da internet** (`fontes/site-*.md`): o texto da página, lido pelo servidor.
+
 ## Sites da internet (só quando o pedido disser que ele escolheu sites)
 
-- Pesquise com WebSearch e leia as páginas com WebFetch. Prefira, nesta ordem: universidades, órgãos oficiais, enciclopédias e obras de referência, instituições de pesquisa, veículos de imprensa reconhecidos, sites técnicos conhecidos da área. Blogs e fóruns só para completar, e dizendo que é isso.
-- Para cada página que você usar, guarde em `fontes/web-<n>.md` o título, a URL e os trechos que você usou, copiados da página. A conferência só consegue checar o que estiver guardado.
-- Use os sites para cobrir o que o material coletado não respondeu, e para confirmar o que ele disse.
+As páginas que o esboço escolheu já estão em `fontes/site-*.md`. Use-as primeiro. Pesquise com WebSearch e leia com WebFetch **só** para o que o material não respondeu ou para confirmar um ponto importante que só uma fonte disse.
+
+- Prefira, nesta ordem: universidades, órgãos oficiais, enciclopédias e obras de referência, instituições de pesquisa, veículos de imprensa reconhecidos, sites técnicos conhecidos da área. Blogs e fóruns só para completar, e dizendo que é isso.
+- Para cada página nova que você usar, guarde em `fontes/web-<n>.md` o título, a URL e os trechos que você usou. A conferência só consegue checar o que estiver guardado.
 
 ## Fontes
 
 - Numere as fontes na ordem em que aparecem: [1], [2]... A mesma fonte mantém o mesmo número no texto todo.
 - Cada seção termina com as fontes de onde veio o conteúdo: `<sub>Fontes: [1], [3]</sub>`.
 - Na lista final, cada fonte com o que ela é e o link:
-  - Livro: título, autor, página e o link de volta para o livro (o "Link:" de cada trecho em `fontes/livros-*.md`).
-  - Wikipédia: o título do artigo e a URL.
+  - Livro: título, autor, as páginas usadas e o link de volta para cada página (os links `[p. N](...)` dos capítulos, ou o "Link:" de cada trecho).
+  - Wikipédia: o título do artigo (com "em inglês", quando for) e a URL.
   - Vídeo: título, canal e a URL com o minuto do trecho usado (`&t=754s` para 12:34); as marcas `[mm:ss]` da transcrição dão o minuto.
   - Site: o título da página, o site e a URL.
 - Não liste fonte que você não usou.
@@ -49,7 +67,7 @@ Ele quer só a sua resposta. Escreva com o que você sabe, no mesmo formato, mas
 ```markdown
 # <título do assunto>
 
-> <2 ou 3 frases dizendo do que o texto trata>
+> <2 ou 3 frases dizendo do que o assunto trata>
 
 ## <seção>
 

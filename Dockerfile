@@ -16,8 +16,8 @@ RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=${VERSION}" -o /app .
 
 # O Node fica na imagem final: o Claude Code roda nele, e o yt-dlp o usa como motor de JavaScript.
 FROM node:24-alpine
-# O ffmpeg corta o áudio dos podcasts em pedaços para o Whisper (D39).
-RUN apk add --no-cache git python3 py3-pip ripgrep libgcc libstdc++ ffmpeg \
+# O ffmpeg corta o áudio dos podcasts em pedaços para o Whisper (D39); o poppler lê os PDFs da web (D49).
+RUN apk add --no-cache git python3 py3-pip ripgrep libgcc libstdc++ ffmpeg poppler-utils \
  && npm install -g @anthropic-ai/claude-code \
  && npm cache clean --force
 # O YouTube quebra o yt-dlp com frequência: o deploy.sh passa a data aqui para sempre pegar a versão nova.

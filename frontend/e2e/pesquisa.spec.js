@@ -17,6 +17,9 @@ test('pesquisa um tema no YouTube, com o esboço revisado antes de buscar', asyn
   await expect(fonte(page, 'Meus livros')).toBeChecked()
   await fonte(page, 'Meus livros').uncheck()
   await fonte(page, 'Wikipédia').uncheck()
+  // Sites também vem marcado (D49).
+  await expect(fonte(page, 'Sites')).toBeChecked()
+  await fonte(page, 'Sites').uncheck()
   await expect(page.getByText('Nenhuma fonte: só a resposta da IA')).toBeVisible()
   await fonte(page, 'YouTube').check()
   await page.getByRole('radio', { name: /^Detalhada/ }).check()
@@ -79,6 +82,7 @@ test('aprofunda uma pesquisa pronta, e o texto de antes fica na Versão anterior
   await fonte(page, 'Meus livros').setChecked(false)
   await fonte(page, 'Wikipédia').setChecked(false)
   await fonte(page, 'YouTube').setChecked(true)
+  await fonte(page, 'Sites').setChecked(false)
   await page.getByRole('radio', { name: /^Rápida/ }).check()
   await page.getByLabel('Revisar o esboço antes de buscar').setChecked(false)
   await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()

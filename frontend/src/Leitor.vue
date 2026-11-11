@@ -6,6 +6,7 @@ import Estudar from './Estudar.vue'
 import Conversa from './Conversa.vue'
 import Icone from './Icone.vue'
 import { api } from './api.js'
+import { enderecoDePesquisa } from './pesquisa.js'
 import { capitulos, eLinkInterno, inserirCapitulo, relativo, renderizar, resolver, tituloDoTexto, trocarCapitulo } from './markdown.js'
 import { marcar, usarDetalhes } from './detalhes.js'
 import { baixarTema, Conflito, descartarPendente, estaBaixado, lerArquivo, salvar } from './offline.js'
@@ -629,6 +630,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <div v-if="eIndice && arquivo.tema" class="linha-acoes extras">
           <button class="botao" @click="novoCapitulo"><Icone nome="mais" /> Novo capítulo</button>
           <button class="botao" @click="novoSubtema"><Icone nome="mais" /> Novo subtema</button>
+          <a class="botao" :href="enderecoDePesquisa('', arquivo.tema)"><Icone nome="pesquisar" /> Pesquisar para este Tema</a>
         </div>
       </template>
     </div>

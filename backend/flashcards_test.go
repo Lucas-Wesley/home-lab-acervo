@@ -73,7 +73,7 @@ func TestFlashcardsDeUmCapituloEDoTemaInteiro(t *testing.T) {
 	// Para escolher o baralho: os que existem no Flashcards e o nome sugerido, o do Tema.
 	var escolha struct {
 		Baralhos []struct{ ID, Nome string } `json:"baralhos"`
-		Sugestao string                       `json:"sugestao"`
+		Sugestao string                      `json:"sugestao"`
 	}
 	if s := e.pedir("GET", "/api/flashcards/baralhos?arquivo=temas/tema-de-teste/indice.md&capitulo="+url.QueryEscape(primeiro), nil, &escolha); s != http.StatusOK ||
 		len(escolha.Baralhos) != 1 || escolha.Baralhos[0].ID != "b1" || escolha.Sugestao != "Tema de Teste" {

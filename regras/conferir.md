@@ -11,12 +11,14 @@
 5. **Fonte errada:** se a afirmação está em outra fonte do material, troque o número da fonte.
 6. **Fontes que divergem:** o texto mostra as versões e a divergência está em "Dúvidas".
 7. Confira também a lista de fontes: cada número citado no texto existe na lista, e cada fonte da lista é citada.
+8. **As fontes guardadas não valem todas igual.** Capítulos e trechos de livros (`livro-*.md`, `livros-*.md`), artigos da Wikipédia e páginas lidas pelo servidor (`site-*.md`) trazem o texto original. Os arquivos `web-*.md` são anotações que a IA guardou ao pesquisar, às vezes um resumo da página: um fato **importante** (data, número, nome) que só um `web-*.md` sustenta fica no texto, mas vai também para "Dúvidas", dizendo que não foi confirmado em outra fonte.
 
 ## O que não fazer
 
 - **Não reescrever o texto** nem mudar o estilo: só corrigir o que não se sustenta.
 - **Não acrescentar fatos novos.**
 - Não mexer em outros arquivos além de `organizado.md`.
+- Não trazer para o texto comentários sobre o material ("a fonte não diz", "o material consultado"): o que sai do texto vai só para "Dúvidas".
 
 ## Ao terminar
 

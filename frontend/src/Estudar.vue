@@ -6,6 +6,7 @@ import Simulado from './Simulado.vue'
 import { api } from './api.js'
 import { ler, paraFala, temLeitura, trechos } from './leitura.js'
 import { renderizar } from './markdown.js'
+import { enderecoDePesquisa } from './pesquisa.js'
 
 // Aba Estudar de um Tema ou de uma Referência (D41): resumo inteligente, conceitos anteriores,
 // simulado e flashcards. Cada parte é preparada pela IA na fila, a partir do Tema inteiro (com os
@@ -139,6 +140,11 @@ function gerarCartoes(tipo) {
   emit('flashcards', { origem, titulo: tipo === 'leitura' ? 'de leitura' : '', tipo })
 }
 
+// Flashcards de um conceito só (D49): a explicação dele vira os cartões.
+function cartoesDoConceito(c) {
+  emit('flashcards', { origem: { estudo: props.local, parte: `anteriores:${c.nome}` }, titulo: `de “${c.nome}”`, tipo: 'basico' })
+}
+
 function quando(iso) {
   return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''
 }
@@ -243,10 +249,10 @@ onBeforeUnmount(() => {
                   Fontes:
                   <template v-for="(f, i) in c.fontes" :key="f.url"><template v-if="i">, </template><a :href="f.url" target="_blank" rel="noopener">{{ f.titulo || f.url }}</a></template>
                 </p>
-                <!-- Ainda sem função: os flashcards de um conceito vêm depois. -->
-                <button type="button" class="gerar-do-conceito">Gerar flashcards</button>
+                <button v-if="flashcards" type="button" class="gerar-do-conceito" @click="cartoesDoConceito(c)">Gerar flashcards</button>
               </details>
               <a v-if="c.tema" class="no-acervo" :href="`#/ler/${c.tema}/indice.md`"><Icone nome="acervo" /> Está no seu Acervo</a>
+              <a v-else class="no-acervo" :href="enderecoDePesquisa(c.nome)"><Icone nome="pesquisar" /> Pesquisar este conceito</a>
             </article>
           </template>
 

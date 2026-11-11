@@ -71,6 +71,14 @@ const cartoes = ref(null) // CartoesDaReferencia: o "Gerar flashcards" do menu a
 
 const ehPesquisa = computed(() => ref_.value?.tipo === 'pesquisa')
 const ehLivro = computed(() => ref_.value?.tipo === 'livro')
+// D49: as buscas desta rodada da pesquisa que não trouxeram nada (a Wikipédia fora do ar, nenhum vídeo…).
+const NOMES_DAS_BUSCAS = { livros: 'Livros', capitulo: 'Capítulo', wikipedia: 'Wikipédia', youtube: 'YouTube', site: 'Site' }
+const buscasSemResultado = computed(() => {
+  const p = ref_.value?.pesquisa
+  if (!ehPesquisa.value || !p?.coleta) return []
+  const rodada = p.rodada || 1
+  return p.coleta.filter((c) => c.chave && c.erro && (c.rodada || 1) === rodada).map((c) => ({ ...c, nome: NOMES_DAS_BUSCAS[c.fonte] ?? c.fonte }))
+})
 const traduzida = computed(() => !!ref_.value?.textos.traducao)
 const textoPrincipal = computed(() => ref_.value?.textos.traducao || ref_.value?.textos.organizado || '')
 const abas = computed(() => {
@@ -245,6 +253,7 @@ onBeforeUnmount(() => {
         <div v-if="ehPesquisa" class="suave meta">
           {{ descreverPesquisa(ref_.pesquisa) }}<template v-if="ref_.pesquisa.tema !== ref_.titulo"> · pedido: “{{ ref_.pesquisa.tema }}”</template>
           <template v-if="ref_.pesquisa.foco"> · a mais: “{{ ref_.pesquisa.foco }}”</template>
+          <template v-if="ref_.pesquisa.para_tema"> · para o Tema <a :href="`#/ler/${ref_.pesquisa.para_tema}/indice.md`">{{ temaPorCaminho(ref_.pesquisa.para_tema)?.titulo ?? ref_.pesquisa.para_tema }}</a></template>
           <template v-if="ref_.pesquisa.relacionados?.length"> · comparada com: {{ ref_.pesquisa.relacionados.map((t) => temaPorCaminho(t)?.titulo ?? t).join(', ') }}</template>
         </div>
         <div v-else-if="ehLivro" class="suave meta">
@@ -267,12 +276,26 @@ onBeforeUnmount(() => {
         {{ ref_.tarefa.estado === 'rodando' ? 'Trabalhando nisso agora. Etapas com o Claude levam alguns minutos; pode sair da tela.' : 'Na fila: roda assim que as tarefas anteriores terminarem.' }}
       </div>
 
+      <section v-if="buscasSemResultado.length && !andando && ['organizado', 'validado'].includes(ref_.estado)" class="cartao faltou">
+        <div>
+          <strong>{{ buscasSemResultado.length === 1 ? '1 busca ficou sem resultado' : `${buscasSemResultado.length} buscas ficaram sem resultado` }}</strong>
+          <span class="suave"> — o texto foi escrito sem elas.</span>
+        </div>
+        <details>
+          <summary>Ver quais</summary>
+          <ul class="suave">
+            <li v-for="(c, i) in buscasSemResultado" :key="i">{{ c.nome }}: {{ c.titulo }} — {{ c.erro }}</li>
+          </ul>
+        </details>
+        <div><button class="botao" :disabled="ocupado" @click="executar('recoletar')">Buscar de novo o que faltou</button></div>
+      </section>
+
       <EsbocoPesquisa
         v-if="ehPesquisa && ref_.estado === 'esboco' && !andando"
         :key="ref_.atualizado_em"
         :pesquisa="ref_.pesquisa"
         :ocupado="ocupado"
-        @aprovar="(esboco) => executar('pesquisar', { esboco })"
+        @aprovar="(escolhas) => executar('pesquisar', escolhas)"
       />
 
       <section v-if="ref_.temas.length" class="cartao temas-ligados">
@@ -422,6 +445,24 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 8px;
   line-height: 1.45;
+}
+
+.faltou {
+  display: grid;
+  gap: 8px;
+  line-height: 1.45;
+}
+
+.faltou summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.faltou ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
 }
 
 .sugestao ul {

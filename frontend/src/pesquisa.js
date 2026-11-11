@@ -34,3 +34,18 @@ export function descreverLivro(livro) {
 export function buscasDaPergunta(pesquisa) {
   return FONTES.filter((f) => f.chave !== 'sites' && pesquisa?.fontes?.includes(f.chave))
 }
+
+// O pedido que chega no endereço da página Pesquisar (D49): #/pesquisar?tema=…&para=temas/…
+export function pedidoDoEndereco(hash) {
+  const consulta = new URLSearchParams((hash ?? '').split('?').slice(1).join('?'))
+  return { tema: (consulta.get('tema') ?? '').trim().slice(0, 500), para: (consulta.get('para') ?? '').trim() }
+}
+
+// O endereço da página Pesquisar com o tema (e o Tema a completar) já escolhidos.
+export function enderecoDePesquisa(tema, para) {
+  const consulta = new URLSearchParams()
+  if (tema) consulta.set('tema', tema.trim().slice(0, 500))
+  if (para) consulta.set('para', para)
+  const q = consulta.toString()
+  return `#/pesquisar${q ? `?${q}` : ''}`
+}

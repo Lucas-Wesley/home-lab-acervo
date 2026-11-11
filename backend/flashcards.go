@@ -369,6 +369,9 @@ func (a *app) cartoesDaPesquisa(ctx context.Context, id string) {
 	t, err := a.textoDaReferencia(ctx, ref)
 	if err == nil {
 		t.escolher(p.Baralho)
+		if p.FlashTipo == "leitura" {
+			t.Tipo = "leitura"
+		}
 		_, err = a.enviarFlashcards(ctx, alvoDeReferencia(id), t)
 	}
 	if err != nil {

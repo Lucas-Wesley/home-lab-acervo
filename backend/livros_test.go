@@ -31,7 +31,7 @@ func bibliotecaDeLivros(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"id": "escaneado", "title": "Escaneado", "format": "pdf",
 			"indexed": false, "error": "o livro não tem texto (PDF escaneado?)", "chapters": []any{}})
 	case "/api/books/livro1/text":
-		if r.URL.Query().Get("chapters") != "2" {
+		if q := r.URL.Query(); q.Get("chapters") != "2" && (q.Get("from") != "5" || q.Get("to") != "9") {
 			http.Error(w, "pedido inesperado: "+r.URL.RawQuery, http.StatusBadRequest)
 			return
 		}

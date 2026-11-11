@@ -8,7 +8,15 @@ import { FONTES, PROFUNDIDADES } from './pesquisa.js'
 // Referência, é para aprofundar a pesquisa dela (D29): as escolhas começam pelas da última rodada.
 // Com "pagina", é a página Pesquisar um tema (D34): as opções em linhas, com a explicação de cada
 // uma, e o botão numa barra fixa no pé.
-const props = defineProps({ referencia: { type: Object, default: null }, pagina: { type: Boolean, default: false }, focoInicial: { type: String, default: '' } })
+// D49: temaInicial já escreve o tema (vindo de um conceito ou da Conversa); paraTema é o Tema que a
+// pesquisa vai completar.
+const props = defineProps({
+  referencia: { type: Object, default: null },
+  pagina: { type: Boolean, default: false },
+  focoInicial: { type: String, default: '' },
+  temaInicial: { type: String, default: '' },
+  paraTema: { type: String, default: '' },
+})
 const emit = defineEmits(['fechar', 'enviado'])
 
 // As últimas escolhas voltam na próxima pesquisa.
@@ -23,13 +31,15 @@ function lerEscolhas() {
 const aprofundando = !!props.referencia
 const salvas = aprofundando ? props.referencia.pesquisa : lerEscolhas()
 
-const tema = ref('')
+const tema = ref(props.temaInicial)
 const foco = ref(props.focoInicial) // "Pesquisar isto" numa dúvida (D37) já vem com ela
-const fontes = ref(salvas.fontes ?? ['livros', 'wikipedia'])
+// Sites entra no padrão (D49): foi a fonte que mais ajudou nos testes.
+const fontes = ref(salvas.fontes ?? ['livros', 'wikipedia', 'sites'])
 const profundidade = ref(salvas.profundidade ?? 'rapida')
 const revisarEsboco = ref(salvas.revisar_esboco ?? false)
 // Sempre começa desmarcado: gerar cartões é uma decisão de cada pesquisa.
 const flashcards = ref(false)
+const tipoDeCartao = ref('basico') // D47: padrão (perguntas) ou leitura
 const baralho = ref({})
 const enviando = ref(false)
 const erro = ref('')
@@ -69,7 +79,16 @@ async function pesquisar() {
     }
     const ref_ = await api('/api/pesquisas', {
       metodo: 'POST',
-      corpo: { tema: tema.value, fontes: fontes.value, profundidade: profundidade.value, revisar_esboco: revisarEsboco.value && !semFontes.value, flashcards: flashcards.value, baralho: flashcards.value ? baralho.value : undefined },
+      corpo: {
+        tema: tema.value,
+        fontes: fontes.value,
+        profundidade: profundidade.value,
+        revisar_esboco: revisarEsboco.value && !semFontes.value,
+        flashcards: flashcards.value,
+        flashcards_tipo: flashcards.value && tipoDeCartao.value === 'leitura' ? 'leitura' : undefined,
+        baralho: flashcards.value ? baralho.value : undefined,
+        para_tema: props.paraTema || undefined,
+      },
     })
     location.hash = `#/referencia/${ref_.id}`
   } catch (e) {
@@ -148,6 +167,11 @@ async function pesquisar() {
         <input v-model="flashcards" type="checkbox" />
         <span>Gerar flashcards do resultado <span class="suave">— pronta a pesquisa, a IA propõe os cartões, e você aprova junto com o texto.</span></span>
       </label>
+      <div v-if="flashcards" class="opcoes tipo-cartao" role="group" aria-label="Tipo de cartão">
+        <button type="button" class="opcao" :aria-pressed="tipoDeCartao === 'basico'" @click="tipoDeCartao = 'basico'">Padrão</button>
+        <button type="button" class="opcao" :aria-pressed="tipoDeCartao === 'leitura'" @click="tipoDeCartao = 'leitura'">Leitura</button>
+        <span class="suave dica">{{ tipoDeCartao === 'leitura' ? 'Uma pergunta aberta e um resumo para reler.' : 'Perguntas com resposta curta.' }}</span>
+      </div>
       <EscolhaDeBaralho v-if="flashcards" v-model="baralho" class="baralho" />
     </fieldset>
 
@@ -226,8 +250,13 @@ textarea.campo {
   line-height: 1.4;
 }
 
-.baralho {
+.baralho,
+.tipo-cartao {
   margin-left: 24px;
+}
+
+.tipo-cartao {
+  align-items: center;
 }
 
 .marcar {

@@ -52,27 +52,32 @@ type alcance struct {
 	minPerguntas, maxPerguntas int
 	trechos, artigos, videos   int // por pergunta
 	maxVideos                  int // na pesquisa toda
+	capitulos, paginas         int // na pesquisa toda: capítulos inteiros dos livros e páginas da internet
 	tempo                      time.Duration
 }
 
 var alcances = map[string]alcance{
-	profRapida:    {minPerguntas: 1, maxPerguntas: 3, trechos: 5, artigos: 1, videos: 1, maxVideos: 3, tempo: 20 * time.Minute},
-	profDetalhada: {minPerguntas: 4, maxPerguntas: 8, trechos: 8, artigos: 2, videos: 2, maxVideos: 8, tempo: 50 * time.Minute},
+	profRapida:    {minPerguntas: 1, maxPerguntas: 3, trechos: 5, artigos: 1, videos: 1, maxVideos: 3, capitulos: 2, paginas: 3, tempo: 20 * time.Minute},
+	profDetalhada: {minPerguntas: 4, maxPerguntas: 8, trechos: 8, artigos: 2, videos: 2, maxVideos: 8, capitulos: 5, paginas: 8, tempo: 50 * time.Minute},
 }
 
 type pedidoPesquisa struct {
-	Tema          string           `json:"tema"`
-	Fontes        []string         `json:"fontes"`
-	Profundidade  string           `json:"profundidade"`
-	RevisarEsboco bool             `json:"revisar_esboco"`
-	Flashcards    bool             `json:"flashcards"` // pronta a pesquisa, o texto vai para o Flashcards (D28)
-	Baralho       escolhaDeBaralho `json:"baralho"`    // para qual baralho (vazio: um novo, com o título da pesquisa)
-	Esboco        []pergunta       `json:"esboco"`
-	Coleta        []coletado       `json:"coleta"`
-	Rodada        int              `json:"rodada"`       // 1 na primeira; cada "aprofundar" soma uma (0 = pesquisa antiga, a 1ª)
-	Foco          string           `json:"foco"`         // o que o Lucas quer a mais, ao aprofundar
-	Anteriores    []pergunta       `json:"anteriores"`   // as perguntas das rodadas anteriores
-	Relacionados  []string         `json:"relacionados"` // Temas do Acervo sobre o assunto
+	Tema          string             `json:"tema"`
+	Fontes        []string           `json:"fontes"`
+	Profundidade  string             `json:"profundidade"`
+	RevisarEsboco bool               `json:"revisar_esboco"`
+	Flashcards    bool               `json:"flashcards"`                // pronta a pesquisa, o texto vai para o Flashcards (D28)
+	FlashTipo     string             `json:"flashcards_tipo,omitempty"` // D47: "leitura", ou vazio para perguntas
+	Baralho       escolhaDeBaralho   `json:"baralho"`                   // para qual baralho (vazio: um novo, com o título da pesquisa)
+	ParaTema      string             `json:"para_tema,omitempty"`       // D49: a pesquisa foi pedida para completar este Tema
+	Esboco        []pergunta         `json:"esboco"`
+	Capitulos     []capituloPesquisa `json:"capitulos"` // D49: capítulos inteiros dos livros marcados (D38)
+	Paginas       []paginaPesquisa   `json:"paginas"`   // D49: páginas da internet escolhidas no esboço
+	Coleta        []coletado         `json:"coleta"`
+	Rodada        int                `json:"rodada"`       // 1 na primeira; cada "aprofundar" soma uma (0 = pesquisa antiga, a 1ª)
+	Foco          string             `json:"foco"`         // o que o Lucas quer a mais, ao aprofundar
+	Anteriores    []pergunta         `json:"anteriores"`   // as perguntas das rodadas anteriores
+	Relacionados  []string           `json:"relacionados"` // Temas do Acervo sobre o assunto
 }
 
 // pergunta do esboço, com as palavras de busca de cada fonte (vazias quando a fonte não foi escolhida).
@@ -83,14 +88,42 @@ type pergunta struct {
 	Youtube   string `json:"youtube"`
 }
 
-// coletado é uma fonte guardada em fontes/, ou o motivo de não ter vindo nada dela.
+// capituloPesquisa: um capítulo (ou bloco de páginas) de um livro marcado, lido inteiro na coleta.
+type capituloPesquisa struct {
+	Livro    string `json:"livro"`
+	Titulo   string `json:"titulo"` // do livro
+	Autor    string `json:"autor,omitempty"`
+	N        int    `json:"n"`
+	Capitulo string `json:"capitulo"`
+	De       int    `json:"de"`
+	Ate      int    `json:"ate"`
+	Pergunta int    `json:"pergunta,omitempty"`
+}
+
+func (c capituloPesquisa) chave() string {
+	return fmt.Sprintf("%s:%s:%d:%d", fonteCapitulo, c.Livro, c.De, c.Ate)
+}
+
+// paginaPesquisa: uma página da internet que o esboço escolheu; o servidor lê o texto dela.
+type paginaPesquisa struct {
+	URL      string `json:"url"`
+	Titulo   string `json:"titulo"`
+	Pergunta int    `json:"pergunta,omitempty"`
+}
+
+func (p paginaPesquisa) chave() string { return fonteSite + ":" + p.URL }
+
+// coletado é uma fonte guardada em fontes/, ou o motivo de não ter vindo nada dela. Chave diz o
+// que foi buscado, para refazer só o que falhou (D49).
 type coletado struct {
-	Fonte   string `json:"fonte"`
-	Titulo  string `json:"titulo"`
-	URL     string `json:"url,omitempty"`
-	Arquivo string `json:"arquivo,omitempty"`
-	Erro    string `json:"erro,omitempty"`
-	Rodada  int    `json:"rodada,omitempty"`
+	Fonte    string `json:"fonte"`
+	Titulo   string `json:"titulo"`
+	URL      string `json:"url,omitempty"`
+	Arquivo  string `json:"arquivo,omitempty"`
+	Erro     string `json:"erro,omitempty"`
+	Rodada   int    `json:"rodada,omitempty"`
+	Chave    string `json:"chave,omitempty"`
+	Pergunta int    `json:"pergunta,omitempty"`
 }
 
 func (c coletado) rodada() int { return max(c.Rodada, 1) }
@@ -138,7 +171,20 @@ func (a *app) handleCriarPesquisa(w http.ResponseWriter, r *http.Request) {
 		erroJSON(w, http.StatusBadRequest, "O Flashcards não está configurado neste servidor (FLASHCARDS_URL).")
 		return
 	}
+	if p.FlashTipo != "" && p.FlashTipo != "leitura" {
+		erroJSON(w, http.StatusBadRequest, "Tipo de flashcards inválido.")
+		return
+	}
+	if p.ParaTema != "" {
+		if ok := a.temasExistentes([]string{p.ParaTema}); len(ok) == 1 {
+			p.ParaTema = ok[0]
+		} else {
+			erroJSON(w, http.StatusBadRequest, "O Tema desta pesquisa não existe.")
+			return
+		}
+	}
 	p.Esboco, p.Coleta, p.Anteriores, p.Relacionados = []pergunta{}, []coletado{}, []pergunta{}, []string{}
+	p.Capitulos, p.Paginas = []capituloPesquisa{}, []paginaPesquisa{}
 	p.Rodada, p.Foco = 1, ""
 
 	dados, _ := json.Marshal(p)
@@ -199,7 +245,7 @@ func (a *app) aprofundar(ctx context.Context, ref *referencia, escolhas pedidoPe
 	}
 	p.Foco = cortar(strings.TrimSpace(escolhas.Foco), maxTema, false)
 	p.Anteriores = append(p.Anteriores, p.Esboco...)
-	p.Esboco = []pergunta{}
+	p.Esboco, p.Capitulos, p.Paginas = []pergunta{}, []capituloPesquisa{}, []paginaPesquisa{}
 	p.Rodada = p.rodada() + 1
 	if err := os.Rename(filepath.Join(pasta, "organizado.md"), filepath.Join(pasta, "anterior.md")); err != nil {
 		return "", err
@@ -249,14 +295,18 @@ const esquemaEsboco = `{"type":"object","properties":{` +
 	`"relacionados":{"type":"array","items":{"type":"string"}},` +
 	`"perguntas":{"type":"array","items":{"type":"object","properties":{` +
 	`"pergunta":{"type":"string"},"livros":{"type":"string"},"wikipedia":{"type":"string"},"youtube":{"type":"string"}},` +
-	`"required":["pergunta","livros","wikipedia","youtube"]}}},` +
-	`"required":["titulo","perguntas","relacionados"]}`
+	`"required":["pergunta","livros","wikipedia","youtube"]}},` +
+	`"capitulos":{"type":"array","items":{"type":"object","properties":{` +
+	`"livro":{"type":"string"},"n":{"type":"integer"},"pergunta":{"type":"integer"}},"required":["livro","n","pergunta"]}},` +
+	`"paginas":{"type":"array","items":{"type":"object","properties":{` +
+	`"url":{"type":"string"},"titulo":{"type":"string"},"pergunta":{"type":"integer"}},"required":["url","titulo","pergunta"]}}},` +
+	`"required":["titulo","perguntas","relacionados","capitulos","paginas"]}`
 
 var nomesDasFontes = map[string]string{
-	fonteLivros:    "os livros da biblioteca do Lucas (busca por palavras no texto dos livros)",
-	fonteWikipedia: "a Wikipédia em português (busca de artigos)",
+	fonteLivros:    "os livros da biblioteca do Lucas (busca por palavras no texto dos livros, e capítulos inteiros que você escolher)",
+	fonteWikipedia: "a Wikipédia (artigos pelo nome; a em inglês completa quando a em português é curta)",
 	fonteYoutube:   "vídeos do YouTube (busca de vídeos; a transcrição é lida)",
-	fonteSites:     "sites da internet (a IA pesquisa na hora de escrever)",
+	fonteSites:     "sites da internet (você escolhe as páginas agora, com WebSearch; o servidor lê o texto delas)",
 }
 
 func (p pedidoPesquisa) descreverFontes() string {
@@ -266,6 +316,8 @@ func (p pedidoPesquisa) descreverFontes() string {
 	}
 	return strings.Join(linhas, "\n")
 }
+
+const arquivoMapaDosLivros = "livros-marcados.md"
 
 func (a *app) planejar(ctx context.Context, t *tarefa, ref *referencia) (resultado, error) {
 	p, err := a.pedidoDe(ref)
@@ -277,17 +329,36 @@ func (a *app) planejar(ctx context.Context, t *tarefa, ref *referencia) (resulta
 		return pronto, err
 	}
 	al := p.alcance()
+	var extras strings.Builder
+	ferramentas := ferramentasLeitura
+	mapa := filepath.Join(pasta, arquivoMapaDosLivros)
+	defer os.Remove(mapa)
+	if p.usa(fonteLivros) {
+		if md := a.mapaDosLivros(ctx); md != "" {
+			if err := os.WriteFile(mapa, []byte(md), 0o644); err != nil {
+				return pronto, err
+			}
+			fmt.Fprintf(&extras, "%s, nesta pasta, é o mapa dos livros da Biblioteca já marcados por assunto, capítulo a capítulo. "+
+				"Escolha em `capitulos` até %d capítulos que tratem de fato do tema, para serem lidos inteiros.\n", arquivoMapaDosLivros, al.capitulos)
+		} else {
+			extras.WriteString("Nenhum livro da Biblioteca foi marcado por assunto ainda: deixe `capitulos` vazio.\n")
+		}
+	}
+	if p.usa(fonteSites) {
+		ferramentas += ",WebSearch"
+		fmt.Fprintf(&extras, "Escolha em `paginas` até %d páginas da internet, buscando com WebSearch, como mandam as regras.\n", al.paginas)
+	}
 	instrucao := fmt.Sprintf("O Lucas quer uma pesquisa sobre: %q.\n\nProfundidade: %s, com %d a %d perguntas.\n"+
-		"Fontes escolhidas:\n%s\n\n%s"+
+		"Fontes escolhidas:\n%s\n\n%s%s\n"+
 		"Monte o esboço da pesquisa. Deixe vazias as palavras de busca das fontes que não foram escolhidas.",
 		p.Tema, map[string]string{profRapida: "rápida", profDetalhada: "detalhada"}[p.Profundidade], al.minPerguntas, al.maxPerguntas,
-		p.descreverFontes(), a.jaEscritoParaEsboco(ctx, ref, p))
+		p.descreverFontes(), extras.String(), a.jaEscritoParaEsboco(ctx, ref, p))
 	r, err := a.chamarClaude(ctx, pedidoClaude{
 		pasta:       pasta,
 		extras:      []string{a.conteudo.raiz},
 		regra:       "pesquisar-esboco.md",
 		instrucao:   instrucao,
-		ferramentas: ferramentasLeitura,
+		ferramentas: ferramentas,
 		esquema:     esquemaEsboco,
 	})
 	if err != nil {
@@ -297,6 +368,12 @@ func (a *app) planejar(ctx context.Context, t *tarefa, ref *referencia) (resulta
 		Titulo       string     `json:"titulo"`
 		Perguntas    []pergunta `json:"perguntas"`
 		Relacionados []string   `json:"relacionados"`
+		Capitulos    []struct {
+			Livro    string `json:"livro"`
+			N        int    `json:"n"`
+			Pergunta int    `json:"pergunta"`
+		} `json:"capitulos"`
+		Paginas []paginaPesquisa `json:"paginas"`
 	}
 	if err := dadosDaResposta(r, &esboco); err != nil {
 		return pronto, err
@@ -305,7 +382,25 @@ func (a *app) planejar(ctx context.Context, t *tarefa, ref *referencia) (resulta
 	if len(p.Esboco) == 0 {
 		return pronto, errors.New("a IA não montou nenhuma pergunta para a pesquisa")
 	}
-	p.Relacionados = a.temasExistentes(append(a.temasDaReferencia(ctx, ref.ID), esboco.Relacionados...))
+	p.Capitulos, p.Paginas = []capituloPesquisa{}, []paginaPesquisa{}
+	if p.usa(fonteLivros) {
+		marcados := a.capitulosMarcados(ctx)
+		for _, c := range esboco.Capitulos {
+			if achado, ok := marcados[fmt.Sprintf("%s:%d", strings.TrimSpace(c.Livro), c.N)]; ok && len(p.Capitulos) < al.capitulos &&
+				!slices.ContainsFunc(p.Capitulos, func(x capituloPesquisa) bool { return x.chave() == achado.chave() }) {
+				achado.Pergunta = perguntaValida(c.Pergunta, len(p.Esboco))
+				p.Capitulos = append(p.Capitulos, achado)
+			}
+		}
+	}
+	if p.usa(fonteSites) {
+		p.Paginas = limparPaginas(esboco.Paginas, len(p.Esboco), al.paginas)
+	}
+	relacionados := esboco.Relacionados
+	if p.ParaTema != "" {
+		relacionados = append([]string{p.ParaTema}, relacionados...)
+	}
+	p.Relacionados = a.temasExistentes(append(a.temasDaReferencia(ctx, ref.ID), relacionados...))
 	if err := a.guardarPedido(ctx, ref.ID, p); err != nil {
 		return pronto, err
 	}
@@ -317,6 +412,104 @@ func (a *app) planejar(ctx context.Context, t *tarefa, ref *referencia) (resulta
 	}
 	_, err = a.fila.enfileirar(ctx, ref.ID, "coletar", nil)
 	return pronto, err
+}
+
+func perguntaValida(n, total int) int {
+	if n < 1 || n > total {
+		return 0
+	}
+	return n
+}
+
+// limparPaginas fica com os links http(s) que o servidor consegue ler, sem repetir.
+func limparPaginas(lista []paginaPesquisa, perguntas, max int) []paginaPesquisa {
+	limpo := []paginaPesquisa{}
+	for _, pg := range lista {
+		link, err := linkDaWeb(strings.TrimSpace(pg.URL))
+		_, ehVideo := videoDoLink(link)
+		if err != nil || len(limpo) == max || ehVideo == nil ||
+			slices.ContainsFunc(limpo, func(x paginaPesquisa) bool { return x.URL == link }) {
+			continue
+		}
+		limpo = append(limpo, paginaPesquisa{URL: link, Titulo: cortar(strings.TrimSpace(pg.Titulo), 200, false), Pergunta: perguntaValida(pg.Pergunta, perguntas)})
+	}
+	return limpo
+}
+
+// capitulosMarcados: os capítulos dos livros marcados (D38), por "livro:n", com um exemplar só de
+// cada livro repetido.
+func (a *app) capitulosMarcados(ctx context.Context) map[string]capituloPesquisa {
+	todos := map[string]capituloPesquisa{}
+	for _, l := range a.livrosMarcados(ctx) {
+		for _, c := range l.caps {
+			todos[fmt.Sprintf("%s:%d", l.id, c.N)] = capituloPesquisa{Livro: l.id, Titulo: l.titulo, Autor: l.autor, N: c.N,
+				Capitulo: c.Titulo, De: c.De, Ate: c.Ate}
+		}
+	}
+	return todos
+}
+
+type livroMarcado struct {
+	id, titulo, autor string
+	caps              []marcaDeCapitulo
+}
+
+func (a *app) livrosMarcados(ctx context.Context) []livroMarcado {
+	rows, err := a.db.QueryContext(ctx, `SELECT livro, titulo, autor, capitulos FROM livros_marcados WHERE capitulos != '[]' ORDER BY titulo`)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var lista []livroMarcado
+	exemplar := map[string]int{}
+	for rows.Next() {
+		var l livroMarcado
+		var caps string
+		if rows.Scan(&l.id, &l.titulo, &l.autor, &caps) != nil || json.Unmarshal([]byte(caps), &l.caps) != nil || len(l.caps) == 0 {
+			continue
+		}
+		chave := mesmoLivro(l.titulo, l.autor)
+		if i, ok := exemplar[chave]; ok {
+			if len(l.caps) > len(lista[i].caps) {
+				lista[i] = l
+			}
+			continue
+		}
+		exemplar[chave] = len(lista)
+		lista = append(lista, l)
+	}
+	return lista
+}
+
+// mapaDosLivros: o que cada capítulo dos livros marcados trata, para o esboço escolher o que ler.
+func (a *app) mapaDosLivros(ctx context.Context) string {
+	livros := a.livrosMarcados(ctx)
+	if len(livros) == 0 {
+		return ""
+	}
+	var s strings.Builder
+	s.WriteString("# Livros da Biblioteca marcados por assunto\n\nCada capítulo: `livro` (o id) e `n`, o título, as páginas, o assunto e as marcas.\n")
+	junta := func(rotulo string, l []string) string {
+		if len(l) == 0 {
+			return ""
+		}
+		if len(l) > 8 {
+			l = l[:8]
+		}
+		return " " + rotulo + ": " + strings.Join(l, "; ") + "."
+	}
+	for _, l := range livros {
+		autor := ""
+		if l.autor != "" {
+			autor = ", de " + l.autor
+		}
+		fmt.Fprintf(&s, "\n## %s%s (livro: %s)\n\n", l.titulo, autor, l.id)
+		for _, c := range l.caps {
+			fmt.Fprintf(&s, "- n=%d · “%s” (p. %d–%d): %s%s%s%s%s%s\n", c.N, c.Titulo, c.De, c.Ate, strings.TrimSpace(c.Resumo),
+				junta("Temas", c.Temas), junta("Pessoas", c.Pessoas), junta("Lugares", c.Lugares), junta("Períodos", c.Periodos), junta("Eventos", c.Eventos))
+		}
+	}
+	return s.String()
 }
 
 // limparEsboco tira perguntas vazias e as buscas de fontes que não foram escolhidas.
@@ -357,6 +550,9 @@ func (a *app) jaEscritoParaEsboco(ctx context.Context, ref *referencia, p pedido
 		s.WriteString("(o Acervo ainda não tem Temas)\n")
 	}
 	fmt.Fprintf(&s, "Os arquivos dos Temas estão em %s/temas/ e podem ser lidos.\n", a.conteudo.raiz)
+	if p.ParaTema != "" {
+		fmt.Fprintf(&s, "O Lucas pediu esta pesquisa para completar o Tema %s: leia-o inteiro e vá atrás do que ele não tem, como mandam as regras.\n", p.ParaTema)
+	}
 	if ligados := a.temasDaReferencia(ctx, ref.ID); len(ligados) > 0 {
 		fmt.Fprintf(&s, "Esta pesquisa já entrou nos Temas: %s.\n", strings.Join(ligados, ", "))
 	}
@@ -439,8 +635,9 @@ func (a *app) copiarJaEscrito(pasta string, temas []string) ([]string, error) {
 	return slices.Compact(copiados), nil
 }
 
-// aprovarEsboco: o Lucas revisou (e talvez editou) as perguntas; a coleta começa.
-func (a *app) aprovarEsboco(ctx context.Context, ref *referencia, perguntas []pergunta) (string, error) {
+// aprovarEsboco: o Lucas revisou (e talvez editou) as perguntas, e talvez tirou capítulos e
+// páginas (só tirar: o que fica precisa estar no esboço); a coleta começa.
+func (a *app) aprovarEsboco(ctx context.Context, ref *referencia, perguntas []pergunta, capitulos []capituloPesquisa, paginas []paginaPesquisa) (string, error) {
 	p, err := a.pedidoDe(ref)
 	if err != nil {
 		return err.Error(), nil
@@ -450,6 +647,16 @@ func (a *app) aprovarEsboco(ctx context.Context, ref *referencia, perguntas []pe
 	}
 	if perguntas != nil {
 		p.Esboco = limparEsboco(perguntas, p, alcances[profDetalhada].maxPerguntas)
+	}
+	if capitulos != nil {
+		p.Capitulos = slices.DeleteFunc(p.Capitulos, func(c capituloPesquisa) bool {
+			return !slices.ContainsFunc(capitulos, func(x capituloPesquisa) bool { return x.chave() == c.chave() })
+		})
+	}
+	if paginas != nil {
+		p.Paginas = slices.DeleteFunc(p.Paginas, func(c paginaPesquisa) bool {
+			return !slices.ContainsFunc(paginas, func(x paginaPesquisa) bool { return x.URL == c.URL })
+		})
 	}
 	if len(p.Esboco) == 0 {
 		return "Deixe ao menos uma pergunta no esboço.", nil
@@ -499,9 +706,9 @@ func (a *app) redigir(ctx context.Context, t *tarefa, ref *referencia) (resultad
 				fmt.Fprintf(&instrucao, "- %s\n", q.Pergunta)
 			}
 		}
-		instrucao.WriteString("\nO material coletado está em fontes/ nesta pasta; cru.md lista cada arquivo e de onde veio.\n")
+		instrucao.WriteString("\nO material coletado está em fontes/ nesta pasta; cru.md lista cada arquivo, de onde veio e a que pergunta serve.\n")
 		if p.usa(fonteSites) {
-			instrucao.WriteString("Ele também escolheu sites da internet: pesquise com WebSearch e WebFetch e guarde em fontes/ o que usar, como mandam as regras.\n")
+			instrucao.WriteString("Ele também escolheu sites da internet: as páginas do esboço já estão em fontes/site-*.md. Use WebSearch e WebFetch só para o que o material não responder, e guarde em fontes/web-<n>.md o que usar, como mandam as regras.\n")
 		} else {
 			instrucao.WriteString("Use só o material de fontes/: não há internet nesta pesquisa.\n")
 		}
@@ -514,8 +721,20 @@ func (a *app) redigir(ctx context.Context, t *tarefa, ref *referencia) (resultad
 		}
 		instrucao.WriteString("\n")
 	}
+	var params struct {
+		Faltou bool `json:"faltou"`
+	}
+	if len(t.Params) > 0 {
+		json.Unmarshal(t.Params, &params)
+	}
+	if params.Faltou && p.rodada() == 1 {
+		instrucao.WriteString("O texto já tinha sido escrito, mas faltava material de algumas buscas, que agora chegou. anterior.md é o texto de antes: não é fonte nem precisa da seção \"O que há de novo\"; escreva o texto de novo, completo, com todo o material.\n")
+	}
 	if len(relacionados) > 0 {
 		fmt.Fprintf(&instrucao, "ja-escrito/ tem o que o Acervo já tem sobre o assunto (Temas: %s).\n", strings.Join(relacionados, ", "))
+		if p.ParaTema != "" {
+			fmt.Fprintf(&instrucao, "O Lucas pediu esta pesquisa para completar o Tema %s: dê mais espaço ao que ele ainda não tem.\n", p.ParaTema)
+		}
 	}
 	if p.rodada() > 1 || len(relacionados) > 0 {
 		instrucao.WriteString("Siga a seção \"Quando já existe texto\" das regras.\n\n")

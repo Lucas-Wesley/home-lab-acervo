@@ -22,6 +22,7 @@ type config struct {
 	biblioteca     string // API da Biblioteca, ex.: http://biblioteca:8080 no servidor
 	bibliotecaLink string // endereço que o Lucas abre, para os links de volta ao livro
 	wikipedia      string
+	wikipediaEN    string // a Wikipédia em inglês, quando o artigo em português falta ou é curto
 	// Flashcards de um texto (D28): a API do app Flashcards, na rede interna, e os endereços que o
 	// Lucas abre (o do Flashcards, para revisar; o do Acervo, para o link de volta).
 	flashcards     string
@@ -54,6 +55,7 @@ func configDoAmbiente(dados string) config {
 		biblioteca:     strings.TrimSuffix(os.Getenv("BIBLIOTECA_URL"), "/"),
 		bibliotecaLink: strings.TrimSuffix(env("BIBLIOTECA_LINK", "https://biblioteca.internal"), "/"),
 		wikipedia:      strings.TrimSuffix(env("WIKIPEDIA_URL", "https://pt.wikipedia.org"), "/"),
+		wikipediaEN:    strings.TrimSuffix(env("WIKIPEDIA_EN_URL", "https://en.wikipedia.org"), "/"),
 
 		flashcards:     strings.TrimSuffix(os.Getenv("FLASHCARDS_URL"), "/"),
 		flashcardsLink: strings.TrimSuffix(env("FLASHCARDS_LINK", "https://flashcards.internal"), "/"),

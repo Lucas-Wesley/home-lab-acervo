@@ -25,7 +25,8 @@ const emConflito = ref([])
 const rota = computed(() => {
   const h = decodeURIComponent(hash.value.replace(/^#\/?/, ''))
   const [nome, ...resto] = h.split('/')
-  return { nome: nome || 'acervo', param: resto.join('/') }
+  // #/pesquisar?tema=…&para=… (D49): o que vem depois do ? é da própria página.
+  return { nome: nome.split('?')[0] || 'acervo', param: resto.join('/') }
 })
 
 const MENU = [

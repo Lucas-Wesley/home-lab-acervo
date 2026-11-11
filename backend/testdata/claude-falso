@@ -35,7 +35,7 @@ case "$prompt" in
     ok ;;
   *"Monte o esboço da pesquisa"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
-    printf '{"type":"result","result":"","is_error":false,"structured_output":{"titulo":"A origem da laranja","perguntas":[{"pergunta":"De onde vem a laranja?","livros":"laranja Ásia","wikipedia":"Laranja (fruta)","youtube":"origem da laranja"},{"pergunta":"Como chegou ao Brasil?","livros":"","wikipedia":"Citricultura no Brasil","youtube":"laranja no Brasil"},{"pergunta":"   ","livros":"x","wikipedia":"x","youtube":"x"}],"relacionados":["temas/laranja","temas/nao-existe"]}}\n' ;;
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"titulo":"A origem da laranja","perguntas":[{"pergunta":"De onde vem a laranja?","livros":"laranja Ásia","wikipedia":"Laranja (fruta)","youtube":"origem da laranja"},{"pergunta":"Como chegou ao Brasil?","livros":"","wikipedia":"Citricultura no Brasil","youtube":"laranja no Brasil"},{"pergunta":"   ","livros":"x","wikipedia":"x","youtube":"x"}],"relacionados":["temas/laranja","temas/nao-existe"],"capitulos":[{"livro":"livro1","n":2,"pergunta":2},{"livro":"livro1","n":2,"pergunta":1},{"livro":"nao-existe","n":1,"pergunta":1}],"paginas":[%s]}}\n' "$( [ -n "$PESQUISA_PAGINA_URL" ] && printf '{"url":"%s","titulo":"Página de teste","pergunta":1},{"url":"https://www.youtube.com/watch?v=AAAAAAAAAAA","titulo":"Vídeo","pergunta":1}' "$PESQUISA_PAGINA_URL")" ;;
   *"Escreva organizado.md nesta pasta"*)
     {
       printf '# Pesquisa de teste\n\n> Texto de teste escrito a partir do material.\n\n## Seção\n\nConteúdo da pesquisa [1].\n\n<sub>Fontes: [1]</sub>\n\n'

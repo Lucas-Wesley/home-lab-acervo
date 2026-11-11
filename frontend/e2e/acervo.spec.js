@@ -154,7 +154,11 @@ test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ 
   await expect(page.getByRole('heading', { name: 'Conceito base' })).toBeVisible({ timeout: 15000 })
   await page.getByText('Entender o conceito').first().click()
   await expect(page.getByText(/Explicação base/)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Gerar flashcards' }).first()).toBeVisible()
+  // D49: cada conceito gera os próprios flashcards e, fora do Acervo, leva a Pesquisar.
+  await page.locator('.conceito').first().getByRole('button', { name: 'Gerar flashcards', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Gerar flashcards de “Conceito base”' })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click()
+  await expect(page.getByRole('link', { name: 'Pesquisar este conceito' }).last()).toHaveAttribute('href', '#/pesquisar?tema=Vizinho')
 
   // Flashcards do Tema inteiro: padrão ou de leitura; os dos conceitos anteriores saíram daqui.
   await cartaoDoEstudo(page, 'Flashcards').click()
@@ -194,6 +198,37 @@ test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ 
   await page.reload()
   await cartaoDoEstudo(page, 'Simulado').click()
   await expect(page.getByText(/5 perguntas/)).toBeVisible()
+})
+
+// D49: do Tema, a pesquisa já vem com o assunto e o Tema a completar; as buscas sem resultado
+// aparecem na Referência, com Buscar de novo.
+test('pesquisa para completar um Tema', async ({ page }) => {
+  await page.goto('/#/ler/temas/tema-de-teste/indice.md')
+  await page.getByRole('link', { name: 'Pesquisar para este Tema' }).click()
+  await expect(page.getByRole('heading', { name: 'Pesquisar para este Tema' })).toBeVisible()
+  await expect(page.locator('.nova-pesquisa textarea')).toHaveValue('Tema de Teste')
+  // Sites vem marcado por padrão; a Wikipédia de verdade fica de fora do teste.
+  await expect(page.getByRole('checkbox', { name: /Sites/ })).toBeChecked()
+  await page.getByRole('checkbox', { name: /Wikipédia/ }).uncheck()
+  await page.getByRole('checkbox', { name: /Gerar flashcards/ }).check()
+  await expect(page.getByRole('group', { name: 'Tipo de cartão' }).getByRole('button', { name: 'Leitura' })).toBeVisible()
+  await page.getByRole('checkbox', { name: /Gerar flashcards/ }).uncheck()
+  await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()
+
+  await expect(page).toHaveURL(/#\/referencia\//)
+  await expect(page.locator('.meta')).toContainText('para o Tema Tema de Teste')
+  await expect(page.getByText('2 buscas ficaram sem resultado')).toBeVisible({ timeout: 30000 })
+  await page.getByText('Ver quais').click()
+  await expect(page.locator('.faltou li').first()).toContainText('nenhum trecho nos livros')
+  await page.getByRole('button', { name: 'Buscar de novo o que faltou' }).click()
+  // A busca de novo também não acha nada: o texto fica, e o aviso continua.
+  await expect(page.getByText('2 buscas ficaram sem resultado')).toBeVisible({ timeout: 30000 })
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/pesquisa-faltou.png`, fullPage: true })
+  // Sai do banco do teste, para não confundir os testes da pesquisa.
+  await page.getByRole('button', { name: 'Mais ações' }).click()
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('menuitem', { name: 'Excluir' }).click()
+  await expect(page).toHaveURL(/#\/referencias$/)
 })
 
 // A Referência tem a mesma aba Estudar, a partir do texto organizado dela.

@@ -7,7 +7,7 @@ o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
 **Comece lendo:**
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **a fonte da verdade do projeto.** Conceitos, fluxo
-  completo, decisões (D1–D48), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
+  completo, decisões (D1–D49), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
 
 ## Em uma frase
 Duas áreas: **Acervo** (base permanente por **Temas**, Markdown multi-arquivo, cumulativa) e
@@ -38,7 +38,7 @@ disponível pra inferência local (Whisper) quando precisar.
 - Antes de automatizar, **validar as regras de cada etapa em modo manual** (elas viram o futuro
   `CLAUDE.md` que define a qualidade — hoje ainda em aberto).
 - Toda chamada ao Claude ou ao `yt-dlp` passa pela **fila** (uma tarefa por vez, D14).
-- **Internet só em "Mais informações"** (D26), **em "Conversar"** (D48, que substituiu o "Perguntar" da D35: só leitura de uma cópia do texto e do Acervo, e a IA usa só quando precisa; as mudanças voltam como dados e só o servidor as aplica, quando o Lucas toca em Aplicar), **na escrita de uma pesquisa com "Sites"** (D27) **e nos conceitos anteriores da aba Estudar** (D41, só leitura de uma cópia do Tema): as
+- **Internet só em "Mais informações"** (D26), **em "Conversar"** (D48, que substituiu o "Perguntar" da D35: só leitura de uma cópia do texto e do Acervo, e a IA usa só quando precisa; as mudanças voltam como dados e só o servidor as aplica, quando o Lucas toca em Aplicar), **na escrita de uma pesquisa com "Sites"** (D27; desde a D49, o esboço só busca e escolhe as páginas, que o servidor lê) **e nos conceitos anteriores da aba Estudar** (D41, só leitura de uma cópia do Tema): as
   outras etapas continuam sem `WebSearch`/`WebFetch`. A coleta do Pesquisador (livros, Wikipédia,
   YouTube) é feita pelo servidor, sem a IA.
 - **Podcasts** (D39): o áudio vem do feed RSS aberto do podcast (o do Spotify é protegido), sem IA; a

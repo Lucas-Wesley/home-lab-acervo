@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -86,7 +87,7 @@ func (a *app) baixarPagina(ctx context.Context, link string) (paginaDaWeb, error
 	}
 	tipo := strings.ToLower(res.Header.Get("Content-Type"))
 	if strings.Contains(tipo, "pdf") {
-		return p, errors.New("O link é de um PDF: por enquanto, só páginas da web.")
+		return lerPDF(ctx, res.Body, res.Request.URL)
 	}
 	if tipo != "" && !strings.Contains(tipo, "html") {
 		return p, errors.New("O link não é de uma página da web.")
@@ -100,6 +101,62 @@ func (a *app) baixarPagina(ctx context.Context, link string) (paginaDaWeb, error
 		return p, errSemTextoWeb
 	}
 	return p, nil
+}
+
+const maxPDF = 30 << 20
+
+// lerPDF tira o texto de um PDF da web com o pdftotext (D49). O título vem dos metadados do PDF ou
+// do nome do arquivo.
+func lerPDF(ctx context.Context, corpo io.Reader, endereco *url.URL) (paginaDaWeb, error) {
+	p := paginaDaWeb{URL: endereco.String(), Site: strings.TrimPrefix(endereco.Hostname(), "www.")}
+	if _, err := exec.LookPath("pdftotext"); err != nil {
+		return p, errors.New("O link é de um PDF, e este servidor não tem o leitor de PDF (pdftotext).")
+	}
+	temp, err := os.CreateTemp("", "pagina-*.pdf")
+	if err != nil {
+		return p, err
+	}
+	defer os.Remove(temp.Name())
+	n, err := io.Copy(temp, io.LimitReader(corpo, maxPDF+1))
+	temp.Close()
+	if err != nil {
+		return p, fmt.Errorf("O PDF não baixou: %v", err)
+	}
+	if n > maxPDF {
+		return p, errors.New("O PDF é grande demais (mais de 30 MB).")
+	}
+	texto, err := exec.CommandContext(ctx, "pdftotext", "-enc", "UTF-8", "-q", temp.Name(), "-").Output()
+	if err != nil {
+		return p, errors.New("Não consegui ler o texto deste PDF.")
+	}
+	p.Texto = limparTextoDoPDF(string(texto))
+	if info, err := exec.CommandContext(ctx, "pdfinfo", temp.Name()).Output(); err == nil {
+		for _, linha := range strings.Split(string(info), "\n") {
+			if v, ok := strings.CutPrefix(linha, "Title:"); ok {
+				p.Titulo = strings.TrimSpace(v)
+			}
+		}
+	}
+	if p.Titulo == "" {
+		p.Titulo, _ = url.PathUnescape(filepath.Base(endereco.Path))
+	}
+	if utf8.RuneCountInString(p.Texto) < minTextoWeb {
+		return p, errors.New("O PDF não tem texto (pode ser escaneado).")
+	}
+	return p, nil
+}
+
+// limparTextoDoPDF junta as linhas de um parágrafo (o PDF quebra no fim de cada linha) e tira as
+// quebras de página.
+func limparTextoDoPDF(s string) string {
+	s = strings.ReplaceAll(s, "\f", "\n\n")
+	var paragrafos []string
+	for _, bloco := range regexp.MustCompile(`\n\s*\n`).Split(s, -1) {
+		if linha := strings.Join(strings.Fields(bloco), " "); linha != "" {
+			paragrafos = append(paragrafos, linha)
+		}
+	}
+	return strings.Join(paragrafos, "\n\n")
 }
 
 // lerPagina tira os metadados e o texto principal da página.

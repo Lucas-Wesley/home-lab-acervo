@@ -289,17 +289,31 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 		_, err = a.fila.enfileirar(ctx, ref.ID, a.proximaEtapa(ref), nil)
 	case "pesquisar":
 		var corpo struct {
-			Esboco []pergunta `json:"esboco"`
+			Esboco    []pergunta         `json:"esboco"`
+			Capitulos []capituloPesquisa `json:"capitulos"`
+			Paginas   []paginaPesquisa   `json:"paginas"`
 		}
 		if !lerCorpo(w, r, &corpo) {
 			return
 		}
 		var msg string
-		msg, err = a.aprovarEsboco(ctx, ref, corpo.Esboco)
+		msg, err = a.aprovarEsboco(ctx, ref, corpo.Esboco, corpo.Capitulos, corpo.Paginas)
 		if msg != "" {
 			erroJSON(w, http.StatusConflict, msg)
 			return
 		}
+	case "recoletar":
+		// D49: refaz só as buscas desta rodada que não trouxeram nada.
+		p, perr := a.pedidoDe(ref)
+		if perr != nil || (ref.Estado != "organizado" && ref.Estado != "validado") {
+			erroJSON(w, http.StatusConflict, "Só dá para buscar de novo numa pesquisa pronta que ainda não entrou num Tema.")
+			return
+		}
+		if p.buscasQueFalharam() == 0 {
+			erroJSON(w, http.StatusConflict, "Nenhuma busca desta pesquisa ficou sem resultado.")
+			return
+		}
+		_, err = a.fila.enfileirar(ctx, ref.ID, "coletar", map[string]bool{"faltou": true})
 	case "aprofundar":
 		var corpo pedidoPesquisa
 		if !lerCorpo(w, r, &corpo) {

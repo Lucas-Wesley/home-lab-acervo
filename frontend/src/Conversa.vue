@@ -4,12 +4,19 @@ import Icone from './Icone.vue'
 import Perguntas from './Perguntas.vue'
 import { api } from './api.js'
 import { renderizar } from './markdown.js'
+import { enderecoDePesquisa } from './pesquisa.js'
 import { juntar, ouvir, temVoz } from './voz.js'
 
 // Conversar (D48): a conversa com a IA sobre o texto aberto (Tema ou Referência), no lugar do
 // Perguntar (D35). A IA lembra as mensagens anteriores, procura no Acervo, pesquisa na internet só
 // quando precisa e, quando o Lucas pede para mudar ou acrescentar, devolve cada mudança para ele
 // aplicar ou descartar ali mesmo. A mensagem pode levar o trecho selecionado no texto.
+// D49: a mensagem vira o tema de uma pesquisa; num Tema, a pesquisa é para completá-lo.
+function pesquisarSobre(m) {
+  const trecho = m.trecho ? ` (sobre o trecho: “${m.trecho.slice(0, 200)}”)` : ''
+  return enderecoDePesquisa(`${m.pergunta}${trecho}`, props.local.startsWith('temas/') ? props.local : '')
+}
+
 const props = defineProps({
   local: { type: String, required: true }, // temas/<pasta> ou referencias/<id>
   titulo: { type: String, default: '' },
@@ -194,6 +201,7 @@ onBeforeUnmount(() => {
         </template>
         <div v-if="m.estado !== 'processando'" class="acoes">
           <button class="botao discreto" @click="refazer(m)">Responder de novo</button>
+          <a class="botao discreto" :href="pesquisarSobre(m)" title="Abre Pesquisar um tema com esta mensagem">Pesquisar isto</a>
           <button class="botao discreto" @click="apagar(m)">Apagar</button>
         </div>
       </div>

@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { nomeDoEstado } from './api.js'
-import { buscasDaPergunta, descreverLivro, descreverPesquisa } from './pesquisa.js'
+import { buscasDaPergunta, descreverLivro, descreverPesquisa, enderecoDePesquisa, pedidoDoEndereco } from './pesquisa.js'
 
 describe('pesquisa', () => {
+  it('leva o tema e o Tema a completar no endereço, e lê de volta', () => {
+    const e = enderecoDePesquisa('Glauber Rocha & a estética da fome? Sim/não', 'temas/cinema')
+    expect(e.startsWith('#/pesquisar?')).toBe(true)
+    expect(pedidoDoEndereco(e)).toEqual({ tema: 'Glauber Rocha & a estética da fome? Sim/não', para: 'temas/cinema' })
+    expect(enderecoDePesquisa('', '')).toBe('#/pesquisar')
+    expect(pedidoDoEndereco('#/pesquisar')).toEqual({ tema: '', para: '' })
+  })
+
   it('descreve a profundidade e as fontes, na ordem de sempre', () => {
     expect(descreverPesquisa({ fontes: ['youtube', 'livros'], profundidade: 'detalhada' })).toBe('Pesquisa detalhada · Livros, YouTube')
     expect(descreverPesquisa({ fontes: ['sites'], profundidade: 'rapida' })).toBe('Pesquisa rápida · Sites')

@@ -695,7 +695,9 @@ func (a *app) textoDoEstudo(ctx context.Context, tema, parte string) (string, te
 		t.Texto = md.String()
 		return "estudo:" + tema + "#" + parte, t, nil
 	}
-	if parte != "anteriores" {
+	// "anteriores" são todos os conceitos; "anteriores:<nome>", um só (o botão de cada conceito).
+	so, umSo := strings.CutPrefix(parte, "anteriores:")
+	if parte != "anteriores" && !umSo {
 		return "", t, errors.New("Parte inválida.")
 	}
 	partes, err := a.estudosDoTema(ctx, tema)
@@ -707,6 +709,20 @@ func (a *app) textoDoEstudo(ctx context.Context, tema, parte string) (string, te
 	}
 	if partes["anteriores"].Estado != "pronto" || json.Unmarshal(partes["anteriores"].Resultado, &s) != nil || len(s.Conceitos) == 0 {
 		return "", t, errors.New("Os conceitos anteriores ainda não foram preparados.")
+	}
+	if umSo {
+		for _, c := range s.Conceitos {
+			if c.Nome == so {
+				fmt.Fprintf(&md, "# %s\n\n%s\n\nPor que ajuda a entender %s: %s\n", c.Nome, c.Explicacao, titulo, c.PorQue)
+			}
+		}
+		if md.Len() == 0 {
+			return "", t, errNaoEncontrado
+		}
+		t.Titulo = titulo + " › " + so
+		t.Contexto = fmt.Sprintf("É um conceito que ajuda a entender o Tema %q e não está explicado nele.", titulo)
+		t.Texto = md.String()
+		return "estudo:" + tema + "#" + parte, t, nil
 	}
 	fmt.Fprintf(&md, "# Conceitos anteriores: %s\n\n", titulo)
 	for _, c := range s.Conceitos {
