@@ -48,6 +48,17 @@ test('pesquisa um tema no YouTube, com o esboço revisado antes de buscar', asyn
   await page.getByRole('button', { name: 'Pesquisar isto' }).first().click()
   await expect(page.getByPlaceholder('Ex.: as variedades e como escolher no mercado')).toHaveValue(/Uma dúvida de teste/)
   await page.getByRole('button', { name: 'Cancelar' }).first().click()
+  // Corrigir no texto (D44): o botão some assim que a proposta existe, e o texto final aparece na
+  // própria aba para aprovar, sem ir a Revisões.
+  await page.getByRole('button', { name: 'Dúvidas' }).click()
+  const duvida = page.locator('.duvida').first()
+  await duvida.getByRole('button', { name: 'Corrigir no texto' }).click()
+  await expect(duvida.getByRole('button', { name: 'Corrigir no texto' })).toHaveCount(0)
+  await expect(duvida.getByRole('button', { name: 'Resolver de novo' })).toHaveCount(0)
+  await expect(duvida.getByText('Como o texto fica')).toBeVisible({ timeout: 20000 })
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/duvidas-aprovar.png`, fullPage: true })
+  await duvida.getByRole('button', { name: 'Aprovar' }).click()
+  await expect(page.getByText('Corrigido no texto.')).toBeVisible()
   await page.getByRole('button', { name: 'Mais ações' }).click()
   await page.getByRole('menuitem', { name: 'Material coletado' }).click()
   await expect(page.locator('article.texto')).toContainText('De onde vem a laranja?')

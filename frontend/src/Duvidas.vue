@@ -130,8 +130,8 @@ onBeforeUnmount(() => clearTimeout(espera))
         Você decide o que corrigir.
       </p>
       <div class="linha-cabeca">
-        <button class="botao principal" :disabled="pedindo || processando || !faltam" @click="resolver()">
-          {{ processando ? 'Resolvendo…' : faltam === itens.length ? 'Resolver as dúvidas' : faltam ? `Resolver as ${faltam} que faltam` : 'Todas resolvidas' }}
+        <button v-if="faltam || processando" class="botao principal" :disabled="pedindo || processando" @click="resolver()">
+          {{ processando ? 'Resolvendo…' : faltam === itens.length ? 'Resolver as dúvidas' : `Resolver as ${faltam} que faltam` }}
         </button>
         <span v-for="c in contagem" :key="c" class="chip">{{ c }}</span>
       </div>
@@ -242,6 +242,10 @@ onBeforeUnmount(() => clearTimeout(espera))
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.linha-cabeca:empty {
+  display: none;
 }
 
 .lista-duvidas {
