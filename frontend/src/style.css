@@ -316,6 +316,15 @@ a {
   overflow-wrap: break-word;
 }
 
+/* Imagens do texto (artigos, quadros dos Reels) cabem na largura da tela. */
+.texto img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+  border-radius: 8px;
+}
+
 .texto h1 {
   font-size: 2rem;
   font-weight: 600;
