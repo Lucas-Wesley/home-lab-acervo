@@ -16,6 +16,9 @@ Muitos Reels passam o conteúdo pela tela: texto sobreposto, listas, passos, sli
 
 - **Não repetir o que a fala já diz.** Legenda automática que só transcreve a fala (as palavras aparecendo enquanto a pessoa fala) não entra; diga uma vez que o vídeo tem legenda da fala.
 - **Não descrever o que não é conteúdo:** a pessoa falando para a câmera, o cenário, roupa, filtros, emojis, adesivos, "siga para mais", o @ da conta, marcas d'água, a interface do Instagram.
+- **De uma tela de outro site ou programa mostrada no vídeo** (uma busca do Google, uma página, um app), só a informação: "Mozart, nascido em 27/01/1756 e morto em 05/12/1791". Abas, botões, créditos e fontes das fotos ("Getty Images") e a descrição de retratos ficam de fora.
+- **Ícones e logotipos sem nome escrito** não entram: não descreva ("um elefante azul") nem adivinhe de quem são.
+- **Não comentar o que não aparece** ("não há painel de Bach nos quadros").
 - **Não acrescentar nada que não está nos quadros**, nem do seu conhecimento. Texto ilegível ou cortado: escreva o que dá para ler e marque com `[?]`.
 - **Descrever, não concluir.** Escreva o que se vê ("a BR-364 e a BR-369 ficam em verde; uma seta tracejada aponta de noroeste para sudeste"), não o que você deduz disso ("ambas são pares e seguem a seta"). Uma dedução sua sobre a imagem vira fato no texto final e pode estar errada. Se a imagem parece contradizer a fala, descreva os dois e marque com `[?]`.
 
