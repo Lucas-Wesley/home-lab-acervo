@@ -9,8 +9,15 @@ case "$url" in
     [ -n "$YTDLP_FALSO_ARGS" ] && printf '%s\n' "$*" >> "$YTDLP_FALSO_ARGS"
     id="${url%/}"; id="${id##*/}"
     case "$id" in LOGIN*) echo "ERROR: [Instagram] $id: Requested content is not available, rate-limit reached or login required. Use --cookies" >&2; exit 1 ;; esac
-    out=""; while [ $# -gt 0 ]; do [ "$1" = -o ] && out="$2"; shift; done
+    out="" capa=0 sem_video=0
+    while [ $# -gt 0 ]; do
+      case "$1" in -o) out="$2" ;; --write-thumbnail) capa=1 ;; --skip-download) sem_video=1 ;; esac
+      shift
+    done
     base="${out%.%(ext)s}"
+    # A capa do post (D46), em pé como a do Instagram: 640x1136, maior que a da lista.
+    [ "$capa" = 1 ] && { ffmpeg -v error -f lavfi -i color=c=orange:size=640x1136 -frames:v 1 "$base.jpg" || exit 1; }
+    [ "$sem_video" = 1 ] && exit 0
     ffmpeg -v error -f lavfi -i testsrc=duration=10:size=320x240:rate=10 -f lavfi -i sine=duration=10 -shortest -pix_fmt yuv420p "$base.mp4" || exit 1
     printf '{"id":"%s","title":"Video by conta","channel":"conta","uploader":"Conta de Teste","description":"Três dicas de estudo\\n\\nMais na legenda. #estudo","duration":10.0,"upload_date":"20260301","webpage_url":"%s"}\n' "$id" "$url" > "$base.info.json"
     exit 0 ;;

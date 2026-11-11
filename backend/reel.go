@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -196,7 +197,7 @@ func (a *app) extrairReel(ctx context.Context, ref *referencia, pasta string) er
 		return err
 	}
 	defer os.RemoveAll(tmp)
-	if _, err := a.ytdlp(ctx, "-q", "--no-playlist", "--write-info-json",
+	if _, err := a.ytdlp(ctx, "-q", "--no-playlist", "--write-info-json", "--write-thumbnail",
 		"-f", "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b", "--merge-output-format", "mp4",
 		"-o", filepath.Join(tmp, "reel.%(ext)s"), ref.URL); err != nil {
 		return a.erroDoInstagram(err)
@@ -211,6 +212,9 @@ func (a *app) extrairReel(ctx context.Context, ref *referencia, pasta string) er
 		return errors.New("o yt-dlp não baixou o vídeo do Reel")
 	}
 	a.db.ExecContext(ctx, `UPDATE referencias SET titulo = ?, canal = ? WHERE id = ?`, tituloDoReel(info), info.canal(), ref.ID)
+	if err := a.capaDoReel(ctx, ref.ID, tmp); err != nil {
+		log.Printf("capa do Reel %s: %v", ref.ID, err)
+	}
 
 	ver := filepath.Join(tmp, "ver")
 	quadros, duracao, temAudio, err := a.tirarQuadros(ctx, video, filepath.Join(ver, "quadros"))

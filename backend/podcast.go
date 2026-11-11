@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"log"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -431,6 +432,9 @@ func (a *app) extrairPodcast(ctx context.Context, ref *referencia, pasta string)
 		return err
 	}
 	defer os.RemoveAll(tmp)
+	if err := a.capaDoPodcast(ctx, ref.ID, ep.Capa, tmp); err != nil {
+		log.Printf("capa do podcast %s: %v", ref.ID, err)
+	}
 	audio := filepath.Join(tmp, "audio")
 	if err := a.baixarAudio(ctx, ep.Audio, audio); err != nil {
 		return err

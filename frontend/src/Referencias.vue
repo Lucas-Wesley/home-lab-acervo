@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api, nomeDoEstado, situacao } from './api.js'
 import Icone from './Icone.vue'
+import Marca from './Marca.vue'
 import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 
 const referencias = ref([])
@@ -71,6 +72,13 @@ async function adicionar() {
   }
 }
 
+// marca: o Reel é do Instagram; o podcast, do Spotify quando veio de lá (D46).
+function marca(r) {
+  if (r.tipo === 'reel') return 'instagram'
+  if (r.tipo === 'podcast' && r.url.includes('spotify.com')) return 'spotify'
+  return ''
+}
+
 function classeDoEstado(r) {
   if (r.estado === 'erro') return 'erro'
   if (r.estado === 'integrado') return 'ok'
@@ -130,8 +138,12 @@ onBeforeUnmount(() => {
       <span v-if="r.tipo === 'pesquisa'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="pesquisar" /></span>
       <span v-else-if="r.tipo === 'livro'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="livro" /></span>
       <span v-else-if="r.tipo === 'artigo'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="link" /></span>
+      <span v-else-if="r.capa" class="miniatura com-capa" aria-hidden="true">
+        <img :src="`/api/referencias/${r.id}/capa`" alt="" loading="lazy" />
+        <span v-if="marca(r)" class="selo" :class="marca(r)"><Marca :nome="marca(r)" /></span>
+      </span>
+      <span v-else-if="marca(r)" class="miniatura marca" :class="marca(r)" aria-hidden="true"><Marca :nome="marca(r)" /></span>
       <span v-else-if="r.tipo === 'podcast'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="podcast" /></span>
-      <span v-else-if="r.tipo === 'reel'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="reel" /></span>
       <img v-else :src="`https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`" alt="" class="miniatura" loading="lazy" />
       <div class="info">
         <strong>{{ r.titulo || r.url }}</strong>
@@ -233,6 +245,66 @@ onBeforeUnmount(() => {
 .miniatura.pesquisa :deep(svg) {
   width: 22px;
   height: 22px;
+}
+
+/* Reel e podcast (D46): a capa, com o selo de onde veio; sem capa, o símbolo nas cores da marca. */
+.miniatura.com-capa {
+  position: relative;
+  overflow: hidden;
+}
+
+.com-capa img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.selo {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+}
+
+.selo svg {
+  width: 13px;
+  height: 13px;
+}
+
+.selo.spotify {
+  width: auto;
+  height: auto;
+  border-radius: 50%;
+  background: #121212;
+  padding: 1px;
+}
+
+.selo.spotify svg {
+  width: 16px;
+  height: 16px;
+}
+
+.miniatura.marca {
+  display: grid;
+  place-items: center;
+}
+
+.miniatura.marca svg {
+  width: 26px;
+  height: 26px;
+}
+
+.instagram {
+  color: #fff;
+  background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%);
+}
+
+.miniatura.spotify {
+  background: #121212;
 }
 
 .info {

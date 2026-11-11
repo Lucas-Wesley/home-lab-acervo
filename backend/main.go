@@ -46,7 +46,8 @@ func main() {
 		log.Fatal(err)
 	}
 	go app.fila.rodar(ctx)
-	go app.marcarAosPoucos(ctx) // D38: os livros da Biblioteca, um lote por vez, com a fila parada
+	go app.marcarAosPoucos(ctx)  // D38: os livros da Biblioteca, um lote por vez, com a fila parada
+	app.pedirCapasQueFaltam(ctx) // D46: as capas das Referências de antes
 
 	web, err := fs.Sub(webDist, "web/dist")
 	if err != nil {

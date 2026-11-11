@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"image/jpeg"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -91,6 +93,13 @@ func TestReferenciaDeReel(t *testing.T) {
 			t.Errorf("faltou %q no cru:\n%s", deve, cru)
 		}
 	}
+	// A capa (D46) é a do post, reduzida para a lista.
+	if !d.Capa {
+		t.Error("o Reel ficou sem capa")
+	}
+	if w, h := e.tamanhoDaCapa(r.ID); w != larguraDaCapa || h != 568 {
+		t.Errorf("capa %dx%d, devia ser a do post (640x1136) reduzida", w, h)
+	}
 	// O vídeo e os quadros não ficam guardados.
 	if m, _ := filepath.Glob(filepath.Join(e.app.pastaReferencia(r.ID), "*.*4")); len(m) > 0 {
 		t.Errorf("vídeo guardado: %v", m)
@@ -98,6 +107,20 @@ func TestReferenciaDeReel(t *testing.T) {
 	// Sem cookies no servidor, o yt-dlp vai sem login.
 	if b, _ := os.ReadFile(args); strings.Contains(string(b), "--cookies") {
 		t.Errorf("cookies sem arquivo: %s", b)
+	}
+	// As Referências de antes da capa ganham a sua numa tarefa só, sem baixar o vídeo de novo.
+	os.Remove(e.app.arquivoDaCapa(r.ID))
+	os.WriteFile(args, nil, 0o644)
+	e.app.pedirCapasQueFaltam(context.Background())
+	e.esperar("a capa do Reel antigo", func() bool { return e.app.temCapa(r.ID) })
+	if b, _ := os.ReadFile(args); !strings.Contains(string(b), "--skip-download") {
+		t.Errorf("a capa baixou o vídeo: %s", b)
+	}
+	if s := e.pedir("GET", "/api/referencias/"+r.ID+"/capa", nil, nil); s != http.StatusOK {
+		t.Errorf("GET capa: %d", s)
+	}
+	if s := e.pedir("GET", "/api/referencias/naoexiste/capa", nil, nil); s != http.StatusNotFound {
+		t.Errorf("GET capa de quem não existe: %d", s)
 	}
 	// O mesmo Reel de novo é recusado.
 	if s := e.pedir("POST", "/api/referencias", map[string]string{"url": "https://www.instagram.com/reel/AbCdEf123/"}, nil); s != http.StatusConflict {
@@ -128,4 +151,19 @@ func TestReelPedeLogin(t *testing.T) {
 	if b, _ := os.ReadFile(args); !strings.Contains(string(b), "--cookies "+e.app.cfg.instagramCookies) {
 		t.Errorf("o yt-dlp não recebeu os cookies: %s", b)
 	}
+}
+
+// tamanhoDaCapa: largura e altura do capa.jpg da Referência.
+func (e *ambiente) tamanhoDaCapa(id string) (int, int) {
+	e.t.Helper()
+	f, err := os.Open(e.app.arquivoDaCapa(id))
+	if err != nil {
+		e.t.Fatalf("sem capa: %v", err)
+	}
+	defer f.Close()
+	c, err := jpeg.DecodeConfig(f)
+	if err != nil {
+		e.t.Fatalf("capa ilegível: %v", err)
+	}
+	return c.Width, c.Height
 }

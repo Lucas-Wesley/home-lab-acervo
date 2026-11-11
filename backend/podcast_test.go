@@ -63,6 +63,10 @@ func TestReferenciaDePodcast(t *testing.T) {
 	if out, err := exec.Command("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=50", audio).CombinedOutput(); err != nil {
 		t.Fatalf("ffmpeg: %v %s", err, out)
 	}
+	capa := filepath.Join(t.TempDir(), "ep165.jpg")
+	if out, err := exec.Command("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=blue:size=1400x1400", "-frames:v", "1", capa).CombinedOutput(); err != nil {
+		t.Fatalf("ffmpeg: %v %s", err, out)
+	}
 	antes := segundosPorPedaco
 	segundosPorPedaco = 30
 	t.Cleanup(func() { segundosPorPedaco = antes })
@@ -91,12 +95,14 @@ func TestReferenciaDePodcast(t *testing.T) {
 <title>Podcast de Teste</title><language>pt-br</language><itunes:image href="https://img.exemplo/podcast.jpg"/>
 <item><title>#164 outro episódio</title><enclosure url="%s/outro.mp3" type="audio/mpeg"/></item>
 <item><title>#165 A Fotografia foi inventada no Brasil</title><pubDate>Tue, 10 Jun 2025 11:11:47 GMT</pubDate>
-<itunes:duration>00:00:50</itunes:duration><itunes:image href="https://img.exemplo/ep165.jpg"/>
+<itunes:duration>00:00:50</itunes:duration><itunes:image href="%s/ep165.jpg"/>
 <description><![CDATA[<p>Da luz de Hercule Florence.</p><p>LIVROS INDICADOS: <a href="https://loja.exemplo/livro">Um Livro</a></p>]]></description>
 <enclosure url="%s/ep.mp3" type="audio/mpeg"/></item>
-</channel></rss>`, srv.URL, srv.URL)
+</channel></rss>`, srv.URL, srv.URL, srv.URL)
 		case "/ep.mp3":
 			http.ServeFile(w, r, audio)
+		case "/ep165.jpg":
+			http.ServeFile(w, r, capa)
 		case "/v1/audio/transcriptions":
 			n := pedidos.Add(1)
 			f, _, err := r.FormFile("file")
@@ -130,7 +136,7 @@ func TestReferenciaDePodcast(t *testing.T) {
 		t.Errorf("metadados: %+v", d.referencia)
 	}
 	cru := d.Textos["cru"]
-	for _, deve := range []string{"- Podcast: Podcast de Teste", "- Publicado: 2025-06-10", "- Capa: https://img.exemplo/ep165.jpg",
+	for _, deve := range []string{"- Podcast: Podcast de Teste", "- Publicado: 2025-06-10", "- Capa: " + srv.URL + "/ep165.jpg",
 		"- Transcrição: Whisper large-v3-turbo (servidor)", "[00:00] Fala do pedaço", "[00:30] Fala do pedaço",
 		"## Descrição do episódio", "LIVROS INDICADOS: [Um Livro](https://loja.exemplo/livro)"} {
 		if !strings.Contains(cru, deve) {
@@ -149,6 +155,14 @@ func TestReferenciaDePodcast(t *testing.T) {
 	}
 	if m, _ := filepath.Glob(filepath.Join(e.app.pastaReferencia(id), "*.mp3")); len(m) > 0 {
 		t.Errorf("áudio guardado: %v", m)
+	}
+
+	// A capa do episódio (D46), reduzida para a lista.
+	if !d.Capa {
+		t.Error("o podcast ficou sem capa")
+	}
+	if w, h := e.tamanhoDaCapa(id); w != larguraDaCapa || h != larguraDaCapa {
+		t.Errorf("capa %dx%d", w, h)
 	}
 
 	// O mesmo episódio de novo é recusado.

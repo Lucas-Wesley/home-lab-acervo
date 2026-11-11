@@ -27,6 +27,7 @@ func (a *app) executores() map[string]executor {
 		"marcar_livro":      a.marcarLivro,                            // D38
 		"estudar":           a.estudar,                                // D41
 		"corrigir_simulado": a.corrigirSimulado,                       // D41
+		"buscar_capas":      a.buscarCapas,                            // D46
 		// Pesquisador (D27)
 		"planejar": a.naReferencia(a.planejar, true),
 		"coletar":  a.naReferencia(a.coletar, true),
@@ -45,14 +46,14 @@ var nomesDasTarefas = map[string]string{
 	"integrar_texto": "Integrar ao texto", "resolver_duvidas": "Resolver as dúvidas", "marcar_livro": "Marcar livro por assunto",
 	"estudar": "Preparar o estudo", "corrigir_simulado": "Corrigir o simulado", "planejar": "Montar o esboço",
 	"coletar": "Coletar nas fontes", "redigir": "Escrever a pesquisa", "conferir": "Conferir a pesquisa",
-	"ler_livro": "Ler os capítulos", "resumir": "Resumir os capítulos",
+	"ler_livro": "Ler os capítulos", "resumir": "Resumir os capítulos", "buscar_capas": "Buscar as capas",
 }
 
 // avisarTarefa (D42): avisa no celular quando uma tarefa falha, quando uma proposta espera revisão e
 // quando o trabalho de uma Referência para e espera o Lucas. As etapas que emendam outra (extrair →
 // organizar → traduzir…) não avisam no meio: só a última.
 func (a *app) avisarTarefa(t *tarefa) {
-	if a.avisos == nil || (t.Estado != falhou && t.Estado != emRevisao && t.Estado != concluida) {
+	if a.avisos == nil || t.Tipo == "buscar_capas" || (t.Estado != falhou && t.Estado != emRevisao && t.Estado != concluida) {
 		return
 	}
 	ctx := context.Background()

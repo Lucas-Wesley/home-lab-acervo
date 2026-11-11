@@ -31,6 +31,7 @@ type referencia struct {
 	Tipo         string          `json:"tipo"`     // video, artigo (D34), podcast (D39), reel (D40), pesquisa (D27) ou livro (D30)
 	Pesquisa     json.RawMessage `json:"pesquisa"` // o pedido, o esboço e a coleta; null num vídeo
 	Livro        json.RawMessage `json:"livro"`    // o livro e os capítulos escolhidos (D30); null nos outros
+	Capa         bool            `json:"capa"`     // tem capa.jpg (D46): Reel e podcast
 }
 
 // tarefaAtiva é o que a lista mostra: o que está acontecendo com a Referência agora.
@@ -83,6 +84,7 @@ func (a *app) completar(ctx context.Context, refs []*referencia) error {
 	porID := map[string]*referencia{}
 	for _, r := range refs {
 		porID[r.ID] = r
+		r.Capa = (r.Tipo == "reel" || r.Tipo == "podcast") && a.temCapa(r.ID)
 	}
 	posicao := 1
 	for _, t := range ativas {
