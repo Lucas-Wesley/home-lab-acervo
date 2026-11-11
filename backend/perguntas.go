@@ -30,6 +30,11 @@ type perguntaFeita struct {
 	CriadoEm     string            `json:"criado_em"`
 	AtualizadoEm string            `json:"atualizado_em"`
 	Integracao   *pendencia        `json:"integracao"` // a proposta de Integrar ao texto, enquanto não decidida (D44)
+	// Conversar (D48): modo "conversa" nas mensagens novas; "verificar" nas perguntas de antes (D35).
+	Modo     string            `json:"modo"`
+	Trecho   string            `json:"trecho,omitempty"`  // o trecho selecionado, quando a mensagem é sobre ele
+	Arquivo  string            `json:"arquivo,omitempty"` // no Tema, o arquivo do trecho (relativo à pasta do Tema)
+	Conversa *respostaConversa `json:"conversa,omitempty"`
 }
 
 type respostaPergunta struct {
@@ -52,7 +57,7 @@ type divergencia struct {
 
 var localDePergunta = regexp.MustCompile(`^(temas/[a-z0-9/-]+|referencias/[A-Za-z0-9_-]+)$`)
 
-const maxPergunta = 500
+const maxPergunta = 500 // as perguntas de antes (D35)
 
 const esquemaPergunta = `{"type":"object","properties":{` +
 	`"cobertura":{"type":"string","enum":["responde","em_parte","toca","nao_responde"]},` +
@@ -68,25 +73,28 @@ const esquemaPergunta = `{"type":"object","properties":{` +
 	`"required":["cobertura","no_texto","resposta","selo","divergencias","fontes"]}`
 
 const consultaPergunta = `SELECT p.id, p.local, p.titulo, p.pergunta, p.resultado, p.tarefa_id, p.criado_em,
-	p.atualizado_em, COALESCE(t.estado, ''), COALESCE(t.erro, '')
+	p.atualizado_em, COALESCE(t.estado, ''), COALESCE(t.erro, ''), p.modo, p.trecho, p.arquivo
 	FROM perguntas p LEFT JOIN tarefas t ON t.id = p.tarefa_id`
 
 func lerPergunta(row linha) (perguntaFeita, error) {
 	var p perguntaFeita
 	var resultado, estadoTarefa, erroTarefa string
 	err := row.Scan(&p.ID, &p.Local, &p.Titulo, &p.Pergunta, &resultado, &p.TarefaID, &p.CriadoEm,
-		&p.AtualizadoEm, &estadoTarefa, &erroTarefa)
+		&p.AtualizadoEm, &estadoTarefa, &erroTarefa, &p.Modo, &p.Trecho, &p.Arquivo)
 	if err != nil {
 		return p, err
 	}
-	if resultado != "" {
+	if resultado != "" && p.Modo == modoConversa {
+		p.Conversa = &respostaConversa{}
+		json.Unmarshal([]byte(resultado), p.Conversa)
+	} else if resultado != "" {
 		p.Resultado = &respostaPergunta{}
 		json.Unmarshal([]byte(resultado), p.Resultado)
 	}
 	switch {
 	case estadoTarefa == naFila || estadoTarefa == rodando:
 		p.Estado = "processando"
-	case p.Resultado != nil:
+	case p.Resultado != nil || p.Conversa != nil:
 		p.Estado = "pronto"
 	case estadoTarefa == cancelada:
 		p.Estado, p.Erro = "falhou", "A pergunta foi cancelada na fila."
@@ -152,32 +160,55 @@ func (a *app) localValido(ctx context.Context, local string) bool {
 	return err == nil
 }
 
-// handlePerguntar: POST /api/perguntas {local, titulo, pergunta}; a verificação vai para a fila.
+// handlePerguntar: POST /api/perguntas {local, titulo, pergunta, trecho, arquivo}; vai para a fila.
+// Desde o Conversar (D48), toda mensagem nova é do modo conversa; as perguntas de antes continuam.
 func (a *app) handlePerguntar(w http.ResponseWriter, r *http.Request) {
 	var corpo struct {
 		Local    string `json:"local"`
 		Titulo   string `json:"titulo"`
 		Pergunta string `json:"pergunta"`
+		Trecho   string `json:"trecho"`
+		Arquivo  string `json:"arquivo"`
+		Modo     string `json:"modo"` // "verificar": a pergunta de antes (D35), só pela API
 	}
 	if !lerCorpo(w, r, &corpo) {
 		return
 	}
 	texto := strings.TrimSpace(corpo.Pergunta)
+	trecho := strings.TrimSpace(corpo.Trecho)
+	arquivo := strings.TrimSpace(corpo.Arquivo)
 	switch {
+	case utf8.RuneCountInString(trecho) > maxTrecho:
+		erroJSON(w, http.StatusBadRequest, fmt.Sprintf("Trecho longo demais: selecione até %d caracteres.", maxTrechoConversa))
+		return
+	case arquivo != "" && !arquivoDeTema.MatchString(arquivo):
+		erroJSON(w, http.StatusBadRequest, "Arquivo inválido.")
+		return
 	case !a.localValido(r.Context(), corpo.Local):
 		erroJSON(w, http.StatusBadRequest, "Texto inválido.")
 		return
 	case texto == "":
 		erroJSON(w, http.StatusBadRequest, "Escreva a pergunta.")
 		return
-	case utf8.RuneCountInString(texto) > maxPergunta:
-		erroJSON(w, http.StatusBadRequest, fmt.Sprintf("Pergunta longa demais: até %d caracteres.", maxPergunta))
+	case utf8.RuneCountInString(texto) > maxMensagem:
+		erroJSON(w, http.StatusBadRequest, fmt.Sprintf("Mensagem longa demais: até %d caracteres.", maxMensagem))
 		return
 	}
 	ctx := r.Context()
 	id := novoID()
-	_, err := a.db.ExecContext(ctx, `INSERT INTO perguntas (id, local, titulo, pergunta, criado_em, atualizado_em)
-		VALUES (?, ?, ?, ?, ?, ?)`, id, corpo.Local, strings.TrimSpace(corpo.Titulo), texto, agora(), agora())
+	if !strings.HasPrefix(corpo.Local, "temas/") {
+		arquivo = ""
+	}
+	modo := modoConversa
+	if corpo.Modo == "verificar" {
+		modo = "verificar"
+		if utf8.RuneCountInString(texto) > maxPergunta {
+			erroJSON(w, http.StatusBadRequest, fmt.Sprintf("Pergunta longa demais: até %d caracteres.", maxPergunta))
+			return
+		}
+	}
+	_, err := a.db.ExecContext(ctx, `INSERT INTO perguntas (id, local, titulo, pergunta, modo, trecho, arquivo, criado_em, atualizado_em)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, corpo.Local, strings.TrimSpace(corpo.Titulo), texto, modo, trecho, arquivo, agora(), agora())
 	if err != nil {
 		falha(w, err)
 		return
@@ -304,6 +335,9 @@ func (a *app) perguntar(ctx context.Context, t *tarefa) (resultado, error) {
 	}
 	if err != nil {
 		return pronto, err
+	}
+	if p.Modo == modoConversa {
+		return a.conversar(ctx, t, p)
 	}
 	pasta, err := os.MkdirTemp(a.cfg.dados, "pergunta-")
 	if err != nil {

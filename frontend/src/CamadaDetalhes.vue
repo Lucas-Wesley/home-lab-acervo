@@ -14,8 +14,11 @@ const props = defineProps({
   semLugar: { type: Array, default: () => [] },
 })
 
+// Conversar (D48): a barra também leva o trecho para a conversa com a IA (quem usa decide onde abre).
+const emit = defineEmits(['conversar'])
+
 const MARGEM = 16
-const LARGURA_BARRA = 104
+const LARGURA_BARRA = 152
 
 const barra = ref(null) // { x, y, acima }
 const recado = ref(null)
@@ -83,6 +86,14 @@ async function pedirMais() {
   } catch (e) {
     mostrarRecado(e.message, true)
   }
+}
+
+function conversar() {
+  const s = selecao
+  esconder()
+  if (!s) return
+  if (s.trecho.length > 4000) return mostrarRecado('Trecho longo demais: selecione até 4000 caracteres.', true)
+  emit('conversar', s.trecho)
 }
 
 async function copiar() {
@@ -186,6 +197,7 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <div v-if="barra" class="barra-selecao" role="toolbar" aria-label="Seleção" :style="{ left: `${barra.x}px`, top: `${barra.y}px` }" @mousedown.prevent>
       <button type="button" aria-label="Mais informações" title="Mais informações" @click="pedirMais"><Icone nome="info" /></button>
+      <button type="button" aria-label="Conversar sobre o trecho" title="Conversar sobre o trecho" @click="conversar"><Icone nome="pergunta" /></button>
       <button type="button" aria-label="Copiar" title="Copiar" @click="copiar"><Icone nome="copiar" /></button>
     </div>
 

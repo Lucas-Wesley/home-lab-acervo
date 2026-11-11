@@ -95,9 +95,17 @@ func abrirBanco(caminho string) (*sql.DB, error) {
 		db.Close()
 		return nil, err
 	}
-	if err := acrescentarColuna(db, "referencias", "livro", `TEXT NOT NULL DEFAULT ''`); err != nil {
-		db.Close()
-		return nil, err
+	for _, c := range [][3]string{
+		{"referencias", "livro", `TEXT NOT NULL DEFAULT ''`},
+		// Conversar (D48): as mensagens novas ficam na mesma tabela das perguntas de antes.
+		{"perguntas", "modo", `TEXT NOT NULL DEFAULT 'verificar'`},
+		{"perguntas", "trecho", `TEXT NOT NULL DEFAULT ''`},
+		{"perguntas", "arquivo", `TEXT NOT NULL DEFAULT ''`},
+	} {
+		if err := acrescentarColuna(db, c[0], c[1], c[2]); err != nil {
+			db.Close()
+			return nil, err
+		}
 	}
 	return db, nil
 }

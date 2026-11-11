@@ -18,7 +18,7 @@ func TestPerguntarSobreUmTema(t *testing.T) {
 	os.WriteFile(filepath.Join(pasta, "base", "indice.md"), []byte("# Subtema\n"), 0o644)
 
 	var p perguntaFeita
-	pedido := map[string]string{"local": "temas/clube", "titulo": "Clube", "pergunta": "  Quando foi fundado?  "}
+	pedido := map[string]string{"local": "temas/clube", "titulo": "Clube", "pergunta": "  Quando foi fundado?  ", "modo": "verificar"}
 	if s := e.pedir("POST", "/api/perguntas", pedido, &p); s != http.StatusCreated || p.Estado != "processando" || p.Pergunta != "Quando foi fundado?" {
 		t.Fatalf("POST: %d %+v", s, p)
 	}
@@ -46,7 +46,7 @@ func TestPerguntarSobreUmTema(t *testing.T) {
 
 	var tarefas []tarefaComTitulo
 	e.pedir("GET", "/api/tarefas", nil, &tarefas)
-	if len(tarefas) != 1 || tarefas[0].Referencia != "“Quando foi fundado?”" || tarefas[0].Link != "#/ler/temas/clube/indice.md" {
+	if len(tarefas) != 1 || tarefas[0].Referencia != "“Quando foi fundado?”" || tarefas[0].Link != "#/ler/temas/clube/indice.md?conversar" {
 		t.Fatalf("fila: %+v", tarefas)
 	}
 
@@ -60,7 +60,10 @@ func TestPerguntarSobreUmTema(t *testing.T) {
 		{"local": "temas/../segredo", "pergunta": "x"},
 		{"local": "referencias/zzz", "pergunta": "x"},
 		{"local": "temas/clube", "pergunta": "   "},
-		{"local": "temas/clube", "pergunta": strings.Repeat("a", maxPergunta+1)},
+		{"local": "temas/clube", "pergunta": strings.Repeat("a", maxPergunta+1), "modo": "verificar"},
+		{"local": "temas/clube", "pergunta": strings.Repeat("a", maxMensagem+1)},
+		{"local": "temas/clube", "pergunta": "x", "trecho": strings.Repeat("a", maxTrechoConversa+1)},
+		{"local": "temas/clube", "pergunta": "x", "arquivo": "../segredo.md"},
 	} {
 		if s := e.pedir("POST", "/api/perguntas", ruim, nil); s != http.StatusBadRequest {
 			t.Errorf("%v: %d", ruim, s)
@@ -80,7 +83,7 @@ func TestPerguntaQueFalha(t *testing.T) {
 	t.Setenv("CLAUDE_FALSO_FALHA", "1")
 
 	var p perguntaFeita
-	e.pedir("POST", "/api/perguntas", map[string]string{"local": "temas/clube", "pergunta": "Quando?"}, &p)
+	e.pedir("POST", "/api/perguntas", map[string]string{"local": "temas/clube", "pergunta": "Quando?", "modo": "verificar"}, &p)
 	e.esperar("falha visível", func() bool {
 		var l []perguntaFeita
 		e.pedir("GET", "/api/perguntas?local=temas%2Fclube", nil, &l)

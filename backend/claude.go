@@ -11,7 +11,7 @@ import (
 )
 
 // Ferramentas que o Claude pode usar: nas etapas, só ler e escrever arquivos na pasta da tarefa.
-// A internet fica para "Mais informações" (D26) e "Perguntar" (D35), que não mexem em arquivo nenhum.
+// A internet fica para "Mais informações" (D26) e "Conversar" (D48, antes "Perguntar", D35), que não mexem em arquivo nenhum.
 const (
 	ferramentasEscrita   = "Read,Write,Edit,Glob,Grep"
 	ferramentasLeitura   = "Read,Glob,Grep"

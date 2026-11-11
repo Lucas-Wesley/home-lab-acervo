@@ -42,7 +42,7 @@ func (a *app) executores() map[string]executor {
 // Os nomes das tarefas como aparecem na Fila (NOMES_TAREFA, no frontend).
 var nomesDasTarefas = map[string]string{
 	"extrair": "Extrair o texto", "organizar": "Organizar", "traduzir": "Traduzir", "sugerir": "Sugerir Tema",
-	"criar_tema": "Criar Tema", "integrar": "Integrar ao Tema", "detalhar": "Mais informações", "perguntar": "Perguntar",
+	"criar_tema": "Criar Tema", "integrar": "Integrar ao Tema", "detalhar": "Mais informações", "perguntar": "Conversar",
 	"integrar_texto": "Integrar ao texto", "resolver_duvidas": "Resolver as dúvidas", "marcar_livro": "Marcar livro por assunto",
 	"estudar": "Preparar o estudo", "corrigir_simulado": "Corrigir o simulado", "planejar": "Montar o esboço",
 	"coletar": "Coletar nas fontes", "redigir": "Escrever a pesquisa", "conferir": "Conferir a pesquisa",
@@ -74,6 +74,20 @@ func (a *app) avisarTarefa(t *tarefa) {
 		if ref, err := a.referencia(ctx, t.ReferenciaID); err == nil {
 			av.Titulo = primeiro(ref.Titulo, ref.URL)
 			av.Link = a.cfg.acervoLink + "/#/referencia/" + ref.ID
+		}
+	}
+	// Uma mensagem do Conversar (D48): o aviso abre a conversa, com o começo da mensagem.
+	if t.Tipo == "perguntar" {
+		var p paramsPergunta
+		json.Unmarshal(t.Params, &p)
+		if q, err := a.perguntaFeita(ctx, p.Pergunta); err == nil {
+			av.Titulo = primeiro(q.Titulo, nome)
+			av.Link = a.cfg.acervoLink + "/" + linkDaConversa(q.Local)
+			if t.Estado == concluida {
+				av.Texto = "Respondeu: “" + cortar(q.Pergunta, 60, false) + "”"
+				a.avisos.avisar(av)
+				return
+			}
 		}
 	}
 	etapa := ""

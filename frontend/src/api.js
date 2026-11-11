@@ -35,7 +35,7 @@ export const NOMES_TAREFA = {
   criar_tema: 'Criar Tema',
   integrar: 'Integrar ao Tema',
   detalhar: 'Mais informações',
-  perguntar: 'Perguntar',
+  perguntar: 'Conversar',
   integrar_texto: 'Integrar ao texto',
   resolver_duvidas: 'Resolver as dúvidas',
   marcar_livro: 'Marcar livro por assunto',

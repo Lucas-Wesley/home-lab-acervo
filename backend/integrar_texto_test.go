@@ -26,7 +26,7 @@ func (e *ambiente) revisaoPronta(tarefa int64) string {
 func (e *ambiente) perguntaPronta(local, pergunta string) perguntaFeita {
 	e.t.Helper()
 	var p perguntaFeita
-	if s := e.pedir("POST", "/api/perguntas", map[string]string{"local": local, "titulo": "Clube", "pergunta": pergunta}, &p); s != http.StatusCreated {
+	if s := e.pedir("POST", "/api/perguntas", map[string]string{"local": local, "titulo": "Clube", "pergunta": pergunta, "modo": "verificar"}, &p); s != http.StatusCreated {
 		e.t.Fatalf("POST /api/perguntas: %d", s)
 	}
 	e.esperar("resposta pronta", func() bool {

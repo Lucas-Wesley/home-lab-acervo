@@ -10,6 +10,8 @@ const props = defineProps({
   local: { type: String, required: true }, // temas/<pasta> ou referencias/<id>
   titulo: { type: String, default: '' },
   embutido: { type: Boolean, default: false }, // numa aba da página, em vez de janela
+  // Desde o Conversar (D48): só as perguntas verificadas de antes, sem o campo de perguntar.
+  antigas: { type: Boolean, default: false },
 })
 const emit = defineEmits(['fechar'])
 
@@ -38,7 +40,8 @@ const processando = computed(() => perguntas.value.some((p) => p.estado === 'pro
 
 async function carregar() {
   try {
-    perguntas.value = await api(`/api/perguntas?local=${encodeURIComponent(props.local)}`)
+    const lista = await api(`/api/perguntas?local=${encodeURIComponent(props.local)}`)
+    perguntas.value = props.antigas ? lista.filter((p) => p.modo !== 'conversa') : lista
   } catch (e) {
     erro.value = e.status === 0 ? 'Perguntar só funciona na rede de casa.' : e.message
   }
@@ -154,11 +157,11 @@ onBeforeUnmount(() => {
           <h2 id="titulo-perguntas">Perguntar<span v-if="titulo" class="suave"> · {{ titulo }}</span></h2>
           <button type="button" class="botao icone" aria-label="Fechar" @click="emit('fechar')"><Icone nome="fechar" /></button>
         </header>
-        <form class="nova" @submit.prevent="perguntar">
+        <form v-if="!antigas" class="nova" @submit.prevent="perguntar">
           <textarea v-model="texto" class="campo" rows="2" maxlength="500" placeholder="O que você quer saber sobre este texto?" @keydown.enter.exact.prevent="perguntar" />
           <button class="botao principal" :disabled="enviando || !texto.trim()">{{ enviando ? 'Enviando…' : 'Perguntar' }}</button>
         </form>
-        <p class="suave">A IA vê quanto o seu texto responde e verifica a resposta na internet, em mais de uma fonte. Leva alguns minutos; pode fechar e voltar depois.</p>
+        <p v-if="!antigas" class="suave">A IA vê quanto o seu texto responde e verifica a resposta na internet, em mais de uma fonte. Leva alguns minutos; pode fechar e voltar depois.</p>
         <div v-if="erro" class="aviso erro">{{ erro }}</div>
 
         <article v-for="p in perguntas" :key="p.id" class="pergunta">

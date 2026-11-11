@@ -108,6 +108,16 @@ case "$prompt" in
       itens="$itens{\"indice\":$i,\"estado\":\"$estado\",\"no_audio\":\"$ouvido\",\"explicacao\":\"Apurado $i.\",\"trecho\":\"$trecho\",\"correto\":\"$correto\",\"fontes\":[]},"
     done
     printf '{"type":"result","result":"","is_error":false,"structured_output":{"duvidas":[%s]}}\n' "${itens%,}" ;;
+  *"A mensagem do Lucas:"*)
+    lidos=$(ls texto | tr '\n' ' ' | sed 's/ $//')
+    extra=""
+    case "$prompt" in *"A conversa até aqui"*"PRIMEIRA MENSAGEM"*) extra="$extra Lembrou da conversa." ;; esac
+    case "$prompt" in *"<trecho>"*"Fundado em 1930"*"</trecho>"*) extra="$extra Recebeu o trecho." ;; esac
+    [ -f acervo.md ] && grep -q "temas/clube" acervo.md && extra="$extra Recebeu o mapa do Acervo."
+    arq=indice.md; [ -f texto/texto.md ] && arq=texto.md
+    antes="Fundado em 1930."; depois="Fundado em 1930, no Recife."
+    if ! grep -qF "$antes" "texto/$arq"; then antes=$(grep -m1 '^# ' "texto/$arq" | tr -d '"\\'); depois="$antes (revisto)"; fi
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"resposta":"Resposta de teste. Leu: %s. Ferramentas: %s.%s","pesquisou":true,"fontes":[{"titulo":"Fonte A","url":"https://exemplo.com/a"}],"no_acervo":[{"titulo":"Clube","caminho":"temas/clube"},{"titulo":"Inventado","caminho":"temas/nao-existe"}],"alteracoes":[{"arquivo":"%s","antes":"%s","depois":"%s","resumo":"Cidade da fundação"},{"arquivo":"%s","antes":"Trecho que não existe.","depois":"x","resumo":"Cai"}]}}\n' "$lidos" "$ferramentas" "$extra" "$arq" "$antes" "$depois" "$arq" ;;
   *"e perguntou:"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
     lidos=$(ls | tr '\n' ' ' | sed 's/ $//')

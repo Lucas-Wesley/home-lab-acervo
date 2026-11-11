@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import CamadaDetalhes from './CamadaDetalhes.vue'
 import EnviarFlashcards from './EnviarFlashcards.vue'
 import Estudar from './Estudar.vue'
-import Perguntas from './Perguntas.vue'
+import Conversa from './Conversa.vue'
 import Icone from './Icone.vue'
 import { api } from './api.js'
 import { capitulos, eLinkInterno, inserirCapitulo, relativo, renderizar, resolver, tituloDoTexto, trocarCapitulo } from './markdown.js'
@@ -20,7 +20,7 @@ const capituloPedido = opcao.startsWith('capitulo=') ? opcao.slice('capitulo='.l
 const arquivo = ref(null)
 const erro = ref('')
 const modo = ref(opcao === 'editar' ? 'editar' : 'ler')
-const abaTema = ref(opcao === 'estudar' ? 'estudar' : 'ler') // D41: na página do Tema, Ler ou Estudar
+const abaTema = ref(['estudar', 'conversar'].includes(opcao) ? opcao : 'ler') // D41, D48: Ler, Conversar ou Estudar
 const texto = ref('')
 const base = ref('')
 const capituloEditado = ref(null) // editando só um capítulo da página
@@ -32,7 +32,7 @@ const temas = ref([])
 const capitulosDoTema = ref([]) // numa página de capítulo separado: os capítulos do Tema
 const livrosDoTema = ref([]) // D38: capítulos dos livros da Biblioteca marcados com este Tema
 const menu = ref(null) // capítulo com o menu aberto
-const perguntando = ref(false) // janela de Perguntar (D35)
+const trechoDaConversa = ref(null) // D48: o trecho selecionado que vai para a conversa
 const ocupado = ref(false)
 const baixando = ref(false)
 const editor = ref(null)
@@ -78,6 +78,13 @@ const vizinhos = computed(() => {
 })
 const temaBaixado = computed(() => marcaBaixados.value >= 0 && !!arquivo.value?.tema && estaBaixado(arquivo.value.tema))
 const temAbas = computed(() => eIndice.value && !!arquivo.value?.tema && modo.value === 'ler')
+// Conversar (D48) também nos capítulos separados: a conversa é a do Tema, e o trecho diz o arquivo.
+const temConversa = computed(() => !!arquivo.value?.tema && modo.value === 'ler')
+const arquivoNoTema = computed(() => (arquivo.value?.tema && caminhoArquivo.startsWith(`${arquivo.value.tema}/`) ? caminhoArquivo.slice(arquivo.value.tema.length + 1) : ''))
+function conversarSobre(trecho) {
+  trechoDaConversa.value = { trecho, arquivo: arquivoNoTema.value }
+  trocarAba('conversar')
+}
 const temaRaiz = computed(() => arquivo.value?.migalhas?.[0])
 const tituloDoTema = computed(() => arquivo.value?.migalhas?.find((m) => m.caminho === arquivo.value.tema)?.titulo || tituloAtual.value)
 
@@ -235,7 +242,7 @@ function gerarFlashcards(capitulo) {
 // "?estudar" no endereço: recarregar (ou o link de uma tarefa da fila) volta para a aba.
 function trocarAba(aba) {
   abaTema.value = aba
-  trocarEndereco(aba === 'estudar' ? `#/ler/${caminhoArquivo}?estudar` : `#/ler/${caminhoArquivo}`)
+  trocarEndereco(aba === 'ler' ? `#/ler/${caminhoArquivo}` : `#/ler/${caminhoArquivo}?${aba}`)
   window.scrollTo(0, 0)
 }
 
@@ -473,9 +480,6 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <button v-if="flashcards.disponivel && arquivo.tema" class="botao icone" :disabled="ocupado" :aria-label="eIndice ? 'Gerar flashcards do Tema inteiro' : 'Gerar flashcards deste capítulo'" :title="eIndice ? 'Gerar flashcards do Tema inteiro' : 'Gerar flashcards deste capítulo'" @click="gerarFlashcards()">
           <Icone nome="cartoes" />
         </button>
-        <button v-if="arquivo.tema" class="botao icone" aria-label="Perguntar sobre este Tema" title="Perguntar sobre este Tema" @click="perguntando = true">
-          <Icone nome="pergunta" />
-        </button>
         <button class="botao" @click="editar"><Icone nome="nota" /> Editar</button>
       </div>
     </header>
@@ -503,9 +507,10 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <a v-if="linkDosCartoes" :href="linkDosCartoes" target="_blank" rel="noopener">Abrir no Flashcards</a>
       </div>
 
-      <nav v-if="temAbas && !conflito" class="abas" aria-label="Ler ou estudar">
+      <nav v-if="temConversa && !conflito" class="abas" aria-label="Ler, conversar ou estudar">
         <button :class="{ ativa: abaTema === 'ler' }" @click="trocarAba('ler')">Ler</button>
-        <button :class="{ ativa: abaTema === 'estudar' }" @click="trocarAba('estudar')">Estudar</button>
+        <button :class="{ ativa: abaTema === 'conversar' }" @click="trocarAba('conversar')">Conversar</button>
+        <button v-if="temAbas" :class="{ ativa: abaTema === 'estudar' }" @click="trocarAba('estudar')">Estudar</button>
       </nav>
 
       <section v-if="conflito" class="conflito">
@@ -540,6 +545,17 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <p class="suave dica">Markdown: <code>## Capítulo</code>, <code>### Seção</code>, <code>**negrito**</code>, <code>[texto](arquivo.md)</code>. Cmd/Ctrl+S salva.</p>
       </template>
 
+      <template v-else-if="arquivo && temConversa && abaTema === 'conversar'">
+        <h1 class="titulo-estudar">{{ tituloDoTema }}</h1>
+        <Conversa
+          :local="arquivo.tema"
+          :titulo="tituloDoTema"
+          :trecho="trechoDaConversa"
+          @sem-trecho="trechoDaConversa = null"
+          @mudou="carregar({ manterPosicao: true })"
+        />
+      </template>
+
       <template v-else-if="arquivo && temAbas && abaTema === 'estudar'">
         <h1 class="titulo-estudar">{{ tituloDoTema }}</h1>
         <Estudar :local="arquivo.tema" :titulo="tituloDoTema" :flashcards="flashcards.disponivel" @flashcards="flashcardsDoEstudo" />
@@ -563,9 +579,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         </nav>
 
         <article ref="corpoEl" class="texto" :class="{ 'com-acoes': podeMexerNosCapitulos }" @click="aoClicarNoTexto" v-html="partes.corpo" />
-        <CamadaDetalhes :detalhes="detalhes" :raizes="() => [introEl, corpoEl]" :titulo="tituloAtual" :sem-lugar="partes.semLugar" />
+        <CamadaDetalhes :detalhes="detalhes" :raizes="() => [introEl, corpoEl]" :titulo="tituloAtual" :sem-lugar="partes.semLugar" @conversar="conversarSobre" />
         <EnviarFlashcards v-if="envioAberto" v-bind="envioAberto" @fechar="envioAberto = null" @enviado="flashcardsEnviados" />
-        <Perguntas v-if="perguntando" :local="arquivo.tema" :titulo="tituloDoTema" @fechar="perguntando = false" />
 
         <nav v-if="vizinhos.anterior || vizinhos.proximo" class="vizinhos">
           <a v-if="vizinhos.anterior" href="#" class="cartao" @click.prevent="abrirCapituloDoTema(vizinhos.anterior)">

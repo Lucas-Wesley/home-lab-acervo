@@ -85,7 +85,7 @@ watch(
       <template v-else-if="atual.id === 'livros'">
         <p class="descricao-da-pagina">
           Quando a fila está parada, o Acervo pega um livro da Biblioteca e um modelo menor lê os capítulos, marcando o assunto de cada um com as páginas.
-          Cada Tema mostra os capítulos que falam dele, e o Perguntar usa como pista de fonte. Os livros novos entram sozinhos.
+          Cada Tema mostra os capítulos que falam dele, e o Conversar usa como pista de fonte. Os livros novos entram sozinhos.
         </p>
         <div v-if="erro" class="aviso erro">{{ erro }}</div>
         <p v-if="livros && !livros.length" class="vazio">Nenhum livro marcado ainda. O primeiro entra na próxima vez que a fila ficar parada.</p>

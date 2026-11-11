@@ -9,7 +9,7 @@ import Estudar from './Estudar.vue'
 import Icone from './Icone.vue'
 import NovaPesquisa from './NovaPesquisa.vue'
 import Duvidas from './Duvidas.vue'
-import Perguntas from './Perguntas.vue'
+import Conversa from './Conversa.vue'
 import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 import { marcar, usarDetalhes } from './detalhes.js'
 import { duvidas, renderizar, tituloDoTexto } from './markdown.js'
@@ -18,13 +18,20 @@ import { trocarEndereco } from './rolagem.js'
 const props = defineProps({
   id: { type: String, required: true },
   estudar: { type: Boolean, default: false }, // "?estudar" no endereço: abre na aba Estudar (D41)
+  conversar: { type: Boolean, default: false }, // "?conversar": abre na aba Conversar (D48), como no aviso do celular
 })
 
 const ref_ = ref(null)
 const erro = ref('')
-const aba = ref(props.estudar ? 'estudar' : '')
-// Recarregar (ou o link de uma tarefa da fila) volta para a aba Estudar.
-watch(aba, (a) => trocarEndereco(a === 'estudar' ? `#/referencia/${props.id}?estudar` : `#/referencia/${props.id}`))
+const aba = ref(props.estudar ? 'estudar' : props.conversar ? 'conversar' : '')
+// Recarregar (ou o link de uma tarefa da fila) volta para a aba Estudar ou Conversar.
+watch(aba, (a) => trocarEndereco(['estudar', 'conversar'].includes(a) ? `#/referencia/${props.id}?${a}` : `#/referencia/${props.id}`))
+// O trecho selecionado no texto que vai para a conversa (D48).
+const trechoDaConversa = ref(null)
+function conversarSobre(trecho) {
+  trechoDaConversa.value = { trecho, arquivo: '' }
+  aba.value = 'conversar'
+}
 const envioDoEstudo = ref(null) // flashcards dos conceitos anteriores ou do que se errou no simulado
 const avisoDoEstudo = ref('')
 
@@ -40,12 +47,13 @@ const acao = ref(null) // 'criar' | 'integrar' | 'aprofundar'
 const focoDoAprofundar = ref('') // "Pesquisar isto" numa dúvida de pesquisa (D37)
 const perguntasVersao = ref(0)
 
-// "Pesquisar isto" (D37): a dúvida vira uma pergunta (D35), e a aba Perguntar abre com ela.
+// "Pesquisar isto" (D37): a dúvida vira uma mensagem da conversa (D48), e a aba Conversar abre com ela.
 async function perguntarSobre(texto) {
   try {
-    await api('/api/perguntas', { metodo: 'POST', corpo: { local: `referencias/${props.id}`, titulo: ref_.value.titulo, pergunta: texto } })
+    const pergunta = `Pesquise e esclareça esta dúvida do texto: ${texto}`.slice(0, 2000)
+    await api('/api/perguntas', { metodo: 'POST', corpo: { local: `referencias/${props.id}`, titulo: ref_.value.titulo, pergunta } })
     perguntasVersao.value++
-    aba.value = 'perguntar'
+    aba.value = 'conversar'
   } catch (e) {
     erro.value = e.message
   }
@@ -71,14 +79,14 @@ const abas = computed(() => {
   if (t.traducao) lista.push(['traducao', 'Português'])
   if (t.organizado) lista.push(['organizado', t.traducao ? 'Original' : 'Organizado'])
   if (duvidas(textoPrincipal.value)) lista.push(['duvidas', 'Dúvidas'])
-  if (textoPrincipal.value) lista.push(['perguntar', 'Perguntar'], ['estudar', 'Estudar'])
+  if (textoPrincipal.value) lista.push(['conversar', 'Conversar'], ['estudar', 'Estudar'])
   if (t.anterior) lista.push(['anterior', 'Versão anterior'])
   return lista
 })
 // A transcrição e o histórico abrem pelo menu ⋯, para as abas ficarem com o que se usa na leitura.
 const nomeDoCru = computed(() => (ehPesquisa.value ? 'Material coletado' : ehLivro.value ? 'Texto do livro' : ref_.value?.tipo === 'artigo' ? 'Texto da página' : 'Transcrição'))
 const doMenu = computed(() => ({ cru: nomeDoCru.value, historico: 'Histórico' })[aba.value])
-const semTexto = (a) => ['historico', 'duvidas', 'perguntar', 'estudar'].includes(a)
+const semTexto = (a) => ['historico', 'duvidas', 'conversar', 'estudar'].includes(a)
 const abaAtual = computed(() => aba.value || abas.value[0]?.[0])
 const htmlDaAba = computed(() => {
   const r = ref_.value
@@ -332,7 +340,15 @@ onBeforeUnmount(() => {
       </p>
 
       <Duvidas v-if="abaAtual === 'duvidas'" :referencia="ref_" :texto="textoPrincipal" @perguntar="perguntarSobre" @aprofundar="aprofundarSobre" @mudou="carregar" />
-      <Perguntas v-else-if="abaAtual === 'perguntar'" :key="perguntasVersao" embutido :local="`referencias/${ref_.id}`" :titulo="ref_.titulo" />
+      <Conversa
+        v-else-if="abaAtual === 'conversar'"
+        :key="perguntasVersao"
+        :local="`referencias/${ref_.id}`"
+        :titulo="ref_.titulo"
+        :trecho="trechoDaConversa"
+        @sem-trecho="trechoDaConversa = null"
+        @mudou="carregar"
+      />
       <template v-else-if="abaAtual === 'estudar'">
         <div v-if="avisoDoEstudo" class="aviso ok">{{ avisoDoEstudo }}</div>
         <Estudar :local="`referencias/${ref_.id}`" :titulo="ref_.titulo || ref_.url" :flashcards="!!cartoes?.disponivel" @flashcards="flashcardsDoEstudo" />
@@ -355,7 +371,7 @@ onBeforeUnmount(() => {
       <p v-else-if="abaAtual === 'anterior'" class="suave nota">O texto antes da última mudança (aprofundar a pesquisa ou integrar ao texto), só para consulta.</p>
       <template v-if="!semTexto(abaAtual)">
         <article ref="textoEl" class="texto" @click="detalhes.aoClicar" v-html="marcado.htmls[0]" />
-        <CamadaDetalhes :detalhes="detalhes" :raizes="() => [textoEl]" :titulo="ref_.titulo" :sem-lugar="marcado.semLugar" />
+        <CamadaDetalhes :detalhes="detalhes" :raizes="() => [textoEl]" :titulo="ref_.titulo" :sem-lugar="marcado.semLugar" @conversar="conversarSobre" />
       </template>
     </template>
   </div>

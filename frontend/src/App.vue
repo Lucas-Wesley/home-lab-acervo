@@ -151,7 +151,7 @@ onBeforeUnmount(() => {
 
       <Leitor v-if="rota.nome === 'ler'" :key="rota.param" :caminho="rota.param" />
       <Referencias v-else-if="rota.nome === 'referencias'" />
-      <Referencia v-else-if="rota.nome === 'referencia'" :key="rota.param" :id="rota.param.split('?')[0]" :estudar="rota.param.endsWith('?estudar')" />
+      <Referencia v-else-if="rota.nome === 'referencia'" :key="rota.param" :id="rota.param.split('?')[0]" :estudar="rota.param.endsWith('?estudar')" :conversar="rota.param.endsWith('?conversar')" />
       <Resumir v-else-if="rota.nome === 'resumir'" :livro="rota.param" />
       <Pesquisar v-else-if="rota.nome === 'pesquisar'" />
       <Fila v-else-if="rota.nome === 'fila'" />

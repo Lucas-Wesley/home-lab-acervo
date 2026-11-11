@@ -61,6 +61,7 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("DELETE /api/perguntas/{id}", a.handleApagarPergunta)
 	// Integrar ao texto (D36)
 	mux.HandleFunc("POST /api/perguntas/{id}/integrar", a.handleIntegrarPergunta)
+	mux.HandleFunc("POST /api/perguntas/{id}/alteracoes/{n}/{decisao}", a.handleAlteracao) // D48
 	mux.HandleFunc("POST /api/detalhes/{id}/integrar", a.handleIntegrarDetalhe)
 	// Dúvidas pelo áudio (D37)
 	mux.HandleFunc("GET /api/referencias/{id}/duvidas", a.handleDuvidas)
@@ -319,11 +320,15 @@ func (a *app) tarefaDePergunta(r *http.Request, t tarefa) tarefaComTitulo {
 	if err != nil {
 		return tarefaComTitulo{t, "(pergunta apagada)", ""}
 	}
-	link := "#/ler/" + q.Local + "/indice.md"
-	if id, ok := strings.CutPrefix(q.Local, "referencias/"); ok {
-		link = "#/referencia/" + id
+	return tarefaComTitulo{t, "“" + cortar(q.Pergunta, 80, false) + "”", linkDaConversa(q.Local)}
+}
+
+// linkDaConversa (D48): o texto aberto na aba Conversar.
+func linkDaConversa(local string) string {
+	if id, ok := strings.CutPrefix(local, "referencias/"); ok {
+		return "#/referencia/" + id + "?conversar"
 	}
-	return tarefaComTitulo{t, "“" + cortar(q.Pergunta, 80, false) + "”", link}
+	return "#/ler/" + local + "/indice.md?conversar"
 }
 
 func idDoPedido(w http.ResponseWriter, r *http.Request) (int64, bool) {

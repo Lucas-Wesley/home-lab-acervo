@@ -389,6 +389,11 @@ func (e *conflito) Error() string { return "o arquivo mudou no servidor" }
 // salvar grava uma edição feita à mão. base é o hash que o aparelho tinha; se o arquivo mudou
 // desde então, devolve conflito com a versão atual em vez de sobrescrever (D21).
 func (c *conteudo) salvar(ctx context.Context, rel, texto, base string) (string, error) {
+	return c.salvarComMensagem(ctx, rel, texto, base, "")
+}
+
+// salvarComMensagem: como salvar, com a mensagem do commit dada (vazia, a de uma edição à mão).
+func (c *conteudo) salvarComMensagem(ctx context.Context, rel, texto, base, mensagem string) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	cheio := filepath.Join(c.raiz, filepath.FromSlash(rel))
@@ -416,7 +421,10 @@ func (c *conteudo) salvar(ctx context.Context, rel, texto, base string) (string,
 	if !existe {
 		verbo = "Novo arquivo"
 	}
-	if err := c.commit(ctx, verbo+": "+rel, rel); err != nil {
+	if mensagem == "" {
+		mensagem = verbo + ": " + rel
+	}
+	if err := c.commit(ctx, mensagem, rel); err != nil {
 		return "", err
 	}
 	return hashDe([]byte(texto)), nil

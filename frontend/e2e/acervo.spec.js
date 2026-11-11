@@ -22,16 +22,24 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await page.getByRole('menuitem', { name: 'Transcrição' }).click()
   await expect(page.locator('article.texto')).toContainText('Tratado de Tordesilhas')
   await page.getByRole('button', { name: 'Voltar ao texto' }).click()
-  // Perguntar e Estudar ficam nas abas, ao lado de Dúvidas.
-  await expect(page.locator('.abas')).toContainText('Perguntar')
-  await page.locator('.abas').getByRole('button', { name: 'Perguntar' }).click()
-  await expect(page.getByPlaceholder('O que você quer saber sobre este texto?')).toBeVisible()
+  // Conversar (D48) e Estudar ficam nas abas, ao lado de Dúvidas. A IA devolve a mudança pedida, e
+  // Aplicar a leva ao texto.
+  await expect(page.locator('.abas')).toContainText('Conversar')
+  await page.locator('.abas').getByRole('button', { name: 'Conversar' }).click()
+  await expect(page).toHaveURL(/\?conversar$/)
+  await page.getByLabel('Mensagem').fill('Melhore o título')
+  await page.getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByText(/Resposta de teste/)).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('.alteracao')).toContainText('Cidade da fundação')
+  await page.getByRole('button', { name: 'Aplicar' }).click()
+  await expect(page.locator('.alteracao')).toContainText('Aplicada no texto')
   if (process.env.CAPTURAS) {
     await page.getByRole('button', { name: 'Mais ações' }).click()
     await page.screenshot({ path: `${process.env.CAPTURAS}/referencia.png` })
     await page.keyboard.press('Escape')
   }
   await page.locator('.abas').getByRole('button', { name: 'Organizado' }).click()
+  await expect(page.locator('article.texto')).toContainText('(revisto)')
 
   await page.getByRole('button', { name: 'Mais ações' }).click()
   await page.getByRole('menuitem', { name: 'Sugerir Tema' }).click()
@@ -50,33 +58,24 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await expect(page.locator('article.texto h1').first()).toHaveText('Tema de Teste')
   await expect(page.getByText('Referências deste Tema')).toBeVisible()
 
-  // Perguntar (D35): o quanto o texto responde, a resposta verificada e o que difere.
-  await page.getByRole('button', { name: 'Perguntar sobre este Tema' }).click()
-  await page.getByPlaceholder('O que você quer saber sobre este texto?').fill('Quando foi fundado?')
-  await page.getByRole('button', { name: 'Perguntar', exact: true }).click()
-  const janela = page.getByRole('dialog', { name: /Perguntar/ })
-  await expect(janela.getByText('Seu texto responde em parte')).toBeVisible({ timeout: 15000 })
-  await expect(janela.getByText('Falta no texto')).toBeVisible()
-  await expect(janela.getByRole('link', { name: 'Fonte A' })).toBeVisible()
-  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/perguntar.png` })
-
-  // Integrar ao texto (D36): a escolha de cada divergência, e a proposta vai para Revisões.
-  await janela.getByRole('button', { name: 'Integrar ao texto' }).click()
-  await expect(janela.getByRole('radio', { name: 'Acrescentar' })).toHaveAttribute('aria-checked', 'true')
-  await janela.getByRole('radio', { name: 'Ignorar' }).click()
-  await janela.getByLabel('Levar a resposta verificada para o texto').uncheck()
-  await expect(janela.getByRole('button', { name: 'Preparar a proposta' })).toBeDisabled()
-  await janela.getByRole('radio', { name: 'Acrescentar' }).click()
-  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/integrar.png` })
-  await janela.getByRole('button', { name: 'Preparar a proposta' }).click()
-  // Uma proposta por pergunta (D44): o botão some enquanto ela espera, e o link aparece ali mesmo.
-  await expect(janela.getByRole('button', { name: 'Integrar ao texto' })).toHaveCount(0)
-  await expect(janela.getByRole('button', { name: 'Verificar de novo' })).toHaveCount(0)
-  await janela.getByRole('link', { name: 'Revisar e aprovar' }).click({ timeout: 20000 })
-  await expect(page.getByRole('heading', { name: /Integrar ao texto/ })).toBeVisible()
-  await expect(page.locator('pre.diff')).toContainText('Integrado ao texto (escolhas: Acrescentar')
-  // Rejeitada, o Tema fica como estava (os outros testes leem este Tema).
-  await page.getByRole('button', { name: 'Rejeitar' }).click()
+  // Conversar sobre um trecho (D48): selecionar e tocar em Conversar abre a aba com o trecho; a
+  // resposta lembra a conversa, e a mudança proposta pode ser descartada.
+  await selecionar(page, 'Tema de Teste')
+  await page.getByRole('toolbar', { name: 'Seleção' }).getByRole('button', { name: 'Conversar sobre o trecho' }).click()
+  await expect(page).toHaveURL(/indice\.md\?conversar$/)
+  await expect(page.locator('.trecho-escolhido')).toContainText('Tema de Teste')
+  await page.getByLabel('Mensagem').fill('Onde foi fundado?')
+  await page.getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.locator('.trecho-escolhido')).toHaveCount(0)
+  const mensagem = page.locator('.mensagem').last()
+  await expect(mensagem.locator('.citado')).toContainText('Tema de Teste')
+  await expect(mensagem.getByText(/Resposta de teste/)).toBeVisible({ timeout: 15000 })
+  await mensagem.getByText('Fontes (1)').click()
+  await expect(mensagem.getByRole('link', { name: 'Fonte A' })).toBeVisible()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/conversar.png` })
+  await mensagem.getByRole('button', { name: 'Descartar' }).click()
+  await expect(mensagem.locator('.alteracao')).toContainText('Descartada')
+  await page.locator('.abas').getByRole('button', { name: 'Ler' }).click()
   await expect(page).toHaveURL(/#\/ler\/temas\/tema-de-teste\/indice\.md$/)
 })
 
