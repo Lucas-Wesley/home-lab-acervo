@@ -222,7 +222,11 @@ onMounted(() => {
               <input type="checkbox" :checked="escolhidos.includes(c.n)" @change="marcar(c)" />
               <span class="info">
                 <span class="titulo-capitulo" :class="{ secundario: c.level > 1 }">{{ c.title }}</span>
-                <span class="meta">p. {{ c.first_page }}{{ c.last_page > c.first_page ? `–${c.last_page}` : '' }} · {{ tamanho(c.chars) }}</span>
+                <span class="meta"
+                  >p. {{ c.first_page }}{{ c.last_page > c.first_page ? `–${c.last_page}` : '' }} · {{ tamanho(c.chars) }}<template v-if="c.highlights">
+                    · <span class="marcacoes">{{ c.highlights }} {{ c.highlights === 1 ? 'marcação' : 'marcações' }}</span></template
+                  ></span
+                >
               </span>
             </label>
           </li>
@@ -239,6 +243,7 @@ onMounted(() => {
       </template>
 
       <template v-if="sumario?.indexed">
+        <p class="suave dica">As suas marcações nesses capítulos entram como os pontos-chave do resumo. Sem marcação, a IA segue o peso que o próprio capítulo dá a cada assunto.</p>
         <label class="foco">
           <span class="rotulo">O que mais te interessa? <span class="opcional">(opcional)</span></span>
           <textarea v-model="foco" class="campo" rows="2" maxlength="500" placeholder="Ex.: as técnicas de fermentação" />
@@ -491,6 +496,11 @@ onMounted(() => {
   margin: 0 0 12px;
   font-size: 0.82rem;
   line-height: 1.45;
+}
+
+.marcacoes {
+  color: var(--marca);
+  font-weight: 600;
 }
 
 .foco {

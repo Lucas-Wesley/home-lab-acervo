@@ -3,7 +3,7 @@ import http from 'node:http'
 
 const livro = { id: 'livro1', title: 'Pães de Fermentação Natural', author: 'Autora', format: 'epub' }
 const capitulos = [
-  { n: 1, title: 'O levain', level: 1, first_page: 1, last_page: 12, chars: 18000 },
+  { n: 1, title: 'O levain', level: 1, first_page: 1, last_page: 12, chars: 18000, highlights: 2 },
   { n: 2, title: 'A farinha', level: 1, first_page: 13, last_page: 20, chars: 12000 },
   { n: 3, title: 'Tipos de trigo', level: 2, first_page: 15, last_page: 20, chars: 9000 },
 ]
@@ -27,6 +27,7 @@ http
           first_page: c.first_page,
           last_page: c.last_page,
           passages: [{ page: c.first_page, text: `Texto do capítulo ${c.title}. `.repeat(20), anchor: `{"pagina":${c.first_page}}` }],
+          highlights: c.highlights ? [{ quote: 'O levain precisa de 4 horas.', note: 'tempo', page: 3, anchor: '{"pagina":3}' }] : [],
         }))
       return responder(res, 200, { ...livro, parts })
     }

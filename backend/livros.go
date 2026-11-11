@@ -18,7 +18,9 @@ import (
 
 // Resumo de capítulos (D30): o Lucas escolhe um livro da Biblioteca e um ou mais capítulos (ou um
 // intervalo de páginas, no PDF sem sumário). O servidor lê o texto pela API da Biblioteca (R33 de
-// lá), sem a IA, e guarda em cru.md, com a página de cada trecho. A IA resume seguindo
+// lá), sem a IA, e guarda em cru.md, com a página de cada trecho. As marcações que o Lucas fez
+// nesses capítulos (R34 de lá) vão para marcacoes.md: são os pontos-chave dele, e o resumo as
+// trata como tal (D43). A IA resume seguindo
 // resumir-livro.md, e o resumo é uma Referência do tipo "livro", que segue o caminho de sempre:
 // sugerir o Tema → criar ou integrar → revisão pelo diff.
 
@@ -58,6 +60,8 @@ type sumarioDoLivro struct {
 		FirstPage int    `json:"first_page"`
 		LastPage  int    `json:"last_page"`
 		Chars     int    `json:"chars"`
+		// Marcações do Lucas no capítulo.
+		Highlights int `json:"highlights"`
 	} `json:"chapters"`
 }
 
@@ -240,6 +244,12 @@ type textoDoLivro struct {
 			Text   string `json:"text"`
 			Anchor string `json:"anchor"`
 		} `json:"passages"`
+		Highlights []struct {
+			Quote  string `json:"quote"`
+			Note   string `json:"note"`
+			Page   int    `json:"page"`
+			Anchor string `json:"anchor"`
+		} `json:"highlights"`
 	} `json:"parts"`
 }
 
@@ -274,6 +284,14 @@ func (a *app) lerLivro(ctx context.Context, t *tarefa, ref *referencia) (resulta
 	if err := os.WriteFile(filepath.Join(pasta, "cru.md"), []byte(cru), 0o644); err != nil {
 		return pronto, err
 	}
+	marcacoes := filepath.Join(pasta, arquivoDasMarcacoes)
+	if md := a.marcacoesEmMarkdown(p, texto); md != "" {
+		if err := os.WriteFile(marcacoes, []byte(md), 0o644); err != nil {
+			return pronto, err
+		}
+	} else {
+		os.Remove(marcacoes)
+	}
 	if err := a.mudarEstado(ctx, ref.ID, "cru"); err != nil {
 		return pronto, err
 	}
@@ -305,6 +323,33 @@ func (a *app) textoDoLivroEmMarkdown(p pedidoLivro, texto textoDoLivro) (string,
 	return s.String(), total
 }
 
+const arquivoDasMarcacoes = "marcacoes.md"
+
+// marcacoesEmMarkdown: as marcações do Lucas, capítulo a capítulo, com o link da página e a nota.
+// Vazio quando ele não marcou nada nesses capítulos.
+func (a *app) marcacoesEmMarkdown(p pedidoLivro, texto textoDoLivro) string {
+	var s strings.Builder
+	total := 0
+	for _, parte := range texto.Parts {
+		if len(parte.Highlights) == 0 {
+			continue
+		}
+		fmt.Fprintf(&s, "## %s\n\n", parte.Title)
+		for _, m := range parte.Highlights {
+			fmt.Fprintf(&s, "- [p. %d](%s) “%s”\n", m.Page, a.linkDaBiblioteca(p.Livro, m.Anchor), strings.Join(strings.Fields(m.Quote), " "))
+			if nota := strings.TrimSpace(m.Note); nota != "" {
+				fmt.Fprintf(&s, "  - Nota do Lucas: %s\n", strings.Join(strings.Fields(nota), " "))
+			}
+			total++
+		}
+		s.WriteString("\n")
+	}
+	if total == 0 {
+		return ""
+	}
+	return fmt.Sprintf("# Marcações do Lucas\n\n%d trechos que ele marcou ao ler, na ordem do livro: para ele, são os pontos-chave destes capítulos.\n\n", total) + s.String()
+}
+
 // ---------- resumir ----------
 
 func (a *app) resumir(ctx context.Context, t *tarefa, ref *referencia) (resultado, error) {
@@ -325,6 +370,10 @@ func (a *app) resumir(ctx context.Context, t *tarefa, ref *referencia) (resultad
 	instrucao.WriteString(".\n")
 	if p.Foco != "" {
 		fmt.Fprintf(&instrucao, "O que interessa ao Lucas nesses capítulos: %q. Dê mais espaço a isso, sem deixar de fora o essencial do resto.\n", p.Foco)
+	}
+	if _, err := os.Stat(filepath.Join(pasta, arquivoDasMarcacoes)); err == nil {
+		instrucao.WriteString("marcacoes.md, nesta pasta, tem os trechos que o Lucas marcou ao ler esses capítulos: são os pontos-chave dele. " +
+			"Siga a seção \"Marcações do Lucas\" das regras.\n")
 	}
 	instrucao.WriteString("Leia o texto inteiro e escreva organizado.md nesta pasta. Responda só 'ok' ao terminar.")
 

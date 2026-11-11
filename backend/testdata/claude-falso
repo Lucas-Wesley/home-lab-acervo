@@ -55,6 +55,7 @@ case "$prompt" in
       grep -o '\[p\. [0-9]*\]([^)]*)' cru.md | head -2 | tr '\n' ' ' | sed 's/^/<sub>Páginas: /; s/ $/<\/sub>/'
       printf '\n'
       case "$prompt" in *"O que interessa ao Lucas"*) printf '\nFoco recebido.\n' ;; esac
+      case "$prompt" in *"marcacoes.md"*) [ -f marcacoes.md ] && printf '\nMarcações recebidas.\n' ;; esac
     } > organizado.md
     ok ;;
   *"Confira organizado.md contra o material"*)

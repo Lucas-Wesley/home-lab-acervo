@@ -21,6 +21,18 @@ Não é a resenha do livro nem a sua opinião sobre ele. É o que o livro **ensi
 - Lixo da extração do texto: cabeçalhos e rodapés de página, números soltos, títulos repetidos, hifenização quebrada.
 - Agradecimentos, dedicatórias, propaganda de outros livros do autor.
 
+## Marcações do Lucas
+
+Quando a pasta tem `marcacoes.md`, ele traz os trechos que o Lucas marcou ao ler esses capítulos, com a página e, às vezes, uma nota dele. **As marcações são os pontos-chave do Lucas**: ele marca o que acha fundamental.
+
+- **Toda marcação entra no resumo**, com mais espaço e mais detalhe do que o resto. O que o capítulo diz em volta dela (o contexto, a explicação, o exemplo que a sustenta) fica junto.
+- **A nota manda:** se ele escreveu por que marcou ("a definição", "comparar com X", "data importante"), o resumo responde a isso.
+- **O resto do capítulo continua**, mais enxuto: as marcações não apagam o essencial que ele não marcou. Elas mudam o peso, não o assunto.
+- **Abra o resumo com a seção "Pontos-chave"** (logo depois do parágrafo de abertura): uma linha para cada ideia marcada, escrita como a ideia (não a frase copiada), com a página. Marcações sobre a mesma ideia viram uma linha só. Citação literal só quando a formulação do autor é o que importa. É dessa seção que saem os cartões quando o Lucas pedir flashcards.
+- Uma marcação de algo que não se sustenta sozinho (uma frase de efeito, um trecho cortado) entra pelo contexto dela, sem linha própria em "Pontos-chave".
+
+Sem `marcacoes.md`, o resumo segue o peso que o próprio capítulo dá a cada assunto, como sempre.
+
 ## Assuntos que não são do capítulo
 
 Um capítulo às vezes fala de outros assuntos (uma digressão, um assunto paralelo). Não os misture ao texto principal e não os apague: liste em **"Outros assuntos"**, uma linha para cada, com as páginas. Isso ajuda a decidir em que outros Temas do Acervo o livro também pode entrar.
@@ -47,6 +59,10 @@ Cada seção termina com as páginas de onde veio o conteúdo, **copiando os lin
 
 > <2 ou 3 frases: do que os capítulos tratam e a ideia central do autor>
 
+## Pontos-chave
+
+- <uma ideia que o Lucas marcou> <sub>[p. 45](...)</sub>
+
 ## <seção>
 
 <parágrafos>
@@ -72,5 +88,6 @@ Cada seção termina com as páginas de onde veio o conteúdo, **copiando os lin
 - <o que o livro afirma sem fonte, o que parece datado, um trecho que ficou ilegível na extração do texto; nada sobre os arquivos ou as páginas que faltam>
 ```
 
+- **Pontos-chave:** só quando houver `marcacoes.md`.
 - **Linha do tempo:** só se o assunto tiver datas ou períodos.
 - **Outros assuntos, Citados no livro e Dúvidas:** omitir a seção que ficar vazia.

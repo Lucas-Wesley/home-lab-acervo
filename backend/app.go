@@ -52,12 +52,12 @@ func configDoAmbiente(dados string) config {
 		autorEmail: env("GIT_AUTOR_EMAIL", "acervo@homelab.local"),
 
 		biblioteca:     strings.TrimSuffix(os.Getenv("BIBLIOTECA_URL"), "/"),
-		bibliotecaLink: strings.TrimSuffix(env("BIBLIOTECA_LINK", "https://192.168.1.20:8443"), "/"),
+		bibliotecaLink: strings.TrimSuffix(env("BIBLIOTECA_LINK", "https://biblioteca.internal"), "/"),
 		wikipedia:      strings.TrimSuffix(env("WIKIPEDIA_URL", "https://pt.wikipedia.org"), "/"),
 
 		flashcards:     strings.TrimSuffix(os.Getenv("FLASHCARDS_URL"), "/"),
-		flashcardsLink: strings.TrimSuffix(env("FLASHCARDS_LINK", "https://192.168.1.20:8445"), "/"),
-		acervoLink:     strings.TrimSuffix(env("ACERVO_LINK", "https://192.168.1.20:8444"), "/"),
+		flashcardsLink: strings.TrimSuffix(env("FLASHCARDS_LINK", "https://flashcards.internal"), "/"),
+		acervoLink:     strings.TrimSuffix(env("ACERVO_LINK", "https://acervo.internal"), "/"),
 
 		spotify:        strings.TrimSuffix(env("SPOTIFY_URL", "https://open.spotify.com"), "/"),
 		itunes:         strings.TrimSuffix(env("ITUNES_URL", "https://itunes.apple.com"), "/"),

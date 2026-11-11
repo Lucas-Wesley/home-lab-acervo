@@ -25,7 +25,7 @@ func bibliotecaDeLivros(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"id": "livro1", "title": "Frutas do Brasil", "author": "Autora", "format": "epub",
 			"indexed": true, "pages": 9, "chapters": []map[string]any{
 				{"n": 1, "title": "Os citros", "level": 1, "first_page": 1, "last_page": 4, "chars": 6000},
-				{"n": 2, "title": "O caju", "level": 1, "first_page": 5, "last_page": 9, "chars": 7000},
+				{"n": 2, "title": "O caju", "level": 1, "first_page": 5, "last_page": 9, "chars": 7000, "highlights": 1},
 			}})
 	case "/api/books/escaneado/chapters":
 		writeJSON(w, http.StatusOK, map[string]any{"id": "escaneado", "title": "Escaneado", "format": "pdf",
@@ -40,6 +40,8 @@ func bibliotecaDeLivros(w http.ResponseWriter, r *http.Request) {
 				{"page": 5, "text": "O caju é nativo do Nordeste brasileiro. " + strings.Repeat("Texto do capítulo. ", 10), "anchor": `{"href":"cap2.xhtml"}`},
 				{"page": 5, "text": "A castanha vem junto, presa ao pedúnculo.", "anchor": `{"href":"cap2.xhtml"}`},
 				{"page": 6, "text": "Os portugueses levaram o caju para a Índia e a África.", "anchor": `{"href":"cap2.xhtml","p":2}`},
+			}, "highlights": []map[string]any{
+				{"quote": "Os portugueses levaram o caju\npara a Índia", "note": "rota do caju", "page": 6, "anchor": `{"href":"cap2.xhtml","p":2}`},
 			}}}})
 	default:
 		http.NotFound(w, r)
@@ -61,7 +63,7 @@ func TestResumoDeUmCapitulo(t *testing.T) {
 		t.Errorf("sem capa: %d", s)
 	}
 	var sumario sumarioDoLivro
-	if s := e.pedir("GET", "/api/livros/livro1", nil, &sumario); s != http.StatusOK || len(sumario.Chapters) != 2 {
+	if s := e.pedir("GET", "/api/livros/livro1", nil, &sumario); s != http.StatusOK || len(sumario.Chapters) != 2 || sumario.Chapters[1].Highlights != 1 {
 		t.Fatalf("sumário: %d %+v", s, sumario)
 	}
 
@@ -88,8 +90,14 @@ func TestResumoDeUmCapitulo(t *testing.T) {
 		!strings.Contains(cru, "[p. 6](") || !strings.Contains(cru, "> Autor: Autora") {
 		t.Errorf("cru.md:\n%s", cru)
 	}
-	if org := d.Textos["organizado"]; !strings.Contains(org, "<sub>Páginas: "+link5) || !strings.Contains(org, "Foco recebido.") {
+	if org := d.Textos["organizado"]; !strings.Contains(org, "<sub>Páginas: "+link5) || !strings.Contains(org, "Foco recebido.") || !strings.Contains(org, "Marcações recebidas.") {
 		t.Errorf("organizado.md:\n%s", org)
+	}
+	// As marcações do Lucas vão à parte, com a página, o link e a nota: são os pontos-chave do resumo.
+	marcacoes, _ := os.ReadFile(filepath.Join(e.app.pastaReferencia(ref.ID), arquivoDasMarcacoes))
+	if m := string(marcacoes); !strings.Contains(m, "## O caju") || !strings.Contains(m, "[p. 6](https://biblioteca.lan/#/livro/livro1?em=") ||
+		!strings.Contains(m, "“Os portugueses levaram o caju para a Índia”") || !strings.Contains(m, "Nota do Lucas: rota do caju") || !strings.Contains(m, "1 trechos") {
+		t.Errorf("marcacoes.md:\n%s", m)
 	}
 	nota := notaDoTipo(&d.referencia)
 	if !strings.Contains(nota, `o capítulo "O caju" do livro "Frutas do Brasil", de Autora`) || !strings.Contains(nota, "Fonte: Frutas do Brasil, p. N") {
