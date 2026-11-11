@@ -1,13 +1,16 @@
 # Aba Estudar (D41): o que tem e o que pode vir
 
-A aba **Estudar** fica na página de cada Tema, ao lado de **Ler**. Tudo sai do **Tema inteiro**
-(com os subtemas), cada parte numa tarefa da fila e com a sua regra em `regras/` (editável em Ajustes).
+A aba **Estudar** fica na página de cada Tema, ao lado de **Ler**, e nas abas de cada Referência (D45).
+Tudo sai do **Tema inteiro** (com os subtemas) ou do texto organizado da Referência, cada parte numa
+tarefa da fila e com a sua regra em `regras/` (editável em Ajustes).
+
+A aba abre só com os quatro cartões; o escolhido abre embaixo, e o Simulado, em tela própria.
 
 ## O que já tem
 
 | Parte | O que faz | Regra |
 |---|---|---|
-| **Resumo inteligente** | A ideia central, o essencial, como as partes se ligam, termos-chave, o que confunde e onde aprofundar. **Ouvir o resumo** com a voz do aparelho. | `estudar-resumo.md` |
+| **Resumo inteligente** | A ideia central, o essencial, como as partes se ligam, termos-chave, o que confunde e onde aprofundar. **Ouvir o resumo** com a voz do aparelho, em trechos, com Pausar e Continuar. | `estudar-resumo.md` |
 | **Conceitos anteriores** | 4 a 8 conceitos que o Tema supõe ou toca sem explicar: **base** (pré-requisito) ou **ao redor** (contexto). Cada um com por que ajuda, uma explicação curta, as fontes (conferidas na internet) e o link para um Tema do Acervo que trate dele. | `estudar-anteriores.md` |
 | **Simulado** | Um banco de 12 a 20 perguntas abertas (lembrar, entender, aplicar), com a resposta esperada. Cada simulado sorteia 3, 5 ou 10; responde-se **escrevendo ou falando** (o ditado do navegador, em pt-BR). A IA corrige: certa, em parte, errada, o que faltou, a nota e os capítulos para reler. Fica o histórico. | `estudar-simulado.md`, `corrigir-simulado.md` |
 | **Flashcards** | Do Tema inteiro (D28), dos conceitos anteriores, ou **do que se errou** num simulado. Tudo vai para o app Flashcards, que monta a proposta para revisar. | (no Flashcards) |

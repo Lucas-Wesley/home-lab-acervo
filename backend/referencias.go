@@ -399,6 +399,9 @@ func (a *app) handleExcluirReferencia(w http.ResponseWriter, r *http.Request) {
 		{`DELETE FROM detalhes WHERE local LIKE ?`, "referencias/" + ref.ID + "/%"},
 		{`DELETE FROM perguntas WHERE local = ?`, "referencias/" + ref.ID},
 		{`DELETE FROM duvidas WHERE referencia_id = ?`, ref.ID},
+		{`DELETE FROM estudos WHERE tema = ?`, "referencias/" + ref.ID},
+		{`DELETE FROM simulados WHERE tema = ?`, "referencias/" + ref.ID},
+		{`DELETE FROM flashcards WHERE alvo LIKE ?`, "estudo:referencias/" + ref.ID + "#%"},
 		{`DELETE FROM referencias WHERE id = ?`, ref.ID},
 	} {
 		if _, err := tx.ExecContext(ctx, q.sql, q.arg); err != nil {

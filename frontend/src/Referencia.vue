@@ -1,9 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, NOMES_ESTADO_TAREFA, NOMES_TAREFA, nomeDoEstado, situacao } from './api.js'
 import CamadaDetalhes from './CamadaDetalhes.vue'
 import CartoesDaReferencia from './CartoesDaReferencia.vue'
+import EnviarFlashcards from './EnviarFlashcards.vue'
 import EsbocoPesquisa from './EsbocoPesquisa.vue'
+import Estudar from './Estudar.vue'
 import Icone from './Icone.vue'
 import NovaPesquisa from './NovaPesquisa.vue'
 import Duvidas from './Duvidas.vue'
@@ -11,12 +13,28 @@ import Perguntas from './Perguntas.vue'
 import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 import { marcar, usarDetalhes } from './detalhes.js'
 import { duvidas, renderizar, tituloDoTexto } from './markdown.js'
+import { trocarEndereco } from './rolagem.js'
 
-const props = defineProps({ id: { type: String, required: true } })
+const props = defineProps({
+  id: { type: String, required: true },
+  estudar: { type: Boolean, default: false }, // "?estudar" no endereço: abre na aba Estudar (D41)
+})
 
 const ref_ = ref(null)
 const erro = ref('')
-const aba = ref('')
+const aba = ref(props.estudar ? 'estudar' : '')
+// Recarregar (ou o link de uma tarefa da fila) volta para a aba Estudar.
+watch(aba, (a) => trocarEndereco(a === 'estudar' ? `#/referencia/${props.id}?estudar` : `#/referencia/${props.id}`))
+const envioDoEstudo = ref(null) // flashcards dos conceitos anteriores ou do que se errou no simulado
+const avisoDoEstudo = ref('')
+
+// Flashcards pedidos na aba Estudar: os do texto inteiro seguem o caminho da Referência (a proposta
+// aparece aqui mesmo); os outros abrem a escolha do baralho.
+function flashcardsDoEstudo({ origem, titulo }) {
+  avisoDoEstudo.value = ''
+  if (origem.referencia) cartoes.value?.gerar()
+  else envioDoEstudo.value = { origem, titulo }
+}
 const temas = ref([])
 const acao = ref(null) // 'criar' | 'integrar' | 'aprofundar'
 const focoDoAprofundar = ref('') // "Pesquisar isto" numa dúvida de pesquisa (D37)
@@ -315,7 +333,16 @@ onBeforeUnmount(() => {
 
       <Duvidas v-if="abaAtual === 'duvidas'" :referencia="ref_" :texto="textoPrincipal" @perguntar="perguntarSobre" @aprofundar="aprofundarSobre" @mudou="carregar" />
       <Perguntas v-else-if="abaAtual === 'perguntar'" :key="perguntasVersao" embutido :local="`referencias/${ref_.id}`" :titulo="ref_.titulo" />
-      <p v-else-if="abaAtual === 'estudar'" class="suave nota">Em breve.</p>
+      <template v-else-if="abaAtual === 'estudar'">
+        <div v-if="avisoDoEstudo" class="aviso ok">{{ avisoDoEstudo }}</div>
+        <Estudar :local="`referencias/${ref_.id}`" :titulo="ref_.titulo || ref_.url" :flashcards="!!cartoes?.disponivel" @flashcards="flashcardsDoEstudo" />
+        <EnviarFlashcards
+          v-if="envioDoEstudo"
+          v-bind="envioDoEstudo"
+          @fechar="envioDoEstudo = null"
+          @enviado="envioDoEstudo = null; avisoDoEstudo = 'Enviado ao Flashcards. A IA está montando os cartões; a proposta fica em Pedidos à IA, para você aprovar.'"
+        />
+      </template>
       <ul v-else-if="abaAtual === 'historico'" class="historico">
         <li v-for="t in ref_.tarefas" :key="t.id">
           <span>{{ NOMES_TAREFA[t.tipo] || t.tipo }}</span>

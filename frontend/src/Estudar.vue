@@ -1,45 +1,73 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Icone from './Icone.vue'
 import Simulado from './Simulado.vue'
 import { api } from './api.js'
+import { ler, paraFala, temLeitura, trechos } from './leitura.js'
 import { renderizar } from './markdown.js'
 
-// Aba Estudar de um Tema (D41): resumo inteligente, conceitos anteriores, simulado e flashcards.
-// Cada parte é preparada pela IA na fila, a partir do Tema inteiro (com os subtemas), e fica
-// guardada; quando o Tema muda, a parte avisa que pode ser refeita.
+// Aba Estudar de um Tema ou de uma Referência (D41): resumo inteligente, conceitos anteriores,
+// simulado e flashcards. Cada parte é preparada pela IA na fila, a partir do Tema inteiro (com os
+// subtemas) ou do texto da Referência, e fica guardada; quando o texto muda, a parte avisa.
+// A aba abre só com os quatro cartões; o escolhido abre embaixo, e o simulado, em tela própria,
+// porque responder pede foco e a tela inteira.
 const props = defineProps({
-  tema: { type: String, required: true }, // temas/<pasta>
+  local: { type: String, required: true }, // temas/<pasta> ou referencias/<id>
   titulo: { type: String, required: true },
   flashcards: { type: Boolean, default: false }, // o Flashcards está no ar
 })
 const emit = defineEmits(['flashcards'])
 
-const SECOES = [
-  ['resumo', 'Resumo inteligente', 'O Tema inteiro em poucos minutos: a ideia central, o essencial, como as partes se ligam e o que costuma confundir.'],
-  ['anteriores', 'Conceitos anteriores', 'O que ajuda a entender este Tema e não está explicado nele: a base que ele supõe e os assuntos ao redor.'],
-  ['simulado', 'Simulado', 'Perguntas sorteadas do Tema para ver se você entendeu. Responda escrevendo ou falando; a IA corrige.'],
-]
+const ehReferencia = computed(() => props.local.startsWith('referencias/'))
+const doTexto = computed(() => (ehReferencia.value ? 'o texto' : 'o Tema'))
+
+const SECOES = computed(() => [
+  { id: 'resumo', nome: 'Resumo inteligente', icone: 'resumo', descricao: `${ehReferencia.value ? 'O texto' : 'O Tema'} inteiro em poucos minutos: a ideia central, o essencial, como as partes se ligam e o que costuma confundir.` },
+  { id: 'anteriores', nome: 'Conceitos anteriores', icone: 'camadas', descricao: `O que ajuda a entender ${doTexto.value} e não está explicado nele: a base que ele supõe e os assuntos ao redor.` },
+  { id: 'simulado', nome: 'Simulado', icone: 'simulado', descricao: `Perguntas sorteadas ${ehReferencia.value ? 'do texto' : 'do Tema'} para ver se você entendeu. Responda escrevendo ou falando; a IA corrige.` },
+  { id: 'flashcards', nome: 'Flashcards', icone: 'cartoes', descricao: 'Os cartões vão para o app Flashcards; você revisa a proposta lá antes de entrarem no baralho.' },
+])
 const PREPARAR = { resumo: 'Preparar o resumo', anteriores: 'Achar os conceitos anteriores', simulado: 'Preparar as perguntas' }
 
 const dados = ref(null) // { partes: { resumo, anteriores, simulado }, simulados }
 const erro = ref('')
 const pedindo = ref('')
-const falando = ref(false)
+const aberta = ref('') // a parte aberta; vazio = só os cartões
 let espera = null
 
 const partes = computed(() => dados.value?.partes ?? {})
+const secao = computed(() => SECOES.value.find((s) => s.id === aberta.value))
+const parte = computed(() => partes.value[aberta.value])
 const processando = computed(() => Object.values(partes.value).some((p) => p.estado === 'processando') || dados.value?.simulados?.some((s) => s.estado === 'processando'))
 const conceitos = computed(() => partes.value.anteriores?.resultado?.conceitos ?? [])
-const temVozDeLeitura = typeof window !== 'undefined' && 'speechSynthesis' in window
+const banco = computed(() => partes.value.simulado?.resultado?.perguntas ?? [])
+const textoResumo = computed(() => partes.value.resumo?.resultado?.texto ?? '')
 
 function mensagem(e) {
   return e.status === 0 ? 'Estudar precisa da rede de casa.' : e.message
 }
 
+// O que o cartão diz sobre a parte: pronta (e quanto tem), preparando, com erro ou por fazer.
+function situacao(id) {
+  if (id === 'flashcards') return { texto: props.flashcards ? 'Do texto, dos conceitos ou dos erros' : 'O Flashcards não respondeu' }
+  const p = partes.value[id]
+  if (!p) return { texto: '' }
+  if (p.estado === 'processando') return { texto: p.resultado ? 'Refazendo…' : 'Preparando…', classe: 'na-fila' }
+  if (p.estado === 'falhou' && !p.resultado) return { texto: 'Falhou: tente de novo', classe: 'com-erro' }
+  if (!p.resultado) return { texto: 'Ainda não preparado', classe: 'por-fazer' }
+  let texto = ''
+  if (id === 'resumo') texto = `${Math.max(1, Math.round(textoResumo.value.split(/\s+/).length / 200))} min de leitura`
+  if (id === 'anteriores') texto = `${conceitos.value.length} ${conceitos.value.length === 1 ? 'conceito' : 'conceitos'}`
+  if (id === 'simulado') {
+    const nota = dados.value.simulados.find((s) => s.correcao)?.correcao.nota
+    texto = `${banco.value.length} perguntas${nota !== undefined ? ` · última nota ${nota}` : ''}`
+  }
+  return p.desatualizado ? { texto: `${texto} · o texto mudou`, classe: 'mudou' } : { texto }
+}
+
 async function carregar() {
   try {
-    dados.value = await api(`/api/estudos?tema=${encodeURIComponent(props.tema)}`)
+    dados.value = await api(`/api/estudos?tema=${encodeURIComponent(props.local)}`)
     erro.value = ''
   } catch (e) {
     erro.value = mensagem(e)
@@ -48,11 +76,11 @@ async function carregar() {
   if (processando.value) espera = setTimeout(carregar, 4000)
 }
 
-async function preparar(parte) {
-  pedindo.value = parte
+async function preparar(id) {
+  pedindo.value = id
   erro.value = ''
   try {
-    await api('/api/estudos', { metodo: 'POST', corpo: { tema: props.tema, parte } })
+    await api('/api/estudos', { metodo: 'POST', corpo: { tema: props.local, parte: id } })
     await carregar()
   } catch (e) {
     erro.value = mensagem(e)
@@ -61,118 +89,185 @@ async function preparar(parte) {
   }
 }
 
-// Ouvir o resumo: a voz do próprio aparelho lê o texto, sem as marcas do Markdown.
-function ouvirResumo() {
-  if (falando.value) {
-    speechSynthesis.cancel()
-    falando.value = false
-    return
-  }
-  const texto = partes.value.resumo.resultado.texto.replace(/[#*_>`]/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-  const fala = new SpeechSynthesisUtterance(texto)
-  fala.lang = 'pt-BR'
-  fala.onend = fala.onerror = () => (falando.value = false)
-  speechSynthesis.cancel()
-  speechSynthesis.speak(fala)
-  falando.value = true
+const raiz = ref(null)
+function abrir(id) {
+  aberta.value = aberta.value === id && id !== 'simulado' ? '' : id
+  if (id === 'simulado') raiz.value?.scrollIntoView({ block: 'start' })
 }
+
+// ---------- Ouvir o resumo ----------
+
+const leitura = ref({ estado: 'parado', trecho: 0, total: 0 }) // parado, lendo ou pausado
+const erroLeitura = ref('')
+const trechosDoResumo = computed(() => trechos(paraFala(textoResumo.value)))
+let pararLeitura = null
+
+function ouvir(inicio = 0) {
+  erroLeitura.value = ''
+  const lista = trechosDoResumo.value
+  leitura.value = { estado: 'lendo', trecho: inicio, total: lista.length }
+  pararLeitura = ler(lista, {
+    inicio,
+    aoMudar: (i) => (leitura.value.trecho = i),
+    aoTerminar: (msg) => {
+      pararLeitura = null
+      leitura.value = { estado: 'parado', trecho: 0, total: lista.length }
+      erroLeitura.value = msg
+    },
+  })
+}
+
+function pausar() {
+  const onde = pararLeitura?.() ?? 0
+  pararLeitura = null
+  leitura.value = { ...leitura.value, estado: 'pausado', trecho: onde }
+}
+
+function parar() {
+  pararLeitura?.()
+  pararLeitura = null
+  leitura.value = { estado: 'parado', trecho: 0, total: 0 }
+}
+
+// Sair do resumo (ou refazê-lo) para a leitura.
+watch([aberta, textoResumo], parar)
 
 function quando(iso) {
   return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''
 }
 
-function ir(id) {
-  document.getElementById(`estudar-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 onMounted(carregar)
 onBeforeUnmount(() => {
   clearTimeout(espera)
-  if (falando.value) speechSynthesis.cancel()
+  parar()
 })
 </script>
 
 <template>
-  <div class="estudar">
-    <nav class="atalhos" aria-label="Partes do estudo">
-      <button v-for="[id, nome] in SECOES" :key="id" class="chip" @click="ir(id)">{{ nome }}</button>
-      <button class="chip" @click="ir('flashcards')">Flashcards</button>
-    </nav>
+  <div ref="raiz" class="estudar">
     <div v-if="erro" class="aviso erro">{{ erro }}</div>
     <p v-if="!dados && !erro" class="suave">Carregando…</p>
 
     <template v-if="dados">
-      <section v-for="[id, nome, descricao] in SECOES" :id="`estudar-${id}`" :key="id" class="parte">
+      <!-- O simulado, em tela própria -->
+      <section v-if="aberta === 'simulado'" class="parte tela-simulado">
+        <button class="botao discreto voltar-estudar" @click="aberta = ''"><Icone nome="voltar" /> Estudar</button>
         <header>
-          <h2>{{ nome }}</h2>
-          <p class="descricao">{{ descricao }}</p>
+          <h2>Simulado</h2>
+          <p class="descricao">{{ secao.descricao }}</p>
         </header>
-
-        <p v-if="partes[id].estado === 'processando'" class="chip andando">{{ partes[id].resultado ? 'Refazendo…' : 'Preparando…' }} (na fila)</p>
-        <p v-else-if="partes[id].estado === 'falhou'" class="aviso erro">{{ partes[id].erro }}</p>
-        <p v-if="partes[id].desatualizado && partes[id].estado !== 'processando'" class="aviso">O Tema mudou desde que isto foi preparado. Refaça para valer o texto de agora.</p>
-
-        <!-- Resumo -->
-        <template v-if="id === 'resumo' && partes.resumo.resultado">
-          <button v-if="temVozDeLeitura" class="botao ouvir" @click="ouvirResumo"><Icone :nome="falando ? 'parar' : 'ouvir'" /> {{ falando ? 'Parar' : 'Ouvir o resumo' }}</button>
-          <article class="texto resumo" v-html="renderizar(partes.resumo.resultado.texto)" />
-        </template>
-
-        <!-- Conceitos anteriores -->
-        <template v-if="id === 'anteriores' && conceitos.length">
-          <article v-for="c in conceitos" :key="c.nome" class="conceito">
-            <div class="cabeca-conceito">
-              <h3>{{ c.nome }}</h3>
-              <span class="chip" :class="{ base: c.tipo === 'base' }">{{ c.tipo === 'base' ? 'Base' : 'Ao redor' }}</span>
-            </div>
-            <p class="por-que">{{ c.por_que }}</p>
-            <details>
-              <summary>Entender o conceito</summary>
-              <div class="texto explicacao" v-html="renderizar(c.explicacao)" />
-              <p v-if="c.fontes.length" class="fontes suave">
-                Fontes:
-                <template v-for="(f, i) in c.fontes" :key="f.url"><template v-if="i">, </template><a :href="f.url" target="_blank" rel="noopener">{{ f.titulo || f.url }}</a></template>
-              </p>
-            </details>
-            <a v-if="c.tema" class="no-acervo" :href="`#/ler/${c.tema}/indice.md`"><Icone nome="acervo" /> Está no seu Acervo</a>
-          </article>
-        </template>
-
-        <!-- Simulado -->
+        <p v-if="parte.estado === 'processando'" class="chip andando">{{ parte.resultado ? 'Refazendo…' : 'Preparando…' }} (na fila)</p>
+        <p v-else-if="parte.estado === 'falhou'" class="aviso erro">{{ parte.erro }}</p>
+        <p v-if="parte.desatualizado && parte.estado !== 'processando'" class="aviso">{{ ehReferencia ? 'O texto' : 'O Tema' }} mudou desde que as perguntas foram preparadas. Refaça para valer o texto de agora.</p>
         <Simulado
-          v-if="id === 'simulado' && partes.simulado.resultado?.perguntas?.length"
-          :tema="tema"
-          :banco="partes.simulado.resultado.perguntas"
+          v-if="banco.length"
+          :tema="local"
+          :banco="banco"
           :simulados="dados.simulados"
           :flashcards="flashcards"
           @entregue="carregar"
           @flashcards="emit('flashcards', $event)"
         />
-
-        <div v-if="partes[id].estado !== 'processando'" class="linha-acoes">
-          <button v-if="!partes[id].resultado" class="botao principal" :disabled="!!pedindo" @click="preparar(id)">{{ PREPARAR[id] }}</button>
-          <button v-else class="botao discreto" :disabled="!!pedindo" @click="preparar(id)">
-            {{ id === 'simulado' ? 'Refazer as perguntas' : 'Refazer' }}<span v-if="partes[id].atualizado_em" class="meta"> · preparado em {{ quando(partes[id].atualizado_em) }}</span>
+        <div v-if="parte.estado !== 'processando'" class="linha-acoes">
+          <button v-if="!parte.resultado" class="botao principal" :disabled="!!pedindo" @click="preparar('simulado')">{{ PREPARAR.simulado }}</button>
+          <button v-else class="botao discreto refazer" :disabled="!!pedindo" @click="preparar('simulado')">
+            Refazer as perguntas<span v-if="parte.atualizado_em" class="meta"> · preparadas em {{ quando(parte.atualizado_em) }}</span>
           </button>
         </div>
       </section>
 
-      <section id="estudar-flashcards" class="parte">
-        <header>
-          <h2>Flashcards</h2>
-          <p class="descricao">Os cartões vão para o app Flashcards; você revisa a proposta lá antes de entrarem no baralho.</p>
-        </header>
-        <p v-if="!flashcards" class="suave">O Flashcards não respondeu agora.</p>
-        <div v-else class="opcoes-cartoes">
-          <button class="botao" @click="emit('flashcards', { origem: { arquivo: `${tema}/indice.md`, capitulo: '' }, titulo: 'do Tema inteiro' })">
-            <Icone nome="cartoes" /> Do Tema inteiro
+      <template v-else>
+        <div class="cartoes" role="group" aria-label="Partes do estudo">
+          <button
+            v-for="s in SECOES"
+            :key="s.id"
+            class="cartao-estudo"
+            :class="{ aberta: aberta === s.id }"
+            :aria-expanded="s.id === 'simulado' ? undefined : aberta === s.id"
+            @click="abrir(s.id)"
+          >
+            <span class="icone-cartao"><Icone :nome="s.icone" /></span>
+            <span class="nome">{{ s.nome }}</span>
+            <span class="situacao" :class="situacao(s.id).classe">{{ situacao(s.id).texto }}</span>
           </button>
-          <button class="botao" :disabled="!conceitos.length" @click="emit('flashcards', { origem: { estudo: tema, parte: 'anteriores' }, titulo: 'dos conceitos anteriores' })">
-            <Icone nome="cartoes" /> Dos conceitos anteriores
-          </button>
-          <p class="suave dica">Depois de um simulado, “Flashcards do que errei” transforma as respostas erradas em cartões.</p>
         </div>
-      </section>
+
+        <section v-if="secao" :key="aberta" class="parte painel">
+          <header>
+            <h2>{{ secao.nome }}</h2>
+            <p class="descricao">{{ secao.descricao }}</p>
+          </header>
+
+          <template v-if="parte">
+            <p v-if="parte.estado === 'processando'" class="chip andando">{{ parte.resultado ? 'Refazendo…' : 'Preparando…' }} (na fila)</p>
+            <p v-else-if="parte.estado === 'falhou'" class="aviso erro">{{ parte.erro }}</p>
+            <p v-if="parte.desatualizado && parte.estado !== 'processando'" class="aviso">{{ ehReferencia ? 'O texto' : 'O Tema' }} mudou desde que isto foi preparado. Refaça para valer o texto de agora.</p>
+          </template>
+
+          <!-- Resumo -->
+          <template v-if="aberta === 'resumo' && textoResumo">
+            <div v-if="temLeitura" class="leitor-voz">
+              <template v-if="leitura.estado === 'parado'">
+                <button class="botao" @click="ouvir()"><Icone nome="ouvir" /> Ouvir o resumo</button>
+              </template>
+              <template v-else>
+                <button v-if="leitura.estado === 'lendo'" class="botao" @click="pausar"><Icone nome="pausar" /> Pausar</button>
+                <button v-else class="botao" @click="ouvir(leitura.trecho)"><Icone nome="ouvir" /> Continuar</button>
+                <button class="botao" aria-label="Parar a leitura" @click="parar"><Icone nome="parar" /> Parar</button>
+                <div class="progresso-voz" role="progressbar" :aria-valuenow="leitura.trecho + 1" aria-valuemin="1" :aria-valuemax="leitura.total" aria-label="Leitura do resumo">
+                  <span :style="{ width: `${((leitura.trecho + 1) / Math.max(1, leitura.total)) * 100}%` }" />
+                </div>
+              </template>
+            </div>
+            <p v-if="erroLeitura" class="aviso erro">{{ erroLeitura }}</p>
+            <article class="texto resumo" v-html="renderizar(textoResumo)" />
+          </template>
+
+          <!-- Conceitos anteriores -->
+          <template v-if="aberta === 'anteriores' && conceitos.length">
+            <article v-for="c in conceitos" :key="c.nome" class="conceito">
+              <div class="cabeca-conceito">
+                <h3>{{ c.nome }}</h3>
+                <span class="chip" :class="{ base: c.tipo === 'base' }">{{ c.tipo === 'base' ? 'Base' : 'Ao redor' }}</span>
+              </div>
+              <p class="por-que">{{ c.por_que }}</p>
+              <details>
+                <summary>Entender o conceito</summary>
+                <div class="texto explicacao" v-html="renderizar(c.explicacao)" />
+                <p v-if="c.fontes.length" class="fontes suave">
+                  Fontes:
+                  <template v-for="(f, i) in c.fontes" :key="f.url"><template v-if="i">, </template><a :href="f.url" target="_blank" rel="noopener">{{ f.titulo || f.url }}</a></template>
+                </p>
+              </details>
+              <a v-if="c.tema" class="no-acervo" :href="`#/ler/${c.tema}/indice.md`"><Icone nome="acervo" /> Está no seu Acervo</a>
+            </article>
+          </template>
+
+          <!-- Flashcards -->
+          <template v-if="aberta === 'flashcards'">
+            <p v-if="!flashcards" class="suave">O Flashcards não respondeu agora.</p>
+            <div v-else class="opcoes-cartoes">
+              <button
+                class="botao"
+                @click="emit('flashcards', { origem: ehReferencia ? { referencia: local.slice('referencias/'.length) } : { arquivo: `${local}/indice.md`, capitulo: '' }, titulo: ehReferencia ? 'do texto inteiro' : 'do Tema inteiro' })"
+              >
+                <Icone nome="cartoes" /> {{ ehReferencia ? 'Do texto inteiro' : 'Do Tema inteiro' }}
+              </button>
+              <button class="botao" :disabled="!conceitos.length" @click="emit('flashcards', { origem: { estudo: local, parte: 'anteriores' }, titulo: 'dos conceitos anteriores' })">
+                <Icone nome="cartoes" /> Dos conceitos anteriores
+              </button>
+              <p class="suave dica">Depois de um simulado, “Flashcards do que errei” transforma as respostas erradas em cartões.</p>
+            </div>
+          </template>
+
+          <div v-if="parte && parte.estado !== 'processando'" class="linha-acoes">
+            <button v-if="!parte.resultado" class="botao principal" :disabled="!!pedindo" @click="preparar(aberta)">{{ PREPARAR[aberta] }}</button>
+            <button v-else class="botao discreto refazer" :disabled="!!pedindo" @click="preparar(aberta)">
+              Refazer<span v-if="parte.atualizado_em" class="meta"> · preparado em {{ quando(parte.atualizado_em) }}</span>
+            </button>
+          </div>
+        </section>
+      </template>
     </template>
   </div>
 </template>
@@ -181,32 +276,108 @@ onBeforeUnmount(() => {
 .estudar {
   display: grid;
   gap: 8px;
-}
-
-.atalhos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.atalhos .chip {
-  border: 0;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.82rem;
-}
-
-.parte {
-  display: grid;
-  gap: 12px;
-  padding: 22px 0;
-  border-top: 1px solid var(--linha);
   scroll-margin-top: 72px;
 }
 
-.parte:first-of-type {
-  border-top: 0;
+/* Os quatro cartões */
+.cartoes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cartao-estudo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  aspect-ratio: 1;
+  padding: 14px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.cartao-estudo:hover {
+  border-color: var(--linha-forte);
+  transform: translateY(-1px);
+}
+
+.cartao-estudo:focus-visible {
+  outline: 2px solid var(--marca);
+  outline-offset: 2px;
+}
+
+.cartao-estudo.aberta {
+  border-color: var(--marca);
+  background: var(--marca-fundo);
+}
+
+.icone-cartao {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: auto;
+  border-radius: var(--raio-p);
+  background: var(--fundo);
+  color: var(--marca);
+}
+
+.icone-cartao :deep(svg) {
+  width: 19px;
+  height: 19px;
+}
+
+.nome {
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+}
+
+.situacao {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.situacao.por-fazer {
+  color: var(--texto-fraco);
+}
+
+.situacao.na-fila {
+  color: var(--azul);
+}
+
+.situacao.com-erro,
+.situacao.mudou {
+  color: var(--vermelho);
+}
+
+@media (max-width: 640px) {
+  .cartoes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cartao-estudo {
+    aspect-ratio: 1.3;
+  }
+}
+
+/* A parte aberta */
+.parte {
+  display: grid;
+  gap: 12px;
+}
+
+.painel {
+  padding-top: 22px;
 }
 
 .parte header {
@@ -235,8 +406,37 @@ onBeforeUnmount(() => {
   justify-self: start;
 }
 
-.ouvir {
+.voltar-estudar {
   justify-self: start;
+  margin-left: -8px;
+}
+
+.voltar-estudar :deep(svg) {
+  width: 18px;
+  height: 18px;
+}
+
+.leitor-voz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.progresso-voz {
+  flex: 1 1 120px;
+  max-width: 240px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--superficie-forte);
+}
+
+.progresso-voz span {
+  display: block;
+  height: 100%;
+  background: var(--marca);
+  transition: width 0.3s ease;
 }
 
 .resumo :deep(h2) {
@@ -323,6 +523,9 @@ onBeforeUnmount(() => {
   background: transparent;
   color: var(--texto-suave);
   font-size: 0.88rem;
+}
+
+.refazer {
   margin-left: -8px;
 }
 

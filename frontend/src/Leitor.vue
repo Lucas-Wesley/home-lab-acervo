@@ -542,7 +542,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
 
       <template v-else-if="arquivo && temAbas && abaTema === 'estudar'">
         <h1 class="titulo-estudar">{{ tituloDoTema }}</h1>
-        <Estudar :tema="arquivo.tema" :titulo="tituloDoTema" :flashcards="flashcards.disponivel" @flashcards="flashcardsDoEstudo" />
+        <Estudar :local="arquivo.tema" :titulo="tituloDoTema" :flashcards="flashcards.disponivel" @flashcards="flashcardsDoEstudo" />
         <EnviarFlashcards v-if="envioAberto" v-bind="envioAberto" @fechar="envioAberto = null" @enviado="flashcardsEnviados" />
       </template>
 

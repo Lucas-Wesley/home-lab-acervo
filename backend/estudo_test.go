@@ -128,3 +128,84 @@ func TestEstudarUmTema(t *testing.T) {
 		t.Errorf("fila: %+v", tarefas)
 	}
 }
+
+// A aba Estudar também existe na Referência: as partes saem do texto organizado dela, o link
+// abre a Referência e, quando ela é excluída, o estudo vai junto.
+func TestEstudarUmaReferencia(t *testing.T) {
+	e := novoAmbiente(t)
+	f := &flashcardsFalso{}
+	f.ligar(e)
+	id := e.adicionar("https://youtu.be/AAAAAAAAAAA")
+	e.esperarEstado(id, "organizado")
+	local := "referencias/" + id
+
+	type resposta struct {
+		Partes    map[string]estudo `json:"partes"`
+		Simulados []simuladoFeito   `json:"simulados"`
+	}
+	ler := func() resposta {
+		var x resposta
+		e.pedir("GET", "/api/estudos?tema="+local, nil, &x)
+		return x
+	}
+	if s := e.pedir("GET", "/api/estudos?tema=referencias/nao-existe", nil, nil); s != http.StatusNotFound {
+		t.Errorf("Referência inexistente: %d", s)
+	}
+	for _, parte := range []string{"resumo", "simulado"} {
+		if s := e.pedir("POST", "/api/estudos", map[string]string{"tema": local, "parte": parte}, nil); s != http.StatusAccepted {
+			t.Fatalf("preparar %s: %d", parte, s)
+		}
+	}
+	var r resposta
+	e.esperar("partes prontas", func() bool {
+		r = ler()
+		return r.Partes["resumo"].Estado == "pronto" && r.Partes["simulado"].Estado == "pronto"
+	})
+	var resumo resumoDoTema
+	json.Unmarshal(r.Partes["resumo"].Resultado, &resumo)
+	if !strings.Contains(resumo.Texto, "Arquivos: ./indice.md ") {
+		t.Errorf("o resumo não leu o texto da Referência: %s", resumo.Texto)
+	}
+
+	var banco struct{ Perguntas []perguntaDoSimulado }
+	json.Unmarshal(r.Partes["simulado"].Resultado, &banco)
+	var sim simuladoFeito
+	respostas := []respostaDoSimulado{{Pergunta: banco.Perguntas[0].Pergunta, Esperada: "x", Resposta: "y"}, {Pergunta: banco.Perguntas[1].Pergunta, Esperada: "z"}}
+	if s := e.pedir("POST", "/api/simulados", map[string]any{"tema": local, "respostas": respostas}, &sim); s != http.StatusCreated {
+		t.Fatalf("entregar: %d", s)
+	}
+	e.esperar("simulado corrigido", func() bool {
+		e.pedir("GET", "/api/simulados/"+sim.ID, nil, &sim)
+		return sim.Estado == "pronto"
+	})
+	if strings.Contains(sim.Correcao.Comentario, "Sem o Tema") {
+		t.Errorf("a correção não recebeu o texto: %+v", sim.Correcao)
+	}
+	if s := e.pedir("POST", "/api/flashcards", map[string]string{"estudo": local, "parte": "simulado:" + sim.ID, "baralho": "X"}, nil); s != http.StatusCreated {
+		t.Fatalf("flashcards do que errei: %d", s)
+	}
+	if len(f.textos) != 1 || !strings.HasSuffix(f.textos[0].Link, "/#/referencia/"+id+"?estudar") {
+		t.Errorf("texto para o Flashcards: %+v", f.textos)
+	}
+
+	var tarefas []tarefaComTitulo
+	e.pedir("GET", "/api/tarefas", nil, &tarefas)
+	achou := false
+	for _, x := range tarefas {
+		if x.Tipo == "estudar" && x.Link == "#/referencia/"+id+"?estudar" && strings.HasSuffix(x.Referencia, " · resumo") {
+			achou = true
+		}
+	}
+	if !achou {
+		t.Errorf("fila: %+v", tarefas)
+	}
+
+	if s := e.pedir("DELETE", "/api/referencias/"+id, nil, nil); s != http.StatusNoContent {
+		t.Fatalf("excluir: %d", s)
+	}
+	var n int
+	e.app.db.QueryRow(`SELECT (SELECT COUNT(*) FROM estudos WHERE tema = ?) + (SELECT COUNT(*) FROM simulados WHERE tema = ?)`, local, local).Scan(&n)
+	if n != 0 {
+		t.Errorf("sobrou estudo da Referência excluída: %d", n)
+	}
+}

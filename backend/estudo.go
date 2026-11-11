@@ -90,9 +90,45 @@ const (
 
 // ---------- O texto do Tema ----------
 
-// temaDoEstudo confere o Tema (a pasta com indice.md) e devolve o título.
-func (a *app) temaDoEstudo(tema string) (string, error) {
-	if _, err := caminhoDeTema(tema); err != nil || !localDePergunta.MatchString(tema) {
+// O estudo é de um Tema (temas/<pasta>, com os subtemas) ou de uma Referência (referencias/<id>:
+// o texto organizado, em português quando houver tradução). O campo e a coluna continuam "tema".
+
+func referenciaDoEstudo(local string) (string, bool) {
+	return strings.CutPrefix(local, "referencias/")
+}
+
+// textoDaReferenciaParaEstudo: o arquivo com o texto que a Referência estuda.
+func (a *app) textoDaReferenciaParaEstudo(ctx context.Context, id string) (*referencia, string, error) {
+	ref, err := a.referencia(ctx, id)
+	if err != nil {
+		return nil, "", errNaoEncontrado
+	}
+	texto, err := a.textoParaAcervo(ref)
+	if err != nil {
+		texto = filepath.Join(a.pastaReferencia(id), "organizado.md")
+		if exigirArquivo(texto) != nil {
+			return ref, "", errors.New("a Referência ainda não tem o texto organizado")
+		}
+	}
+	return ref, texto, nil
+}
+
+// temaDoEstudo confere o Tema (a pasta com indice.md) ou a Referência e devolve o título.
+func (a *app) temaDoEstudo(ctx context.Context, tema string) (string, error) {
+	if !localDePergunta.MatchString(tema) {
+		return "", errCaminhoInvalido
+	}
+	if id, ok := referenciaDoEstudo(tema); ok {
+		ref, _, err := a.textoDaReferenciaParaEstudo(ctx, id)
+		if err != nil {
+			return "", errNaoEncontrado
+		}
+		if ref.Titulo == "" {
+			return ref.URL, nil
+		}
+		return ref.Titulo, nil
+	}
+	if _, err := caminhoDeTema(tema); err != nil {
 		return "", errCaminhoInvalido
 	}
 	b, err := os.ReadFile(filepath.Join(a.conteudo.raiz, filepath.FromSlash(tema), "indice.md"))
@@ -102,9 +138,18 @@ func (a *app) temaDoEstudo(tema string) (string, error) {
 	return tituloDe(string(b), tema), nil
 }
 
-// arquivosDoTema: os .md do Tema e dos subtemas, em ordem.
-func (a *app) arquivosDoTema(tema string) ([]string, error) {
+// arquivosDoTema: os .md do Tema e dos subtemas, em ordem; numa Referência, o texto dela, que na
+// pasta da tarefa vira indice.md. Devolve a pasta de onde os caminhos partem.
+func (a *app) arquivosDoTema(ctx context.Context, tema string) (map[string]string, []string, error) {
+	if id, ok := referenciaDoEstudo(tema); ok {
+		_, texto, err := a.textoDaReferenciaParaEstudo(ctx, id)
+		if err != nil {
+			return nil, nil, err
+		}
+		return map[string]string{"indice.md": texto}, []string{"indice.md"}, nil
+	}
 	raiz := filepath.Join(a.conteudo.raiz, filepath.FromSlash(tema))
+	origem := map[string]string{}
 	var lista []string
 	err := filepath.WalkDir(raiz, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -113,23 +158,23 @@ func (a *app) arquivosDoTema(tema string) ([]string, error) {
 		if !d.IsDir() && strings.HasSuffix(p, ".md") {
 			rel, _ := filepath.Rel(raiz, p)
 			lista = append(lista, rel)
+			origem[rel] = p
 		}
 		return nil
 	})
 	sort.Strings(lista)
-	return lista, err
+	return origem, lista, err
 }
 
-// versaoDoTema muda quando qualquer arquivo do Tema muda.
-func (a *app) versaoDoTema(tema string) string {
-	arquivos, err := a.arquivosDoTema(tema)
+// versaoDoTema muda quando qualquer arquivo do Tema (ou o texto da Referência) muda.
+func (a *app) versaoDoTema(ctx context.Context, tema string) string {
+	origem, arquivos, err := a.arquivosDoTema(ctx, tema)
 	if err != nil {
 		return ""
 	}
 	h := sha256.New()
-	raiz := filepath.Join(a.conteudo.raiz, filepath.FromSlash(tema))
 	for _, rel := range arquivos {
-		b, _ := os.ReadFile(filepath.Join(raiz, rel))
+		b, _ := os.ReadFile(origem[rel])
 		fmt.Fprintf(h, "%s\x00%d\x00", rel, len(b))
 		h.Write(b)
 	}
@@ -137,21 +182,38 @@ func (a *app) versaoDoTema(tema string) string {
 }
 
 // copiarTema põe na pasta da tarefa os arquivos do Tema, com os subtemas nas suas pastas.
-func (a *app) copiarTema(tema, destino string) error {
-	arquivos, err := a.arquivosDoTema(tema)
+func (a *app) copiarTema(ctx context.Context, tema, destino string) error {
+	origem, arquivos, err := a.arquivosDoTema(ctx, tema)
 	if err != nil || len(arquivos) == 0 {
+		if _, ok := referenciaDoEstudo(tema); ok {
+			return errors.New("a Referência não tem mais o texto")
+		}
 		return errors.New("o Tema não existe mais")
 	}
-	raiz := filepath.Join(a.conteudo.raiz, filepath.FromSlash(tema))
 	for _, rel := range arquivos {
 		if err := os.MkdirAll(filepath.Join(destino, filepath.Dir(rel)), 0o755); err != nil {
 			return err
 		}
-		if err := copiarArquivo(filepath.Join(raiz, rel), filepath.Join(destino, rel)); err != nil {
+		if err := copiarArquivo(origem[rel], filepath.Join(destino, rel)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func naoEncontrado(tema string) string {
+	if _, ok := referenciaDoEstudo(tema); ok {
+		return "Referência sem texto para estudar."
+	}
+	return "Tema não encontrado."
+}
+
+// linkDoEstudo abre a aba Estudar do Tema ou da Referência.
+func linkDoEstudo(tema string) string {
+	if id, ok := referenciaDoEstudo(tema); ok {
+		return "#/referencia/" + id + "?estudar"
+	}
+	return "#/ler/" + tema + "/indice.md?estudar"
 }
 
 // ---------- As partes ----------
@@ -173,7 +235,7 @@ func estadoPelaTarefa(temResultado bool, estadoTarefa, erroTarefa string) (strin
 }
 
 func (a *app) estudosDoTema(ctx context.Context, tema string) (map[string]estudo, error) {
-	versao := a.versaoDoTema(tema)
+	versao := a.versaoDoTema(ctx, tema)
 	saida := map[string]estudo{}
 	for parte := range partesDoEstudo {
 		saida[parte] = estudo{Parte: parte, Estado: "vazio", Resultado: json.RawMessage("null")}
@@ -204,8 +266,8 @@ func (a *app) estudosDoTema(ctx context.Context, tema string) (map[string]estudo
 // handleEstudos: GET /api/estudos?tema=temas/<pasta> — as partes e os últimos simulados.
 func (a *app) handleEstudos(w http.ResponseWriter, r *http.Request) {
 	tema := strings.TrimSuffix(r.URL.Query().Get("tema"), "/")
-	if _, err := a.temaDoEstudo(tema); err != nil {
-		erroJSON(w, http.StatusNotFound, "Tema não encontrado.")
+	if _, err := a.temaDoEstudo(r.Context(), tema); err != nil {
+		erroJSON(w, http.StatusNotFound, naoEncontrado(tema))
 		return
 	}
 	partes, err := a.estudosDoTema(r.Context(), tema)
@@ -237,8 +299,8 @@ func (a *app) handlePrepararEstudo(w http.ResponseWriter, r *http.Request) {
 		erroJSON(w, http.StatusBadRequest, "Parte inválida.")
 		return
 	}
-	if _, err := a.temaDoEstudo(p.Tema); err != nil {
-		erroJSON(w, http.StatusNotFound, "Tema não encontrado.")
+	if _, err := a.temaDoEstudo(r.Context(), p.Tema); err != nil {
+		erroJSON(w, http.StatusNotFound, naoEncontrado(p.Tema))
 		return
 	}
 	ctx := r.Context()
@@ -271,7 +333,7 @@ func (a *app) estudar(ctx context.Context, t *tarefa) (resultado, error) {
 	if err := json.Unmarshal(t.Params, &p); err != nil {
 		return pronto, err
 	}
-	titulo, err := a.temaDoEstudo(p.Tema)
+	titulo, err := a.temaDoEstudo(ctx, p.Tema)
 	if err != nil {
 		return pronto, errors.New("o Tema não existe mais")
 	}
@@ -280,14 +342,18 @@ func (a *app) estudar(ctx context.Context, t *tarefa) (resultado, error) {
 		return pronto, err
 	}
 	defer os.RemoveAll(pasta)
-	versao := a.versaoDoTema(p.Tema)
-	if err := a.copiarTema(p.Tema, pasta); err != nil {
+	versao := a.versaoDoTema(ctx, p.Tema)
+	if err := a.copiarTema(ctx, p.Tema, pasta); err != nil {
 		return pronto, err
 	}
 
 	pedido := pedidoClaude{pasta: pasta, regra: partesDoEstudo[p.Parte], ferramentas: ferramentasLeitura}
 	inicio := fmt.Sprintf("O Lucas está estudando o Tema %q. Os arquivos estão nesta pasta: indice.md é a página do Tema; "+
 		"as pastas são os subtemas, e os outros .md, capítulos com página própria.", titulo)
+	if _, ok := referenciaDoEstudo(p.Tema); ok {
+		inicio = fmt.Sprintf("O Lucas está estudando a Referência %q (um conteúdo que ainda não entrou, ou não só, num Tema do Acervo). "+
+			"O texto dela está em indice.md, nesta pasta: nas regras, onde se lê Tema, entenda este texto; os capítulos são as suas seções (## ).", titulo)
+	}
 	switch p.Parte {
 	case "resumo":
 		pedido.instrucao = inicio + " Escreva o resumo inteligente do Tema inteiro."
@@ -341,7 +407,7 @@ func (a *app) estudar(ctx context.Context, t *tarefa) (resultado, error) {
 			}
 			// Só vale a pasta de um Tema que existe.
 			if tm := s.Conceitos[i].Tema; tm != "" {
-				if _, err := a.temaDoEstudo(tm); err != nil || tm == p.Tema {
+				if _, err := a.temaDoEstudo(ctx, tm); err != nil || tm == p.Tema || !strings.HasPrefix(tm, "temas/") {
 					s.Conceitos[i].Tema = ""
 				}
 			}
@@ -450,8 +516,8 @@ func (a *app) handleEntregarSimulado(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	corpo.Tema = strings.TrimSuffix(corpo.Tema, "/")
-	if _, err := a.temaDoEstudo(corpo.Tema); err != nil {
-		erroJSON(w, http.StatusNotFound, "Tema não encontrado.")
+	if _, err := a.temaDoEstudo(r.Context(), corpo.Tema); err != nil {
+		erroJSON(w, http.StatusNotFound, naoEncontrado(corpo.Tema))
 		return
 	}
 	if len(corpo.Respostas) == 0 || len(corpo.Respostas) > 20 {
@@ -528,7 +594,7 @@ func (a *app) corrigirSimulado(ctx context.Context, t *tarefa) (resultado, error
 	if err != nil {
 		return pronto, err
 	}
-	titulo, err := a.temaDoEstudo(s.Tema)
+	titulo, err := a.temaDoEstudo(ctx, s.Tema)
 	if err != nil {
 		return pronto, errors.New("o Tema não existe mais")
 	}
@@ -537,7 +603,7 @@ func (a *app) corrigirSimulado(ctx context.Context, t *tarefa) (resultado, error
 		return pronto, err
 	}
 	defer os.RemoveAll(pasta)
-	if err := a.copiarTema(s.Tema, filepath.Join(pasta, "tema")); err != nil {
+	if err := a.copiarTema(ctx, s.Tema, filepath.Join(pasta, "tema")); err != nil {
 		return pronto, err
 	}
 	var md strings.Builder
@@ -588,12 +654,20 @@ func (a *app) corrigirSimulado(ctx context.Context, t *tarefa) (resultado, error
 // textoDoEstudo: os conceitos anteriores, ou o que se errou num simulado, como texto para o Flashcards.
 func (a *app) textoDoEstudo(ctx context.Context, tema, parte string) (string, textoParaCartoes, error) {
 	var t textoParaCartoes
-	titulo, err := a.temaDoEstudo(tema)
+	titulo, err := a.temaDoEstudo(ctx, tema)
 	if err != nil {
 		return "", t, errNaoEncontrado
 	}
 	t.Baralho = titulo
-	t.Link = a.cfg.acervoLink + "/#/ler/" + tema + "/indice.md?estudar"
+	t.Link = a.cfg.acervoLink + "/" + linkDoEstudo(tema)
+	// Numa Referência, o baralho é o mesmo dos cartões do texto dela (o do Tema onde entrou, se entrou).
+	if id, ok := referenciaDoEstudo(tema); ok {
+		if ref, err := a.referencia(ctx, id); err == nil {
+			if doTexto, err := a.textoDaReferencia(ctx, ref); err == nil {
+				t.Baralho = doTexto.Baralho
+			}
+		}
+	}
 	var md strings.Builder
 	if id, ok := strings.CutPrefix(parte, "simulado:"); ok {
 		s, err := a.simulado(ctx, id)
@@ -657,13 +731,16 @@ func (a *app) tarefaDeEstudo(r *http.Request, t tarefa) tarefaComTitulo {
 			p.Tema = s.Tema
 		}
 	}
-	titulo, err := a.temaDoEstudo(p.Tema)
+	titulo, err := a.temaDoEstudo(r.Context(), p.Tema)
 	if err != nil {
+		if _, ok := referenciaDoEstudo(p.Tema); ok {
+			return tarefaComTitulo{t, "(Referência apagada)", ""}
+		}
 		return tarefaComTitulo{t, "(Tema apagado)", ""}
 	}
 	nomes := map[string]string{"resumo": "resumo", "anteriores": "conceitos anteriores", "simulado": "perguntas do simulado"}
 	if n := nomes[p.Parte]; n != "" {
 		titulo += " · " + n
 	}
-	return tarefaComTitulo{t, titulo, "#/ler/" + p.Tema + "/indice.md?estudar"}
+	return tarefaComTitulo{t, titulo, linkDoEstudo(p.Tema)}
 }

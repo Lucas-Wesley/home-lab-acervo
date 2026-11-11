@@ -80,9 +80,10 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await expect(page).toHaveURL(/#\/ler\/temas\/tema-de-teste\/indice\.md$/)
 })
 
-// Estudar (D41): resumo, conceitos anteriores e simulado respondido por voz (o ditado do
-// navegador é falso aqui: devolve uma frase fixa).
-test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ page }) => {
+// Estudar (D41): a aba abre só com os quatro cartões; resumo (ouvido pela voz do aparelho, falsa
+// aqui), conceitos anteriores e o simulado em tela própria, respondido por voz (o ditado do
+// navegador também é falso: devolve uma frase fixa).
+async function vozesFalsas(page) {
   await page.addInitScript(() => {
     class Falso {
       start() {
@@ -93,18 +94,71 @@ test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ 
       }
     }
     window.SpeechRecognition = window.webkitSpeechRecognition = Falso
+    // A voz que lê: guarda cada trecho falado, um de cada vez.
+    window.falas = []
+    const voz = { lang: 'pt-BR', localService: true, name: 'Falsa' }
+    const sintese = {
+      speaking: false,
+      pending: false,
+      paused: false,
+      getVoices: () => [voz],
+      speak(u) {
+        window.falas.push({ texto: u.text, voz: u.voice?.name })
+        setTimeout(() => {
+          u.onstart?.()
+          setTimeout(() => u.onend?.(), 150)
+        }, 10)
+      },
+      cancel() {},
+      resume() {},
+    }
+    Object.defineProperty(window, 'speechSynthesis', { value: sintese, configurable: true })
+    window.SpeechSynthesisUtterance = class {
+      constructor(texto) {
+        this.text = texto
+      }
+    }
   })
+}
+
+const cartaoDoEstudo = (page, nome) => page.getByRole('group', { name: 'Partes do estudo' }).getByRole('button', { name: new RegExp(`^${nome}`) })
+
+test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ page }) => {
+  await vozesFalsas(page)
   await page.goto('/#/ler/temas/tema-de-teste/indice.md')
   await page.locator('.abas').getByRole('button', { name: 'Estudar' }).click()
   await expect(page).toHaveURL(/indice\.md\?estudar$/)
 
+  // Só os cartões, nada aberto.
+  await expect(page.getByRole('group', { name: 'Partes do estudo' }).getByRole('button')).toHaveCount(4)
+  await expect(cartaoDoEstudo(page, 'Resumo inteligente')).toContainText('Ainda não preparado')
+  await expect(page.getByRole('button', { name: 'Preparar o resumo' })).toHaveCount(0)
+
+  await cartaoDoEstudo(page, 'Resumo inteligente').click()
   await page.getByRole('button', { name: 'Preparar o resumo' }).click()
   await expect(page.locator('.resumo')).toContainText('Resumo de teste.', { timeout: 15000 })
+  await expect(cartaoDoEstudo(page, 'Resumo inteligente')).toContainText('min de leitura')
+
+  // Ouvir: um trecho de cada vez, com a voz em português, até o fim.
+  await page.getByRole('button', { name: 'Ouvir o resumo' }).click()
+  await expect(page.getByRole('button', { name: 'Pausar' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ouvir o resumo' })).toBeVisible({ timeout: 10000 })
+  const falas = await page.evaluate(() => window.falas)
+  expect(falas.length).toBeGreaterThan(1)
+  expect(falas[0]).toEqual({ texto: 'Em uma frase.', voz: 'Falsa' })
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/estudar-resumo.png`, fullPage: true })
+
+  // Outro cartão troca o que fica aberto embaixo.
+  await cartaoDoEstudo(page, 'Conceitos anteriores').click()
+  await expect(page.locator('.resumo')).toHaveCount(0)
   await page.getByRole('button', { name: 'Achar os conceitos anteriores' }).click()
   await expect(page.getByRole('heading', { name: 'Conceito base' })).toBeVisible({ timeout: 15000 })
   await page.getByText('Entender o conceito').first().click()
   await expect(page.getByText(/Explicação base/)).toBeVisible()
 
+  // O simulado abre em tela própria, sem os cartões.
+  await cartaoDoEstudo(page, 'Simulado').click()
+  await expect(page.getByRole('group', { name: 'Partes do estudo' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Preparar as perguntas' }).click()
   await page.getByRole('button', { name: 'Começar o simulado' }).click({ timeout: 15000 })
   await page.getByRole('button', { name: 'Falar a resposta' }).click()
@@ -117,9 +171,41 @@ test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ 
   await expect(page.getByRole('button', { name: 'Flashcards do que errei' })).toBeVisible()
   if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/estudar.png`, fullPage: true })
 
-  // Recarregar volta para a aba, com o histórico do simulado.
+  // Voltar leva aos cartões, que já mostram a nota.
+  await page.getByRole('button', { name: 'Estudar', exact: true }).last().click()
+  await expect(cartaoDoEstudo(page, 'Simulado')).toContainText('última nota 20')
+  if (process.env.CAPTURAS) {
+    await page.screenshot({ path: `${process.env.CAPTURAS}/estudar-cartoes.png` })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await cartaoDoEstudo(page, 'Resumo inteligente').click()
+    await page.screenshot({ path: `${process.env.CAPTURAS}/estudar-celular.png` })
+    await page.setViewportSize({ width: 1280, height: 720 })
+  }
+
+  // Recarregar volta para a aba, e o simulado guarda o histórico.
   await page.reload()
+  await cartaoDoEstudo(page, 'Simulado').click()
   await expect(page.getByText(/5 perguntas/)).toBeVisible()
+})
+
+// A Referência tem a mesma aba Estudar, a partir do texto organizado dela.
+test('estuda uma Referência', async ({ page }) => {
+  await vozesFalsas(page)
+  await page.goto('/#/referencias')
+  await page.locator('.referencia', { hasText: 'Vídeo AAAAAAAAAAA' }).click()
+  await page.locator('.abas').getByRole('button', { name: 'Estudar' }).click()
+  await expect(page).toHaveURL(/#\/referencia\/[^?]+\?estudar$/)
+  await expect(page.getByRole('group', { name: 'Partes do estudo' }).getByRole('button')).toHaveCount(4)
+  await expect(cartaoDoEstudo(page, 'Flashcards')).toBeVisible()
+
+  await cartaoDoEstudo(page, 'Resumo inteligente').click()
+  await expect(page.getByText(/O texto inteiro em poucos minutos/)).toBeVisible()
+  await page.getByRole('button', { name: 'Preparar o resumo' }).click()
+  await expect(page.locator('.resumo')).toContainText('Arquivos: ./indice.md', { timeout: 15000 })
+
+  // Recarregar volta para a aba Estudar da Referência.
+  await page.reload()
+  await expect(cartaoDoEstudo(page, 'Resumo inteligente')).toContainText('min de leitura')
 })
 
 test('lê o Tema numa página só, com sumário de capítulos', async ({ page }) => {
