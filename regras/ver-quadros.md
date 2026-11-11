@@ -1,6 +1,6 @@
 # Regras: ler a tela de um Reel
 
-Você recebe os quadros de um Reel do Instagram em `quadros/`, um a cada mudança de cena (e, sem mudança, um a cada 4 s). O nome de cada arquivo é o momento do vídeo: `00-04.jpg` é `[00:04]`. Em `contexto.md` estão a fala transcrita (com marcas `[mm:ss]`) e a legenda do post. Escreva `tela.md`: **o que aparece na tela e não está na fala**, para quem não viu o vídeo.
+Você recebe os quadros de um Reel do Instagram em `quadros/`, um a cada mudança de cena (e, sem mudança, um a cada 2 s). O nome de cada arquivo é o momento do vídeo: `00-04.jpg` é `[00:04]`. Em `contexto.md` estão a fala transcrita (com marcas `[mm:ss]`) e a legenda do post. Escreva `tela.md`: **o que aparece na tela e não está na fala**, para quem não viu o vídeo.
 
 Muitos Reels passam o conteúdo pela tela: texto sobreposto, listas, passos, slides, código, gráficos, telas de um programa, um produto, um lugar, uma demonstração. Às vezes a fala é só música e todo o conteúdo está na tela.
 
@@ -10,13 +10,15 @@ Muitos Reels passam o conteúdo pela tela: texto sobreposto, listas, passos, sli
 2. **Copiar o texto da tela como está**, entre aspas, no idioma em que aparece: títulos, legendas sobrepostas, itens de lista, números, nomes, código (em bloco de código). Um texto que continua em vários quadros é escrito uma vez só, no momento em que aparece completo.
 3. **Descrever o que é mostrado quando isso é conteúdo:** o diagrama e o que ele liga, o gráfico e o que ele mostra, o passo que a pessoa faz na tela, o objeto ou lugar de que se fala. Uma ou duas frases, sem enfeite.
 4. **Ligar à fala quando ajudar:** "a lista que ela lê em [00:12]".
-5. **Uma entrada por quadro, com a marca do próprio quadro.** Dois quadros com coisas diferentes são duas entradas, cada uma com a sua marca; não repita uma marca.
+5. **Uma entrada por quadro novo, com a marca do próprio quadro.** Dois quadros com coisas diferentes são duas entradas, cada uma com a sua marca; não repita uma marca. Quadro sem nada novo (igual ao anterior, ou só a pessoa falando com a legenda da fala) não ganha entrada.
+6. **Texto curto sobre a pessoa falando conta:** um cartão com o título e o autor de um livro, um nome, um número, mesmo que apareça em um quadro só.
 
 ## O que não fazer
 
 - **Não repetir o que a fala já diz.** Legenda automática que só transcreve a fala (as palavras aparecendo enquanto a pessoa fala) não entra; diga uma vez que o vídeo tem legenda da fala.
 - **Não descrever o que não é conteúdo:** a pessoa falando para a câmera, o cenário, roupa, filtros, emojis, adesivos, "siga para mais", o @ da conta, marcas d'água, a interface do Instagram.
 - **De uma tela de outro site ou programa mostrada no vídeo** (uma busca do Google, uma página, um app), só a informação: "Mozart, nascido em 27/01/1756 e morto em 05/12/1791". Abas, botões, créditos e fontes das fotos ("Getty Images") e a descrição de retratos ficam de fora.
+- **Avisos da produção** ("RECRIAÇÃO ILUSTRATIVA", "imagem meramente ilustrativa") e quadros sem texto nem conteúdo não entram.
 - **Ícones e logotipos sem nome escrito** não entram: não descreva ("um elefante azul") nem adivinhe de quem são.
 - **Não comentar o que não aparece** ("não há painel de Bach nos quadros").
 - **Não acrescentar nada que não está nos quadros**, nem do seu conhecimento. Texto ilegível ou cortado: escreva o que dá para ler e marque com `[?]`.

@@ -18,15 +18,15 @@ import (
 
 // Reels do Instagram como Referência (D40). O yt-dlp baixa o Reel (um público vem sem login; quando
 // o Instagram pede login, com os cookies de uma conta secundária), o Whisper transcreve a fala e o
-// ffmpeg tira quadros a cada mudança de cena (e, sem mudança, um a cada 4 s). O Claude olha os
+// ffmpeg tira quadros a cada mudança de cena (e, sem mudança, um a cada 2 s). O Claude olha os
 // quadros e escreve o que aparece na tela: texto sobreposto, slides, código, o que é mostrado. O
 // cru.md junta a fala, a tela e a legenda do post. O vídeo não fica guardado.
 
-const maxQuadros = 40
+const maxQuadros = 60
 
-// Um quadro a cada mudança de cena (no máximo um por segundo) e, sem mudança, um a cada 4 s: um
-// texto que entra devagar na tela, sem corte, também é pego.
-const filtroDeQuadros = `select='isnan(prev_selected_t)+gte(t-prev_selected_t\,4)+gt(scene\,0.3)*gte(t-prev_selected_t\,1)',scale=-2:720,showinfo`
+// Um quadro a cada mudança de cena (no máximo um por segundo) e, sem mudança, um a cada 2 s: um
+// texto que entra sem corte também é pego, mesmo o que fica só 3 s sobre a pessoa falando.
+const filtroDeQuadros = `select='isnan(prev_selected_t)+gte(t-prev_selected_t\,2)+gt(scene\,0.3)*gte(t-prev_selected_t\,1)',scale=-2:720,showinfo`
 
 var (
 	idDoReel           = regexp.MustCompile(`^[A-Za-z0-9_-]{5,40}$`)

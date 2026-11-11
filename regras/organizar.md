@@ -49,7 +49,7 @@ Você recebe `cru.md`: a transcrição bruta de um vídeo, de um episódio de po
 ```
 
 - Cada seção termina com as marcas de tempo de onde veio o conteúdo, para conferir no vídeo.
-- **Linha do tempo:** só se o assunto tiver datas ou períodos.
+- **Linha do tempo:** só se o assunto tiver datas ou períodos. Os itens em **ordem cronológica** (do mais antigo ao mais recente, não na ordem do texto) e só com o que o texto diz.
 - **Citados no vídeo:** omitir a seção se o vídeo não citar nenhuma fonte.
 - **Dúvidas:** cada uma com o trecho entre aspas, como está na transcrição, e **sempre** a marca `[mm:ss]` do momento da fala (a do bloco onde está). O app usa a marca para ouvir de novo o áudio daquele ponto e resolver a dúvida.
 
@@ -74,6 +74,7 @@ Quando o cabeçalho de `cru.md` tem `- Reel:`, é um vídeo curto do Instagram. 
   - **A tela é uma descrição de imagens, feita por IA: vale menos que a fala e a legenda.** Use o texto copiado da tela (títulos, números, nomes, listas) e o que é mostrado, mas não transforme em afirmação a interpretação de uma imagem (o que uma seta, uma cor ou um destaque "significa") se a fala ou a legenda não disserem o mesmo.
   - **Listas de etiquetas lidas da tela** (os nomes num mapa, os itens de um painel): entram só as que explicam o assunto, como os exemplos de cada grupo. As de uma imagem geral ("o mapa mostra BR-210, BR-174, BR-319…" na abertura) ficam de fora.
   - **Ícones, logotipos e imagens sem texto** não entram no texto, nem comentários sobre o que a tela não mostra.
+  - **A mecânica do vídeo** (o que aparece, some ou se acende na tela, a animação) não é conteúdo: escreva o que ela mostra, não como mostra.
   - **Fala, tela e legenda em conflito** (um número, um nome, uma regra): siga a fala; se a legenda ou a tela disserem outra coisa, ponha em `## Dúvidas`, com a marca do momento e as duas versões. **Exceção:** quando a legenda corrige a fala de propósito ("Obs: o sapo COAXA", "correção:", "na verdade é…"), vale a legenda, e o texto diz que o autor corrigiu. Correção que já está resolvida assim não vai para Dúvidas.
 - `## Legenda do post`: o texto que o autor publicou com o Reel. O que nela for conteúdo (uma explicação, uma lista, a fonte de um dado) entra no texto; hashtags, pedidos de seguir/salvar/comentar, "link na bio" e marcações de contas ficam de fora. Livros, autores, estudos, sites e outras **fontes** citadas vão para **"Citados no Reel"** (no lugar de "Citados no vídeo"). Os exemplos do próprio assunto (as rodovias de um Reel sobre rodovias, os pratos de um Reel de receita, as ferramentas de um Reel de programação) não são fontes: ficam no texto. Sem fonte citada, a seção não existe.
 
