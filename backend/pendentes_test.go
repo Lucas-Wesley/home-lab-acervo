@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -74,12 +73,26 @@ func TestJuntarComAtual(t *testing.T) {
 	base := []byte("# T\n\nUm.\n\nDois.\n\nTrês.\n\nQuatro.\n")
 	atual := []byte("# T\n\nUm corrigido.\n\nDois.\n\nTrês.\n\nQuatro.\n")
 	proposta := []byte("# T\n\nUm.\n\nDois.\n\nTrês.\n\nQuatro corrigido.\n")
-	got, err := juntarComAtual(context.Background(), atual, base, proposta)
+	got, err := juntarComAtual(atual, base, proposta)
 	if err != nil || string(got) != "# T\n\nUm corrigido.\n\nDois.\n\nTrês.\n\nQuatro corrigido.\n" {
 		t.Fatalf("juntar: %v\n%s", err, got)
 	}
+	// No mesmo parágrafo, palavras diferentes: entram as duas.
+	par := []byte("O leão ruge [?] e a abelha zumbe [?].\n\nFim \\ barra.\n")
+	leao := []byte("O leão ruge e a abelha zumbe [?].\n\nFim \\ barra.\n")
+	abelha := []byte("O leão ruge [?] e a abelha zumbe.\n\nFim \\ barra.\n")
+	if got, err := juntarComAtual(leao, par, abelha); err != nil || string(got) != "O leão ruge e a abelha zumbe.\n\nFim \\ barra.\n" {
+		t.Fatalf("mesmo parágrafo: %v\n%q", err, got)
+	}
 	cruzada := []byte("# T\n\nUm de outro jeito.\n\nDois.\n\nTrês.\n\nQuatro.\n")
-	if _, err := juntarComAtual(context.Background(), atual, base, cruzada); !errors.Is(err, errPropostaCruzada) {
+	if _, err := juntarComAtual(atual, base, cruzada); !errors.Is(err, errPropostaCruzada) {
 		t.Fatalf("mesmo trecho: %v", err)
+	}
+	// Duas dúvidas vizinhas tiradas da lista, cada uma por uma proposta: saem as duas.
+	lista := []byte("Texto.\n\n## Dúvidas\n\n- A.\n- B.\n- C.\n")
+	semA := []byte("Texto.\n\n## Dúvidas\n\n- B.\n- C.\n")
+	semB := []byte("Texto.\n\n## Dúvidas\n\n- A.\n- C.\n")
+	if got, err := juntarComAtual(semA, lista, semB); err != nil || string(got) != "Texto.\n\n## Dúvidas\n\n- C.\n" {
+		t.Fatalf("dúvidas vizinhas: %v\n%q", err, got)
 	}
 }

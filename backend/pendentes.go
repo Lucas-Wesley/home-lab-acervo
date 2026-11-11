@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"regexp"
+	"slices"
+	"sort"
 	"strings"
 )
 
@@ -181,33 +183,139 @@ func (a *app) trechosDaProposta(ctx context.Context, tarefaID int64) []trechoMud
 var errPropostaCruzada = errors.New("O texto mudou depois desta proposta, no mesmo trecho: descarte e peça de novo.")
 
 // juntarComAtual: a proposta foi feita sobre base.md; se o texto já mudou (outra proposta aprovada
-// antes), as duas mudanças se juntam como num merge do git. Mudanças no mesmo trecho são recusadas.
-func juntarComAtual(ctx context.Context, atual, base, proposta []byte) ([]byte, error) {
+// antes), as duas mudanças se juntam como num merge, linha por linha e, onde as duas mexem na mesma
+// linha, palavra por palavra: duas correções no mesmo parágrafo (o leão e a abelha) entram as duas,
+// e tirar duas dúvidas vizinhas da lista também. Só mudanças nas mesmas palavras são recusadas.
+func juntarComAtual(atual, base, proposta []byte) ([]byte, error) {
 	if string(atual) == string(base) {
 		return proposta, nil
 	}
-	tmp, err := os.MkdirTemp("", "juntar-")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(tmp)
-	arquivos := map[string][]byte{"atual": atual, "base": base, "proposta": proposta}
-	for nome, b := range arquivos {
-		if err := os.WriteFile(filepath.Join(tmp, nome), b, 0o644); err != nil {
-			return nil, err
-		}
-	}
-	cmd := exec.CommandContext(ctx, "git", "merge-file", "-p", filepath.Join(tmp, "atual"), filepath.Join(tmp, "base"), filepath.Join(tmp, "proposta"))
-	out, err := cmd.Output()
-	var saida *exec.ExitError
-	if errors.As(err, &saida) && saida.ExitCode() > 0 {
+	linhas := func(b []byte) []string { return strings.SplitAfter(string(b), "\n") }
+	out, ok := juntar3(linhas(base), linhas(atual), linhas(proposta), true)
+	if !ok {
 		return nil, errPropostaCruzada
 	}
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+	return []byte(strings.Join(out, "")), nil
 }
+
+// mudanca: base[i:j] vira novo; lado 0 é o texto atual, 1 a proposta.
+type mudanca struct {
+	i, j int
+	novo []string
+	lado int
+}
+
+// mudancasEntre: as trocas que levam a até b, pela maior subsequência comum.
+func mudancasEntre(a, b []string, lado int) []mudanca {
+	lcs := make([][]int32, len(a)+1)
+	for i := range lcs {
+		lcs[i] = make([]int32, len(b)+1)
+	}
+	for i := len(a) - 1; i >= 0; i-- {
+		for j := len(b) - 1; j >= 0; j-- {
+			if a[i] == b[j] {
+				lcs[i][j] = lcs[i+1][j+1] + 1
+			} else {
+				lcs[i][j] = max(lcs[i+1][j], lcs[i][j+1])
+			}
+		}
+	}
+	var ms []mudanca
+	var atual *mudanca
+	i, j := 0, 0
+	for i < len(a) || j < len(b) {
+		if i < len(a) && j < len(b) && a[i] == b[j] {
+			if atual != nil {
+				ms = append(ms, *atual)
+				atual = nil
+			}
+			i, j = i+1, j+1
+			continue
+		}
+		if atual == nil {
+			atual = &mudanca{i: i, j: i, lado: lado}
+		}
+		if j < len(b) && (i == len(a) || lcs[i][j+1] >= lcs[i+1][j]) {
+			atual.novo = append(atual.novo, b[j])
+			j++
+		} else {
+			i++
+			atual.j = i
+		}
+	}
+	if atual != nil {
+		ms = append(ms, *atual)
+	}
+	return ms
+}
+
+// juntar3 junta as mudanças de a e de p sobre base. Mudanças que se sobrepõem (ou dois acréscimos
+// no mesmo ponto) formam um grupo; um grupo com os dois lados, em linhas, é comparado de novo por
+// palavras; em palavras, só passa se os dois lados mudaram igual.
+func juntar3(base, a, p []string, emLinhas bool) ([]string, bool) {
+	ms := append(mudancasEntre(base, a, 0), mudancasEntre(base, p, 1)...)
+	sort.SliceStable(ms, func(x, y int) bool {
+		if ms[x].i != ms[y].i {
+			return ms[x].i < ms[y].i
+		}
+		return ms[x].j < ms[y].j
+	})
+	sobrepoe := func(i, j int, m mudanca) bool {
+		switch {
+		case i == j && m.i == m.j:
+			return i == m.i
+		case i == j:
+			return m.i < i && i < m.j
+		case m.i == m.j:
+			return i < m.i && m.i < j
+		}
+		return m.i < j && i < m.j
+	}
+	var out []string
+	k := 0
+	for x := 0; x < len(ms); {
+		gi, gj := ms[x].i, ms[x].j
+		grupo := []mudanca{ms[x]}
+		for x++; x < len(ms) && sobrepoe(gi, gj, ms[x]); x++ {
+			grupo = append(grupo, ms[x])
+			gi, gj = min(gi, ms[x].i), max(gj, ms[x].j)
+		}
+		out = append(out, base[k:gi]...)
+		k = gj
+		lados := [2][]mudanca{}
+		for _, m := range grupo {
+			lados[m.lado] = append(lados[m.lado], m)
+		}
+		aplicar := func(ms []mudanca) []string {
+			var r []string
+			c := gi
+			for _, m := range ms {
+				r = append(append(r, base[c:m.i]...), m.novo...)
+				c = m.j
+			}
+			return append(r, base[c:gj]...)
+		}
+		ladoA, ladoP := aplicar(lados[0]), aplicar(lados[1])
+		switch {
+		case len(lados[0]) == 0:
+			out = append(out, ladoP...)
+		case len(lados[1]) == 0 || slices.Equal(ladoA, ladoP):
+			out = append(out, ladoA...)
+		case emLinhas:
+			palavras := func(ls []string) []string { return palavraOuEspaco.FindAllString(strings.Join(ls, ""), -1) }
+			junto, ok := juntar3(palavras(base[gi:gj]), palavras(ladoA), palavras(ladoP), false)
+			if !ok {
+				return nil, false
+			}
+			out = append(out, strings.Join(junto, ""))
+		default:
+			return nil, false
+		}
+	}
+	return append(out, base[k:]...), true
+}
+
+var palavraOuEspaco = regexp.MustCompile(`\s+|\S+`)
 
 // respostaJaPedida: o pedido repetido devolve a proposta que já existe, sem criar outra.
 func respostaJaPedida(w http.ResponseWriter, p *pendencia) {

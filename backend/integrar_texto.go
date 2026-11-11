@@ -396,7 +396,7 @@ func (a *app) decidirProposta(t *tarefa, aprovar bool) (err error) {
 	if atual, err := os.ReadFile(original); err == nil {
 		// Outra proposta do mesmo texto pode ter sido aprovada antes desta: junta as duas.
 		if base, err := os.ReadFile(filepath.Join(prop, "base.md")); err == nil {
-			if novo, err = juntarComAtual(context.Background(), atual, base, novo); err != nil {
+			if novo, err = juntarComAtual(atual, base, novo); err != nil {
 				return err
 			}
 		}
