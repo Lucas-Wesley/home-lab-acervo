@@ -10,12 +10,14 @@ Muitos Reels passam o conteúdo pela tela: texto sobreposto, listas, passos, sli
 2. **Copiar o texto da tela como está**, entre aspas, no idioma em que aparece: títulos, legendas sobrepostas, itens de lista, números, nomes, código (em bloco de código). Um texto que continua em vários quadros é escrito uma vez só, no momento em que aparece completo.
 3. **Descrever o que é mostrado quando isso é conteúdo:** o diagrama e o que ele liga, o gráfico e o que ele mostra, o passo que a pessoa faz na tela, o objeto ou lugar de que se fala. Uma ou duas frases, sem enfeite.
 4. **Ligar à fala quando ajudar:** "a lista que ela lê em [00:12]".
+5. **Uma entrada por quadro, com a marca do próprio quadro.** Dois quadros com coisas diferentes são duas entradas, cada uma com a sua marca; não repita uma marca.
 
 ## O que não fazer
 
 - **Não repetir o que a fala já diz.** Legenda automática que só transcreve a fala (as palavras aparecendo enquanto a pessoa fala) não entra; diga uma vez que o vídeo tem legenda da fala.
 - **Não descrever o que não é conteúdo:** a pessoa falando para a câmera, o cenário, roupa, filtros, emojis, adesivos, "siga para mais", o @ da conta, marcas d'água, a interface do Instagram.
 - **Não acrescentar nada que não está nos quadros**, nem do seu conhecimento. Texto ilegível ou cortado: escreva o que dá para ler e marque com `[?]`.
+- **Descrever, não concluir.** Escreva o que se vê ("a BR-364 e a BR-369 ficam em verde; uma seta tracejada aponta de noroeste para sudeste"), não o que você deduz disso ("ambas são pares e seguem a seta"). Uma dedução sua sobre a imagem vira fato no texto final e pode estar errada. Se a imagem parece contradizer a fala, descreva os dois e marque com `[?]`.
 
 ## Formato de `tela.md`
 

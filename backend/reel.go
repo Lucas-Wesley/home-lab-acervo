@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Reels do Instagram como Referência (D40). O yt-dlp baixa o Reel (um público vem sem login; quando
@@ -95,14 +96,32 @@ type infoReel struct {
 	URL       string  `json:"webpage_url"`
 }
 
-// tituloDoReel: o Instagram não dá título ao Reel ("Video by nasa"); vale a primeira linha da legenda.
+// tituloDoReel: o Instagram não dá título ao Reel ("Video by nasa"); até o texto ser organizado (e
+// o título dele valer), vale a primeira linha da legenda, cortada no fim de uma palavra.
 func tituloDoReel(info infoReel) string {
 	for _, linha := range strings.FieldsFunc(info.Legenda, func(r rune) bool { return r == '\n' || r == '\r' }) {
-		if t := strings.TrimSpace(linha); t != "" {
-			return cortar(t, 120, false)
+		t := strings.TrimSpace(linha)
+		if t == "" {
+			continue
 		}
+		if utf8.RuneCountInString(t) <= 100 {
+			return t
+		}
+		t = cortar(t, 100, false)
+		if i := strings.LastIndex(t, " "); i > 40 {
+			t = t[:i]
+		}
+		return strings.TrimRight(t, " ,.;:") + "…"
 	}
 	return "Reel de @" + info.Conta
+}
+
+// quem: "@conta (Nome)", sem repetir quando o nome é o próprio @.
+func (i infoReel) quem() string {
+	if i.Autor == "" || strings.EqualFold(i.Autor, i.Conta) {
+		return i.canal()
+	}
+	return strings.TrimSpace(i.canal() + " (" + i.Autor + ")")
 }
 
 func (i infoReel) canal() string {
@@ -225,7 +244,7 @@ func (a *app) extrairReel(ctx context.Context, ref *referencia, pasta string) er
 	a.db.ExecContext(ctx, `UPDATE referencias SET duracao = ?, idioma = ? WHERE id = ?`, dur, idioma, ref.ID)
 
 	var s strings.Builder
-	fmt.Fprintf(&s, "# %s\n\n- Reel: %s\n- URL: %s\n- Duração: %s\n", tituloDoReel(info), strings.TrimSpace(info.canal()+" ("+info.Autor+")"), ref.URL, dur)
+	fmt.Fprintf(&s, "# %s\n\n- Reel: %s\n- URL: %s\n- Duração: %s\n", tituloDoReel(info), info.quem(), ref.URL, dur)
 	if p := info.Publicado; len(p) == 8 {
 		fmt.Fprintf(&s, "- Publicado: %s-%s-%s\n", p[:4], p[4:6], p[6:])
 	}

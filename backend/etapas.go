@@ -183,6 +183,14 @@ func (a *app) organizar(ctx context.Context, t *tarefa, ref *referencia) (result
 	if err := exigirArquivo(filepath.Join(pasta, "organizado.md")); err != nil {
 		return pronto, err
 	}
+	// Um Reel não tem título (D40): vale o do texto organizado, no lugar do começo da legenda.
+	if ref.Tipo == "reel" {
+		if b, err := os.ReadFile(filepath.Join(pasta, "organizado.md")); err == nil {
+			if titulo := tituloDe(string(b), ""); titulo != "" {
+				a.db.ExecContext(ctx, `UPDATE referencias SET titulo = ? WHERE id = ?`, cortar(titulo, 200, false), ref.ID)
+			}
+		}
+	}
 	if err := a.mudarEstado(ctx, ref.ID, "organizado"); err != nil {
 		return pronto, err
 	}

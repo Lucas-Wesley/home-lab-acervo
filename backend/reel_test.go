@@ -38,6 +38,13 @@ func TestReelDoLink(t *testing.T) {
 	if tituloDoReel(infoReel{Conta: "nasa", Legenda: "\r\t\r  Primeira linha\r\t\rsegunda"}) != "Primeira linha" || tituloDoReel(infoReel{Conta: "nasa"}) != "Reel de @nasa" {
 		t.Error("título do Reel")
 	}
+	longa := "As que começam com zero são as radiais: saem da capital federal em direção aos extremos do país, como raios, numeradas de cinco em cinco"
+	if got := tituloDoReel(infoReel{Legenda: longa}); got != "As que começam com zero são as radiais: saem da capital federal em direção aos extremos do país…" {
+		t.Errorf("título longo: %q", got)
+	}
+	if (infoReel{Conta: "brexplora", Autor: "brexplora"}).quem() != "@brexplora" || (infoReel{Conta: "nasa", Autor: "NASA"}).quem() != "@nasa" {
+		t.Error("quem")
+	}
 }
 
 // Um Reel vira Referência: o yt-dlp baixa o vídeo e o info.json, o Whisper transcreve a fala, o ffmpeg
@@ -72,7 +79,7 @@ func TestReferenciaDeReel(t *testing.T) {
 	}
 	e.pedir("POST", "/api/referencias", map[string]string{"url": "Veja https://www.instagram.com/reel/AbCdEf123/?igsh=xyz", "tipo": "reel"}, &r)
 	d := e.esperarEstado(r.ID, "organizado")
-	if d.Tipo != "reel" || d.URL != "https://www.instagram.com/reel/AbCdEf123/" || d.Titulo != "Três dicas de estudo" ||
+	if d.Tipo != "reel" || d.URL != "https://www.instagram.com/reel/AbCdEf123/" || d.Titulo != "Organizado" ||
 		d.Canal != "@conta" || d.Duracao != "00:10" || d.Idioma != "en" {
 		t.Errorf("metadados: %+v", d.referencia)
 	}
