@@ -3,6 +3,8 @@ services:
     ports: !reset []
     volumes:
       - /srv/data/acervo:/data
+      # A conta do Claude escolhida no Hub (H11 do Hub), lida a cada chamada; só leitura.
+      - /srv/data/claude/ativa:/claude:ro
     environment:
       GIT_AUTOR_NOME: Lucas Wesley
       # Pesquisador (D27): a busca nos livros, pela rede interna do Docker.
@@ -14,6 +16,7 @@ services:
       WHISPER_RESERVA_URL: http://whisper:8000
       # Avisos no celular (D42): o ntfy do homelab (homelab/ntfy), tópico "acervo".
       NTFY_URL: http://ntfy/acervo
+      CLAUDE_TOKEN_ARQUIVO: /claude/token
     networks:
       - proxy
 
