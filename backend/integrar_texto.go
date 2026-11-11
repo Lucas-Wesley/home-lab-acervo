@@ -117,6 +117,10 @@ func (a *app) handleIntegrarDetalhe(w http.ResponseWriter, r *http.Request) {
 // enfileirarIntegracao acha o texto (Tema ou Referência) e põe a tarefa na fila.
 func (a *app) enfileirarIntegracao(w http.ResponseWriter, r *http.Request, local string, p paramsIntegrarTexto) {
 	ctx := r.Context()
+	if ja := a.integracaoPendente(ctx, p.Origem, p.ID); ja != nil {
+		respostaJaPedida(w, ja)
+		return
+	}
 	refID := ""
 	if id, ok := strings.CutPrefix(local, "referencias/"); ok {
 		ref, err := a.referencia(ctx, id)
@@ -309,8 +313,10 @@ func (a *app) integrarTexto(ctx context.Context, t *tarefa) (resultado, error) {
 	if err := os.MkdirAll(prop, 0o755); err != nil {
 		return pronto, err
 	}
-	if err := os.WriteFile(filepath.Join(prop, "texto.md"), antes, 0o644); err != nil {
-		return pronto, err
+	for _, nome := range []string{"texto.md", "base.md"} {
+		if err := os.WriteFile(filepath.Join(prop, nome), antes, 0o644); err != nil {
+			return pronto, err
+		}
 	}
 	_, err = a.chamarClaude(ctx, pedidoClaude{
 		pasta:  prop,
@@ -367,9 +373,13 @@ func (a *app) diffDaProposta(ctx context.Context, t *tarefa) (string, error) {
 }
 
 // decidirProposta aprova (o texto de antes vira anterior.md) ou descarta a proposta numa Referência.
-func (a *app) decidirProposta(t *tarefa, aprovar bool) error {
+func (a *app) decidirProposta(t *tarefa, aprovar bool) (err error) {
 	prop := a.pastaDaProposta(t.ID)
-	defer os.RemoveAll(prop)
+	defer func() {
+		if !errors.Is(err, errPropostaCruzada) {
+			os.RemoveAll(prop)
+		}
+	}()
 	if !aprovar {
 		return nil
 	}
@@ -384,6 +394,12 @@ func (a *app) decidirProposta(t *tarefa, aprovar bool) error {
 		return err
 	}
 	if atual, err := os.ReadFile(original); err == nil {
+		// Outra proposta do mesmo texto pode ter sido aprovada antes desta: junta as duas.
+		if base, err := os.ReadFile(filepath.Join(prop, "base.md")); err == nil {
+			if novo, err = juntarComAtual(context.Background(), atual, base, novo); err != nil {
+				return err
+			}
+		}
 		if err := os.WriteFile(filepath.Join(pasta, "anterior.md"), atual, 0o644); err != nil {
 			return err
 		}

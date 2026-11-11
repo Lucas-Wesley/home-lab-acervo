@@ -452,6 +452,10 @@ func (a *app) handleEnviarFlashcards(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if a.geracaoEmAberto(r.Context(), alvo) != 0 {
+		erroJSON(w, http.StatusConflict, "Os flashcards deste texto já foram pedidos e esperam sua decisão: aprove ou descarte antes de pedir de novo.")
+		return
+	}
 	t.escolher(corpo.escolhaDeBaralho)
 	e, err := a.enviarFlashcards(r.Context(), alvo, t)
 	if err != nil {

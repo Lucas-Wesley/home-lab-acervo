@@ -29,6 +29,7 @@ type perguntaFeita struct {
 	TarefaID     int64             `json:"tarefa_id"`
 	CriadoEm     string            `json:"criado_em"`
 	AtualizadoEm string            `json:"atualizado_em"`
+	Integracao   *pendencia        `json:"integracao"` // a proposta de Integrar ao texto, enquanto não decidida (D44)
 }
 
 type respostaPergunta struct {
@@ -124,6 +125,14 @@ func (a *app) handlePerguntas(w http.ResponseWriter, r *http.Request) {
 		falha(w, err)
 		return
 	}
+	pendentes, err := a.integracoesPendentes(r.Context(), "pergunta")
+	if err != nil {
+		falha(w, err)
+		return
+	}
+	for i := range lista {
+		lista[i].Integracao = pendentes[lista[i].ID]
+	}
 	writeJSON(w, http.StatusOK, lista)
 }
 
@@ -194,6 +203,9 @@ func (a *app) handleRefazerPergunta(w http.ResponseWriter, r *http.Request) {
 	}
 	if p.Estado == "processando" {
 		erroJSON(w, http.StatusConflict, "A pergunta ainda está na fila.")
+		return
+	}
+	if a.recusarSePendente(w, r.Context(), "pergunta", id) {
 		return
 	}
 	if _, err := a.db.ExecContext(r.Context(), `UPDATE perguntas SET resultado = '', atualizado_em = ? WHERE id = ?`, agora(), id); err != nil {

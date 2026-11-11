@@ -84,6 +84,10 @@ case "$prompt" in
     modo=$(grep -o 'Modo escolhido pelo Lucas: \*\*[^*]*\*\*' "$m" | sed 's/.*\*\*\(.*\)\*\*/\1/')
     linha="Integrado ao texto (escolhas: ${escolhas}; modo: ${modo})."
     if [ -n "$(pasta)" ]; then printf '\n%s\n' "$linha" >> "$(pasta)/indice.md"; else printf '\n%s\n' "$linha" >> texto.md; fi
+    # Uma dúvida resolvida corrige o trecho no corpo do texto.
+    if grep -q 'uma dúvida resolvida' "$m" && [ -f texto.md ]; then
+      sed 's/^Texto organizado\.$/Texto corrigido pelo áudio./' texto.md > texto.tmp && mv texto.tmp texto.md
+    fi
     ok ;;
   *"Marque os capítulos"*)
     tema=""; case "$prompt" in *"temas/clube"*) tema='"temas/clube"' ;; esac

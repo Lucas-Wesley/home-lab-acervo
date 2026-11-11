@@ -242,7 +242,7 @@ export function usarDetalhes(local) {
 
   watch(local, carregar, { immediate: true })
   const relogio = setInterval(() => {
-    if (document.visibilityState === 'visible' && lista.value.some((m) => m.estado === 'processando')) carregar()
+    if (document.visibilityState === 'visible' && lista.value.some((m) => m.estado === 'processando' || ['na_fila', 'rodando'].includes(m.integracao?.estado))) carregar()
   }, 4000)
   onBeforeUnmount(() => clearInterval(relogio))
 

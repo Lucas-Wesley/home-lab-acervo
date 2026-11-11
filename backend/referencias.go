@@ -270,6 +270,12 @@ func (a *app) handleAcao(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pronta := ref.Estado == "organizado" || ref.Estado == "validado" || ref.Estado == "integrado"
+	if acao == "integrar" || acao == "criar-tema" {
+		if id := a.propostaDeTemaPendente(ctx, ref.ID); id != 0 {
+			erroJSON(w, http.StatusConflict, "Já há uma proposta de Tema desta Referência esperando em Revisões: aprove ou descarte antes de pedir outra.")
+			return
+		}
+	}
 
 	var err error
 	switch acao {

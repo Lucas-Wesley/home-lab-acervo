@@ -44,6 +44,7 @@ type duvidaResolvida struct {
 	Resultado    *resolucao `json:"resultado"`
 	TarefaID     int64      `json:"tarefa_id"`
 	AtualizadoEm string     `json:"atualizado_em"`
+	Correcao     *pendencia `json:"correcao"` // a proposta de Corrigir no texto, enquanto não decidida (D44)
 }
 
 const (
@@ -199,7 +200,22 @@ func (a *app) duvidasDe(ctx context.Context, refID string) ([]duvidaResolvida, e
 		}
 		lista = append(lista, d)
 	}
-	return lista, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	pendentes, err := a.integracoesPendentes(ctx, "duvida")
+	if err != nil {
+		return nil, err
+	}
+	for i := range lista {
+		if p := pendentes[lista[i].ID]; p != nil {
+			if p.Estado == emRevisao {
+				p.Trechos = a.trechosDaProposta(ctx, p.TarefaID)
+			}
+			lista[i].Correcao = p
+		}
+	}
+	return lista, nil
 }
 
 // handleDuvidas: GET /api/referencias/{id}/duvidas, as dúvidas já mandadas resolver.
@@ -249,6 +265,13 @@ func (a *app) handleResolverDuvidas(w http.ResponseWriter, r *http.Request) {
 	var escolhidas []string
 	for _, t := range todas {
 		d, existe := feitas[t]
+		if existe && d.Correcao != nil {
+			if t == strings.TrimSpace(corpo.Texto) {
+				erroJSON(w, http.StatusConflict, "A correção desta dúvida está esperando: aprove ou descarte antes de resolver de novo.")
+				return
+			}
+			continue
+		}
 		if corpo.Texto != "" {
 			if t == strings.TrimSpace(corpo.Texto) {
 				escolhidas = append(escolhidas, t)

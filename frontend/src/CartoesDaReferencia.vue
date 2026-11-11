@@ -48,8 +48,13 @@ async function carregar() {
   if (trabalhando.value) relogio = setTimeout(carregar, 4000)
 }
 
+// Um pedido de cada vez (D44): com flashcards esperando decisão, o pedido novo não sai.
 function gerar() {
   feito.value = ''
+  if (trabalhando.value || g.value?.estado === 'em_revisao') {
+    erro.value = 'Os flashcards deste texto já foram pedidos: aprove ou descarte os que estão aqui antes de pedir de novo.'
+    return
+  }
   escolhendo.value = true
 }
 

@@ -30,6 +30,7 @@ type marcacao struct {
 	TarefaID     int64        `json:"tarefa_id"`
 	CriadoEm     string       `json:"criado_em"`
 	AtualizadoEm string       `json:"atualizado_em"`
+	Integracao   *pendencia   `json:"integracao"` // a proposta de Integrar ao texto, enquanto não decidida (D44)
 }
 
 type consultada struct {
@@ -112,6 +113,14 @@ func (a *app) handleDetalhes(w http.ResponseWriter, r *http.Request) {
 		falha(w, err)
 		return
 	}
+	pendentes, err := a.integracoesPendentes(r.Context(), "detalhe")
+	if err != nil {
+		falha(w, err)
+		return
+	}
+	for i := range lista {
+		lista[i].Integracao = pendentes[lista[i].ID]
+	}
 	writeJSON(w, http.StatusOK, lista)
 }
 
@@ -189,6 +198,9 @@ func (a *app) handleRefazerDetalhe(w http.ResponseWriter, r *http.Request) {
 	}
 	if d.Estado == "processando" {
 		erroJSON(w, http.StatusConflict, "A pesquisa ainda está na fila.")
+		return
+	}
+	if a.recusarSePendente(w, r.Context(), "detalhe", id) {
 		return
 	}
 	if _, err := a.db.ExecContext(r.Context(), `UPDATE detalhes SET explicacao = '', fontes = '[]', atualizado_em = ? WHERE id = ?`, agora(), id); err != nil {

@@ -120,7 +120,7 @@ async function integrar(modo) {
   integrando.value = true
   try {
     await api(`/api/detalhes/${m.value.id}/integrar`, { metodo: 'POST', corpo: { modo } })
-    mostrarRecado('Proposta na fila. Quando ficar pronta, aparece em Revisões para você aprovar.')
+    await props.detalhes.carregar()
   } catch (e) {
     mostrarRecado(e.status === 0 ? 'Sem conexão com a rede de casa.' : e.message, true)
   } finally {
@@ -217,8 +217,11 @@ onBeforeUnmount(() => {
             <p class="suave quando">Pesquisado em {{ data(m.atualizado_em) }}.</p>
             <section v-if="podeIntegrar" class="integrar">
               <h3>Integrar ao texto</h3>
-              <p class="suave">A IA encaixa no ponto certo do texto, e você revisa a mudança antes de entrar.</p>
-              <div class="linha-acoes">
+              <!-- Uma proposta por marcação (D44): enquanto ela espera, nada de pedir outra. -->
+              <p v-if="m.integracao?.estado === 'em_revisao'">A proposta está pronta. <a :href="`#/revisao/${m.integracao.tarefa_id}`">Revisar e aprovar</a></p>
+              <p v-else-if="m.integracao" class="suave">Preparando a proposta. Quando ficar pronta, o link para revisar aparece aqui.</p>
+              <p v-else class="suave">A IA encaixa no ponto certo do texto, e você revisa a mudança antes de entrar.</p>
+              <div v-if="!m.integracao" class="linha-acoes">
                 <button class="botao" :disabled="integrando" @click="integrar('completo')">O texto completo, como está aqui</button>
                 <button class="botao" :disabled="integrando" @click="integrar('adaptado')">Só o que serve ao texto</button>
               </div>
@@ -227,7 +230,7 @@ onBeforeUnmount(() => {
         </div>
 
         <footer class="linha-acoes">
-          <button v-if="m.estado === 'pronto' || m.estado === 'falhou'" class="botao" :disabled="ocupado" @click="refazer">{{ m.estado === 'falhou' ? 'Tentar de novo' : 'Pedir de novo' }}</button>
+          <button v-if="(m.estado === 'pronto' || m.estado === 'falhou') && !m.integracao" class="botao" :disabled="ocupado" @click="refazer">{{ m.estado === 'falhou' ? 'Tentar de novo' : 'Pedir de novo' }}</button>
           <button class="botao perigo" :disabled="ocupado" @click="apagar">Apagar marcação</button>
         </footer>
       </div>

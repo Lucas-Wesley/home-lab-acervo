@@ -34,7 +34,7 @@ const erro = ref('')
 const aberta = ref(null) // id da resposta verificada aberta quando o texto já responde
 let espera = null
 
-const processando = computed(() => perguntas.value.some((p) => p.estado === 'processando'))
+const processando = computed(() => perguntas.value.some((p) => p.estado === 'processando' || ['na_fila', 'rodando'].includes(p.integracao?.estado)))
 
 async function carregar() {
   try {
@@ -91,7 +91,6 @@ const OPCOES = {
 }
 const integrando = ref(null) // { id, resposta, escolhas: [acao por divergência] }
 const enviandoIntegracao = ref(false)
-const integradas = ref({}) // id → recado depois de mandar
 
 const podeIntegrar = (p) => p.resultado && (p.resultado.cobertura !== 'responde' || p.resultado.divergencias.length)
 
@@ -114,8 +113,8 @@ async function integrar() {
       metodo: 'POST',
       corpo: { resposta: i.resposta, escolhas: i.escolhas.map((acao, divergencia) => ({ divergencia, acao })) },
     })
-    integradas.value = { ...integradas.value, [i.id]: true }
     integrando.value = null
+    await carregar()
   } catch (e) {
     erro.value = e.status === 0 ? 'Integrar só funciona na rede de casa.' : e.message
   } finally {
@@ -233,11 +232,13 @@ onBeforeUnmount(() => {
               <button class="botao" @click="integrando = null">Cancelar</button>
             </div>
           </section>
-          <p v-else-if="integradas[p.id]" class="aviso">Proposta na fila. Quando ficar pronta, aparece em <a href="#/revisoes">Revisões</a> para você aprovar.</p>
+          <!-- Uma proposta por pergunta (D44): enquanto ela espera, nada de pedir outra nem verificar de novo. -->
+          <p v-else-if="p.integracao?.estado === 'em_revisao'" class="aviso">A proposta está pronta. <a :href="`#/revisao/${p.integracao.tarefa_id}`">Revisar e aprovar</a></p>
+          <p v-else-if="p.integracao" class="aviso">Preparando a proposta. Quando ficar pronta, o link para revisar aparece aqui.</p>
 
           <div v-if="p.estado !== 'processando'" class="acoes">
-            <button v-if="podeIntegrar(p) && integrando?.id !== p.id" class="botao discreto marca" @click="abrirIntegracao(p)">Integrar ao texto</button>
-            <button class="botao discreto" @click="refazer(p)">Verificar de novo</button>
+            <button v-if="podeIntegrar(p) && !p.integracao && integrando?.id !== p.id" class="botao discreto marca" @click="abrirIntegracao(p)">Integrar ao texto</button>
+            <button v-if="!p.integracao" class="botao discreto" @click="refazer(p)">Verificar de novo</button>
             <button class="botao discreto perigo" @click="apagar(p)">Apagar</button>
           </div>
         </article>

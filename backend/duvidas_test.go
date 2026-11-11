@@ -108,6 +108,24 @@ func TestResolverDuvidasPeloAudio(t *testing.T) {
 	if diff := e.revisaoPronta(r.Tarefa); !strings.Contains(diff, "+Integrado ao texto") {
 		t.Fatalf("diff:\n%s", diff)
 	}
+
+	// Corrigir de novo devolve a mesma proposta (D44); a aba mostra como o texto fica, e resolver
+	// essa dúvida de novo espera a decisão.
+	var r2 struct{ Tarefa int64 }
+	if s := e.pedir("POST", "/api/duvidas/"+d0.ID+"/integrar", nil, &r2); s != http.StatusOK || r2.Tarefa != r.Tarefa {
+		t.Fatalf("corrigir de novo: %d %d", s, r2.Tarefa)
+	}
+	e.pedir("GET", "/api/referencias/"+id+"/duvidas", nil, &lista)
+	c := lista[0].Correcao
+	if c == nil || c.TarefaID != r.Tarefa || c.Estado != emRevisao || len(c.Trechos) != 1 || c.Trechos[0] != (trechoMudado{"Texto organizado.", "Texto corrigido pelo áudio."}) {
+		t.Fatalf("correção na aba: %+v", c)
+	}
+	if lista[1].Correcao != nil {
+		t.Error("a outra dúvida aparece com correção")
+	}
+	if s := e.pedir("POST", "/api/referencias/"+id+"/duvidas", map[string]string{"texto": d0.Texto}, nil); s != http.StatusConflict {
+		t.Errorf("resolver com correção esperando: %d", s)
+	}
 }
 
 // Vídeo sem legenda: em vez de parar com erro, o Whisper transcreve o vídeo inteiro.

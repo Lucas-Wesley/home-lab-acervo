@@ -78,6 +78,8 @@ const andando = computed(() => {
   const t = ref_.value?.tarefa
   return t && (t.estado === 'rodando' || t.estado === 'na_fila')
 })
+// Uma proposta de Tema esperando em Revisões: outra só depois de decidir esta (D44).
+const temaEmRevisao = computed(() => ref_.value?.tarefa?.estado === 'em_revisao' && ['integrar', 'criar_tema'].includes(ref_.value.tarefa.tipo))
 const sugestao = computed(() => ref_.value?.sugestao)
 const temaPorCaminho = (c) => temas.value.find((t) => t.caminho === c)
 
@@ -202,8 +204,8 @@ onBeforeUnmount(() => {
               <template v-if="pronta">
                 <button v-if="cartoes?.disponivel" role="menuitem" @click="escolher(cartoes.gerar)">Gerar flashcards</button>
                 <button role="menuitem" :disabled="ocupado || andando" @click="escolher(() => executar('sugerir'))">{{ sugestao ? 'Sugerir Tema de novo' : 'Sugerir Tema' }}</button>
-                <button role="menuitem" :disabled="ocupado || andando" @click="escolher(abrirCriar)">Criar Tema</button>
-                <button role="menuitem" :disabled="ocupado || andando || !temas.length" @click="escolher(abrirIntegrar)">Integrar em Tema</button>
+                <button role="menuitem" :disabled="ocupado || andando || temaEmRevisao" @click="escolher(abrirCriar)">Criar Tema</button>
+                <button role="menuitem" :disabled="ocupado || andando || temaEmRevisao || !temas.length" @click="escolher(abrirIntegrar)">Integrar em Tema</button>
                 <button v-if="ehPesquisa" role="menuitem" :disabled="ocupado || andando" @click="escolher(() => (acao = 'aprofundar'))">Aprofundar</button>
                 <hr />
               </template>
@@ -258,7 +260,8 @@ onBeforeUnmount(() => {
         <ul v-if="sugestao.outros?.length" class="suave">
           <li v-for="o in sugestao.outros" :key="o.tema">Também: {{ temaPorCaminho(o.tema)?.titulo ?? o.tema }} — {{ o.motivo }}</li>
         </ul>
-        <div><button class="botao" :disabled="andando" @click="usarSugestao">Usar sugestão</button></div>
+        <div v-if="temaEmRevisao" class="suave">A proposta de Tema está esperando: <a :href="`#/revisao/${ref_.tarefa.id}`">revise</a> antes de pedir outra.</div>
+        <div v-else><button class="botao" :disabled="andando" @click="usarSugestao">Usar sugestão</button></div>
       </section>
 
       <CartoesDaReferencia ref="cartoes" :referencia="ref_" />
@@ -310,7 +313,7 @@ onBeforeUnmount(() => {
         <button class="botao discreto" @click="aba = null">Voltar ao texto</button>
       </p>
 
-      <Duvidas v-if="abaAtual === 'duvidas'" :referencia="ref_" :texto="textoPrincipal" @perguntar="perguntarSobre" @aprofundar="aprofundarSobre" />
+      <Duvidas v-if="abaAtual === 'duvidas'" :referencia="ref_" :texto="textoPrincipal" @perguntar="perguntarSobre" @aprofundar="aprofundarSobre" @mudou="carregar" />
       <Perguntas v-else-if="abaAtual === 'perguntar'" :key="perguntasVersao" embutido :local="`referencias/${ref_.id}`" :titulo="ref_.titulo" />
       <p v-else-if="abaAtual === 'estudar'" class="suave nota">Em breve.</p>
       <ul v-else-if="abaAtual === 'historico'" class="historico">
