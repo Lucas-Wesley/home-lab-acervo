@@ -36,6 +36,8 @@ type config struct {
 	ffmpeg         string
 	// Reels (D40): os cookies da conta secundária do Instagram, quando ele pede login.
 	instagramCookies string
+	// Avisos no celular (D42): o ntfy do homelab, com o tópico. Vazio, o app não avisa.
+	ntfy string
 }
 
 func configDoAmbiente(dados string) config {
@@ -64,6 +66,8 @@ func configDoAmbiente(dados string) config {
 		ffmpeg:         env("FFMPEG_BIN", "ffmpeg"),
 
 		instagramCookies: env("INSTAGRAM_COOKIES", filepath.Join(absoluto(dados), "instagram-cookies.txt")),
+
+		ntfy: os.Getenv("NTFY_URL"),
 	}
 }
 
@@ -73,6 +77,7 @@ type app struct {
 	cfg      config
 	fila     *fila
 	conteudo *conteudo
+	avisos   *avisador // nil sem NTFY_URL
 }
 
 func novoApp(ctx context.Context, db *sql.DB, cfg config) (*app, error) {
@@ -85,8 +90,9 @@ func novoApp(ctx context.Context, db *sql.DB, cfg config) (*app, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &app{db: db, cfg: cfg, conteudo: c}
+	a := &app{db: db, cfg: cfg, conteudo: c, avisos: novoAvisador(cfg.ntfy)}
 	a.fila = novaFila(db, a.executores())
+	a.fila.aoTerminar = a.avisarTarefa
 	if err := a.fila.recuperar(ctx); err != nil {
 		return nil, err
 	}

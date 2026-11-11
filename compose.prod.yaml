@@ -12,6 +12,8 @@ services:
       # o Whisper do servidor com o large-v3-turbo.
       WHISPER_URL: http://192.168.1.160:8000
       WHISPER_RESERVA_URL: http://whisper:8000
+      # Avisos no celular (D42): o ntfy do homelab (homelab/ntfy), tópico "acervo".
+      NTFY_URL: http://ntfy/acervo
     networks:
       - proxy
 

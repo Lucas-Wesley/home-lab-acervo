@@ -38,6 +38,58 @@ func (a *app) executores() map[string]executor {
 	}
 }
 
+// Os nomes das tarefas como aparecem na Fila (NOMES_TAREFA, no frontend).
+var nomesDasTarefas = map[string]string{
+	"extrair": "Extrair o texto", "organizar": "Organizar", "traduzir": "Traduzir", "sugerir": "Sugerir Tema",
+	"criar_tema": "Criar Tema", "integrar": "Integrar ao Tema", "detalhar": "Mais informações", "perguntar": "Perguntar",
+	"integrar_texto": "Integrar ao texto", "resolver_duvidas": "Resolver as dúvidas", "marcar_livro": "Marcar livro por assunto",
+	"estudar": "Preparar o estudo", "corrigir_simulado": "Corrigir o simulado", "planejar": "Montar o esboço",
+	"coletar": "Coletar nas fontes", "redigir": "Escrever a pesquisa", "conferir": "Conferir a pesquisa",
+	"ler_livro": "Ler os capítulos", "resumir": "Resumir os capítulos",
+}
+
+// avisarTarefa (D42): avisa no celular quando uma tarefa falha, quando uma proposta espera revisão e
+// quando o trabalho de uma Referência para e espera o Lucas. As etapas que emendam outra (extrair →
+// organizar → traduzir…) não avisam no meio: só a última.
+func (a *app) avisarTarefa(t *tarefa) {
+	if a.avisos == nil || (t.Estado != falhou && t.Estado != emRevisao && t.Estado != concluida) {
+		return
+	}
+	ctx := context.Background()
+	nome := nomesDasTarefas[t.Tipo]
+	if nome == "" {
+		nome = t.Tipo
+	}
+	av := aviso{Titulo: nome, Link: a.cfg.acervoLink + "/#/fila"}
+	if t.ReferenciaID != "" {
+		if t.Estado == concluida {
+			var seguem int
+			a.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tarefas WHERE referencia_id = ? AND estado IN (?, ?)`,
+				t.ReferenciaID, naFila, rodando).Scan(&seguem)
+			if seguem > 0 {
+				return
+			}
+		}
+		if ref, err := a.referencia(ctx, t.ReferenciaID); err == nil {
+			av.Titulo = primeiro(ref.Titulo, ref.URL)
+			av.Link = a.cfg.acervoLink + "/#/referencia/" + ref.ID
+		}
+	}
+	etapa := ""
+	if av.Titulo != nome {
+		etapa = ": " + nome
+	}
+	switch t.Estado {
+	case falhou:
+		av.Texto, av.Urgente = "Falhou"+etapa+". "+t.Erro, true
+	case emRevisao:
+		av.Texto, av.Link = "Para revisar"+etapa+".", a.cfg.acervoLink+"/#/revisoes"
+	default:
+		av.Texto = strings.TrimSpace("Pronto" + etapa + ". " + t.Erro) // numa concluída, "erro" é só uma nota
+	}
+	a.avisos.avisar(av)
+}
+
 // naReferencia deixa o erro visível na Referência (D17). Numa etapa do pipeline, a Referência
 // passa ao estado "erro"; nas ações do Lucas, só a mensagem aparece.
 func (a *app) naReferencia(fn func(context.Context, *tarefa, *referencia) (resultado, error), etapa bool) executor {

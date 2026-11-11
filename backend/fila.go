@@ -47,6 +47,8 @@ type fila struct {
 	db         *sql.DB
 	executores map[string]executor
 	acorda     chan struct{}
+	// aoTerminar: chamado quando a tarefa termina (não quando o app para no meio); o aviso no celular.
+	aoTerminar func(*tarefa)
 
 	mu       sync.Mutex
 	atual    int64
@@ -153,6 +155,9 @@ func (f *fila) terminar(t *tarefa, estado, erro string) {
 	_, err := f.db.Exec(`UPDATE tarefas SET estado = ?, erro = ?, terminado_em = ? WHERE id = ?`, estado, erro, agora(), t.ID)
 	if err != nil {
 		log.Printf("fila: %v", err)
+	}
+	if f.aoTerminar != nil {
+		f.aoTerminar(t)
 	}
 }
 
