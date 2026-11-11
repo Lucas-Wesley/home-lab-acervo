@@ -54,6 +54,7 @@ type textoParaCartoes struct {
 	Texto     string         `json:"texto"`
 	Link      string         `json:"link"`
 	Secoes    []secaoComLink `json:"secoes,omitempty"`
+	Tipo      string         `json:"tipo,omitempty"` // D47: "leitura", ou vazio para perguntas
 }
 
 // secaoComLink: um capítulo do texto e onde abri-lo no Acervo.
@@ -444,8 +445,13 @@ func (a *app) handleEnviarFlashcards(w http.ResponseWriter, r *http.Request) {
 	var corpo struct {
 		origemDosCartoes
 		escolhaDeBaralho
+		Tipo string `json:"tipo"` // D47: "basico" (perguntas, o padrão) ou "leitura"
 	}
 	if !lerCorpo(w, r, &corpo) {
+		return
+	}
+	if corpo.Tipo != "" && corpo.Tipo != "basico" && corpo.Tipo != "leitura" {
+		erroJSON(w, http.StatusBadRequest, "Tipo de flashcards inválido.")
 		return
 	}
 	alvo, t, ok := a.texto(w, r, corpo.origemDosCartoes)
@@ -457,6 +463,9 @@ func (a *app) handleEnviarFlashcards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t.escolher(corpo.escolhaDeBaralho)
+	if corpo.Tipo == "leitura" {
+		t.Tipo = corpo.Tipo
+	}
 	e, err := a.enviarFlashcards(r.Context(), alvo, t)
 	if err != nil {
 		erroJSON(w, http.StatusBadGateway, err.Error())

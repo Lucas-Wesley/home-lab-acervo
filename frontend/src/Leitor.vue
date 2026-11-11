@@ -240,8 +240,8 @@ function trocarAba(aba) {
 }
 
 // Flashcards pedidos na aba Estudar: do Tema, dos conceitos anteriores ou do que se errou.
-function flashcardsDoEstudo({ origem, titulo }) {
-  envioAberto.value = { origem, titulo, aviso: '' }
+function flashcardsDoEstudo({ origem, titulo, tipo }) {
+  envioAberto.value = { origem, titulo, tipo, aviso: '' }
 }
 
 function flashcardsEnviados(e) {

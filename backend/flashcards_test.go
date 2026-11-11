@@ -191,8 +191,17 @@ func TestReferenciaOrganizadaViraFlashcards(t *testing.T) {
 	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id}, nil); s != http.StatusCreated {
 		t.Errorf("organizada: %d", s)
 	}
-	if f.textos[0].Baralho == "" || f.textos[0].BaralhoID != "" {
+	if f.textos[0].Baralho == "" || f.textos[0].BaralhoID != "" || f.textos[0].Tipo != "" {
 		t.Errorf("baralho: %+v", f.textos[0])
+	}
+	// De leitura (D47): o tipo vai junto; outro tipo é recusado.
+	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id, "tipo": "invertido"}, nil); s != http.StatusBadRequest {
+		t.Errorf("tipo inválido: %d", s)
+	}
+	f.textos = nil
+	e.app.db.Exec(`DELETE FROM flashcards`)
+	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id, "tipo": "leitura"}, nil); s != http.StatusCreated || f.textos[0].Tipo != "leitura" {
+		t.Errorf("leitura: %d %+v", s, f.textos)
 	}
 	e.pedir("DELETE", "/api/referencias/"+id, nil, nil)
 	if s := e.pedir("POST", "/api/flashcards", map[string]string{"referencia": id}, nil); s != http.StatusNotFound {

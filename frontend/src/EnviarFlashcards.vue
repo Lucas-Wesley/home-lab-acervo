@@ -7,7 +7,8 @@ import { api } from './api.js'
 // Janela de "Gerar flashcards" (D28): de onde vem o texto, para qual baralho vai, e o envio.
 const props = defineProps({
   origem: { type: Object, required: true }, // { arquivo, capitulo } ou { referencia }
-  titulo: { type: String, required: true }, // "do Tema inteiro", "do capítulo X"…
+  titulo: { type: String, default: '' }, // "do Tema inteiro", "do capítulo X"…
+  tipo: { type: String, default: 'basico' }, // padrão (perguntas) ou leitura (D47)
   aviso: { type: String, default: '' },
 })
 const emit = defineEmits(['fechar', 'enviado'])
@@ -20,7 +21,7 @@ async function enviar() {
   enviando.value = true
   erro.value = ''
   try {
-    const e = await api('/api/flashcards', { metodo: 'POST', corpo: { ...props.origem, ...escolha.value }, tempo: 30000 })
+    const e = await api('/api/flashcards', { metodo: 'POST', corpo: { ...props.origem, ...escolha.value, tipo: props.tipo }, tempo: 30000 })
     emit('enviado', e)
   } catch (e) {
     erro.value = e.status === 0 ? 'Gerar flashcards só funciona na rede de casa.' : e.message
@@ -44,7 +45,6 @@ onBeforeUnmount(() => document.removeEventListener('keydown', aoTeclar))
           <h2 id="titulo-flashcards">Gerar flashcards {{ titulo }}</h2>
           <button type="button" class="botao icone" aria-label="Fechar" @click="emit('fechar')"><Icone nome="fechar" /></button>
         </header>
-        <p class="suave">A IA monta os cartões no Flashcards, em segundo plano; você revisa e aprova antes de eles entrarem no baralho.</p>
         <p v-if="aviso" class="aviso">{{ aviso }}</p>
         <EscolhaDeBaralho v-model="escolha" :origem="origem" />
         <div v-if="erro" class="aviso erro">{{ erro }}</div>

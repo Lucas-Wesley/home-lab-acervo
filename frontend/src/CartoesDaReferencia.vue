@@ -16,6 +16,7 @@ const ocupado = ref(false)
 const erro = ref('')
 const feito = ref('')
 const escolhendo = ref(false) // a janela de escolher o baralho
+const tipo = ref('basico') // padrão (perguntas) ou leitura
 let relogio
 
 const ultimo = computed(() => info.value.envios[0])
@@ -48,8 +49,10 @@ async function carregar() {
   if (trabalhando.value) relogio = setTimeout(carregar, 4000)
 }
 
-// Um pedido de cada vez (D44): com flashcards esperando decisão, o pedido novo não sai.
-function gerar() {
+// Um pedido de cada vez (D44): com flashcards esperando decisão, o pedido novo não sai. Pelo botão
+// (sem tipo), são os padrão.
+function gerar(qual) {
+  tipo.value = qual === 'leitura' ? 'leitura' : 'basico'
   feito.value = ''
   if (trabalhando.value || g.value?.estado === 'em_revisao') {
     erro.value = 'Os flashcards deste texto já foram pedidos: aprove ou descarte os que estão aqui antes de pedir de novo.'
@@ -160,7 +163,8 @@ watch(() => props.referencia.estado, carregar)
   <EnviarFlashcards
     v-if="escolhendo"
     :origem="{ referencia: referencia.id }"
-    :titulo="referencia.tipo === 'pesquisa' ? 'desta pesquisa' : 'desta Referência'"
+    :tipo="tipo"
+    :titulo="`${tipo === 'leitura' ? 'de leitura ' : ''}${referencia.tipo === 'pesquisa' ? 'desta pesquisa' : 'desta Referência'}`"
     @fechar="escolhendo = false"
     @enviado="enviado"
   />

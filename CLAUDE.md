@@ -7,7 +7,7 @@ o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
 **Comece lendo:**
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **a fonte da verdade do projeto.** Conceitos, fluxo
-  completo, decisões (D1–D46), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
+  completo, decisões (D1–D47), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
 
 ## Em uma frase
 Duas áreas: **Acervo** (base permanente por **Temas**, Markdown multi-arquivo, cumulativa) e

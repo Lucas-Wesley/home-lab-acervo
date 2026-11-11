@@ -30,10 +30,10 @@ const avisoDoEstudo = ref('')
 
 // Flashcards pedidos na aba Estudar: os do texto inteiro seguem o caminho da Referência (a proposta
 // aparece aqui mesmo); os outros abrem a escolha do baralho.
-function flashcardsDoEstudo({ origem, titulo }) {
+function flashcardsDoEstudo({ origem, titulo, tipo }) {
   avisoDoEstudo.value = ''
-  if (origem.referencia) cartoes.value?.gerar()
-  else envioDoEstudo.value = { origem, titulo }
+  if (origem.referencia) cartoes.value?.gerar(tipo)
+  else envioDoEstudo.value = { origem, titulo, tipo }
 }
 const temas = ref([])
 const acao = ref(null) // 'criar' | 'integrar' | 'aprofundar'

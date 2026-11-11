@@ -155,6 +155,15 @@ test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ 
   await expect(page.getByRole('heading', { name: 'Conceito base' })).toBeVisible({ timeout: 15000 })
   await page.getByText('Entender o conceito').first().click()
   await expect(page.getByText(/Explicação base/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Gerar flashcards' }).first()).toBeVisible()
+
+  // Flashcards do Tema inteiro: padrão ou de leitura; os dos conceitos anteriores saíram daqui.
+  await cartaoDoEstudo(page, 'Flashcards').click()
+  await expect(page.getByRole('button', { name: 'Dos conceitos anteriores' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Padrão', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Leitura', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Gerar flashcards de leitura' })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click()
 
   // O simulado abre em tela própria, sem os cartões.
   await cartaoDoEstudo(page, 'Simulado').click()
@@ -199,6 +208,9 @@ test('estuda uma Referência', async ({ page }) => {
   await expect(cartaoDoEstudo(page, 'Flashcards')).toBeVisible()
 
   await cartaoDoEstudo(page, 'Resumo inteligente').click()
+  // A explicação fica no "i", não na tela.
+  await expect(page.getByText(/O texto inteiro em poucos minutos/)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Mais informações' }).click()
   await expect(page.getByText(/O texto inteiro em poucos minutos/)).toBeVisible()
   await page.getByRole('button', { name: 'Preparar o resumo' }).click()
   await expect(page.locator('.resumo')).toContainText('Arquivos: ./indice.md', { timeout: 15000 })

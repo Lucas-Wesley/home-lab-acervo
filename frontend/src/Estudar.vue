@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Icone from './Icone.vue'
+import Info from './Info.vue'
 import Simulado from './Simulado.vue'
 import { api } from './api.js'
 import { ler, paraFala, temLeitura, trechos } from './leitura.js'
@@ -25,7 +26,7 @@ const SECOES = computed(() => [
   { id: 'resumo', nome: 'Resumo inteligente', icone: 'resumo', descricao: `${ehReferencia.value ? 'O texto' : 'O Tema'} inteiro em poucos minutos: a ideia central, o essencial, como as partes se ligam e o que costuma confundir.` },
   { id: 'anteriores', nome: 'Conceitos anteriores', icone: 'camadas', descricao: `O que ajuda a entender ${doTexto.value} e não está explicado nele: a base que ele supõe e os assuntos ao redor.` },
   { id: 'simulado', nome: 'Simulado', icone: 'simulado', descricao: `Perguntas sorteadas ${ehReferencia.value ? 'do texto' : 'do Tema'} para ver se você entendeu. Responda escrevendo ou falando; a IA corrige.` },
-  { id: 'flashcards', nome: 'Flashcards', icone: 'cartoes', descricao: 'Os cartões vão para o app Flashcards; você revisa a proposta lá antes de entrarem no baralho.' },
+  { id: 'flashcards', nome: 'Flashcards', icone: 'cartoes', descricao: `Padrão: perguntas de resposta curta. Leitura: em geral um cartão só, com um resumo ${ehReferencia.value ? 'do texto' : 'do Tema'} para reler; mais de um só se ${ehReferencia.value ? 'ele' : 'o Tema'} muda de assunto. A proposta vai para o app Flashcards, e você aprova antes de os cartões entrarem no baralho.` },
 ])
 const PREPARAR = { resumo: 'Preparar o resumo', anteriores: 'Achar os conceitos anteriores', simulado: 'Preparar as perguntas' }
 
@@ -49,7 +50,7 @@ function mensagem(e) {
 
 // O que o cartão diz sobre a parte: pronta (e quanto tem), preparando, com erro ou por fazer.
 function situacao(id) {
-  if (id === 'flashcards') return { texto: props.flashcards ? 'Do texto, dos conceitos ou dos erros' : 'O Flashcards não respondeu' }
+  if (id === 'flashcards') return props.flashcards ? { texto: 'Padrão ou leitura' } : { texto: 'O Flashcards não respondeu', classe: 'com-erro' }
   const p = partes.value[id]
   if (!p) return { texto: '' }
   if (p.estado === 'processando') return { texto: p.resultado ? 'Refazendo…' : 'Preparando…', classe: 'na-fila' }
@@ -132,6 +133,12 @@ function parar() {
 // Sair do resumo (ou refazê-lo) para a leitura.
 watch([aberta, textoResumo], parar)
 
+// Flashcards do Tema (ou do texto da Referência) inteiro: padrão (perguntas) ou de leitura.
+function gerarCartoes(tipo) {
+  const origem = ehReferencia.value ? { referencia: props.local.slice('referencias/'.length) } : { arquivo: `${props.local}/indice.md`, capitulo: '' }
+  emit('flashcards', { origem, titulo: tipo === 'leitura' ? 'de leitura' : '', tipo })
+}
+
 function quando(iso) {
   return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''
 }
@@ -153,8 +160,7 @@ onBeforeUnmount(() => {
       <section v-if="aberta === 'simulado'" class="parte tela-simulado">
         <button class="botao discreto voltar-estudar" @click="aberta = ''"><Icone nome="voltar" /> Estudar</button>
         <header>
-          <h2>Simulado</h2>
-          <p class="descricao">{{ secao.descricao }}</p>
+          <h2>Simulado <Info>{{ secao.descricao }}</Info></h2>
         </header>
         <p v-if="parte.estado === 'processando'" class="chip andando">{{ parte.resultado ? 'Refazendo…' : 'Preparando…' }} (na fila)</p>
         <p v-else-if="parte.estado === 'falhou'" class="aviso erro">{{ parte.erro }}</p>
@@ -194,8 +200,7 @@ onBeforeUnmount(() => {
 
         <section v-if="secao" :key="aberta" class="parte painel">
           <header>
-            <h2>{{ secao.nome }}</h2>
-            <p class="descricao">{{ secao.descricao }}</p>
+            <h2>{{ secao.nome }} <Info>{{ secao.descricao }}</Info></h2>
           </header>
 
           <template v-if="parte">
@@ -238,6 +243,8 @@ onBeforeUnmount(() => {
                   Fontes:
                   <template v-for="(f, i) in c.fontes" :key="f.url"><template v-if="i">, </template><a :href="f.url" target="_blank" rel="noopener">{{ f.titulo || f.url }}</a></template>
                 </p>
+                <!-- Ainda sem função: os flashcards de um conceito vêm depois. -->
+                <button type="button" class="gerar-do-conceito">Gerar flashcards</button>
               </details>
               <a v-if="c.tema" class="no-acervo" :href="`#/ler/${c.tema}/indice.md`"><Icone nome="acervo" /> Está no seu Acervo</a>
             </article>
@@ -247,16 +254,8 @@ onBeforeUnmount(() => {
           <template v-if="aberta === 'flashcards'">
             <p v-if="!flashcards" class="suave">O Flashcards não respondeu agora.</p>
             <div v-else class="opcoes-cartoes">
-              <button
-                class="botao"
-                @click="emit('flashcards', { origem: ehReferencia ? { referencia: local.slice('referencias/'.length) } : { arquivo: `${local}/indice.md`, capitulo: '' }, titulo: ehReferencia ? 'do texto inteiro' : 'do Tema inteiro' })"
-              >
-                <Icone nome="cartoes" /> {{ ehReferencia ? 'Do texto inteiro' : 'Do Tema inteiro' }}
-              </button>
-              <button class="botao" :disabled="!conceitos.length" @click="emit('flashcards', { origem: { estudo: local, parte: 'anteriores' }, titulo: 'dos conceitos anteriores' })">
-                <Icone nome="cartoes" /> Dos conceitos anteriores
-              </button>
-              <p class="suave dica">Depois de um simulado, “Flashcards do que errei” transforma as respostas erradas em cartões.</p>
+              <button class="botao" @click="gerarCartoes('basico')"><Icone nome="cartoes" /> Padrão</button>
+              <button class="botao" @click="gerarCartoes('leitura')"><Icone nome="resumo" /> Leitura</button>
             </div>
           </template>
 
@@ -386,17 +385,15 @@ onBeforeUnmount(() => {
 }
 
 .parte h2 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin: 0;
   font-size: 1.25rem;
   font-weight: 650;
   letter-spacing: -0.012em;
 }
 
-.descricao {
-  margin: 0;
-  color: var(--texto-suave);
-  font-size: 0.906rem;
-}
 
 .parte > p {
   margin: 0;
@@ -539,9 +536,15 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.dica {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 0.85rem;
+.gerar-do-conceito {
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--marca);
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
 }
 </style>
