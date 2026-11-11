@@ -53,8 +53,8 @@ Precisa de Go, Node, `git`, `yt-dlp` e do Claude Code logado.
 
 Igual à Biblioteca: `git push origin main` e `./deploy.sh`. Antes da primeira vez:
 
-1. **Token do Claude (D13):** no Mac, `claude setup-token`; na VM, gravar
-   `CLAUDE_CODE_OAUTH_TOKEN=<token>` em `/opt/apps/acervo.env` (fora da repo).
+1. **Conta do Claude (D13):** vem do Hub (tela **Claude**, H11 do Hub), que guarda os tokens das duas contas e
+   escreve o da ativa em `/srv/data/claude/ativa/token`; o Acervo lê esse arquivo a cada chamada.
 2. **Proxy:** o bloco do Acervo (porta 8444) já está em `homelab/proxy/`; copiar para
    `/opt/proxy` na VM e rodar `docker compose up -d` lá.
 3. Endereço: `https://192.168.1.20:8444`.
