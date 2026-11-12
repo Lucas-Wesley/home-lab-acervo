@@ -46,6 +46,9 @@ type documentario struct {
 	Legenda         string `json:"legenda,omitempty"` // qual legenda veio
 	IdiomaDoTexto   string `json:"idioma_texto,omitempty"`
 	Transcrito      string `json:"transcrito,omitempty"` // quem transcreveu o áudio (preenchido aqui)
+	// Refazer: o Streaming manda de novo (pelo áudio, no lugar da legenda) e o texto da mesma
+	// Referência é trocado; o de antes fica em anterior.md (a "Versão anterior").
+	Refazer bool `json:"refazer,omitempty"`
 }
 
 var (
@@ -90,7 +93,7 @@ func documentarioDe(ref *referencia) (documentario, error) {
 
 // handleCriarDocumentario: POST /api/documentarios, multipart com "dados" (JSON) e o arquivo
 // "legenda" (SRT) ou "audio". O mesmo episódio de novo devolve 409 com o id, menos quando o
-// anterior deu erro: aí ele é refeito com a entrada nova.
+// anterior deu erro ou o pedido é para refazer: aí ele é refeito com a entrada nova.
 func (a *app) handleCriarDocumentario(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxEntradaDoDocumentario)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -124,7 +127,8 @@ func (a *app) handleCriarDocumentario(w http.ResponseWriter, r *http.Request) {
 	var existente, estado string
 	a.db.QueryRowContext(ctx, `SELECT id, estado FROM referencias WHERE tipo = 'documentario' AND url = ? AND estado != 'descartado'
 		ORDER BY criado_em DESC LIMIT 1`, d.TMDB).Scan(&existente, &estado)
-	if existente != "" && (estado != "erro" || a.ocupada(ctx, existente)) {
+	refazer := d.Refazer && estado != "integrado"
+	if existente != "" && ((estado != "erro" && !refazer) || a.ocupada(ctx, existente)) {
 		writeJSON(w, http.StatusConflict, map[string]string{"erro": "Este documentário já está nas Referências.", "id": existente})
 		return
 	}
@@ -133,10 +137,22 @@ func (a *app) handleCriarDocumentario(w http.ResponseWriter, r *http.Request) {
 		id = novoID()
 	}
 	pasta := a.pastaReferencia(id)
-	os.RemoveAll(pasta) // um erro de antes: começa do zero
+	var antes []byte
+	if refazer {
+		for _, nome := range []string{"traducao.md", "organizado.md"} {
+			if b, err := os.ReadFile(filepath.Join(pasta, nome)); err == nil && len(b) > 50 {
+				antes = b
+				break
+			}
+		}
+	}
+	os.RemoveAll(pasta) // um erro de antes, ou refazer: começa do zero
 	if err := os.MkdirAll(pasta, 0o755); err != nil {
 		falha(w, err)
 		return
+	}
+	if antes != nil {
+		os.WriteFile(filepath.Join(pasta, "anterior.md"), antes, 0o644)
 	}
 	nome := "entrada.srt"
 	if campo == "audio" {
@@ -157,7 +173,7 @@ func (a *app) handleCriarDocumentario(w http.ResponseWriter, r *http.Request) {
 		falha(w, err)
 		return
 	}
-	d.Transcrito = ""
+	d.Transcrito, d.Refazer = "", false
 	dados, _ := json.Marshal(d)
 	duracao := ""
 	if d.Duracao > 0 {

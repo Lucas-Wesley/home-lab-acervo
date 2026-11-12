@@ -215,6 +215,23 @@ func TestDocumentarioDoStreaming(t *testing.T) {
 	if s != http.StatusConflict || r["id"] != id2 {
 		t.Errorf("duplicado: %d %v", s, r)
 	}
+	// Refazer (pelo áudio, no lugar da legenda): a mesma Referência, com o texto de antes guardado.
+	refazer := ep1
+	refazer.Texto, refazer.Refazer, refazer.Legenda, refazer.IdiomaDoTexto = "audio", true, "", ""
+	s, r = e.mandarDocumentario(refazer, "audio", "ep1.ogg", conteudo)
+	if s != http.StatusCreated || r["id"] != id1 {
+		t.Fatalf("refazer o ep1: %d %v", s, r)
+	}
+	d1 = e.esperarEstado(id1, "organizado")
+	if !strings.Contains(d1.Textos["cru"], "- Texto: transcrição do áudio") || !strings.Contains(d1.Textos["anterior"], "Traduzido") {
+		t.Errorf("refeito: cru %q, anterior %q", d1.Textos["cru"][:200], d1.Textos["anterior"])
+	}
+	var doc documentario
+	json.Unmarshal(d1.Documentario, &doc)
+	if doc.Refazer || doc.Texto != "audio" {
+		t.Errorf("dados guardados: %+v", doc)
+	}
+
 	// Pedidos errados.
 	if s, _ := e.mandarDocumentario(ep2, "", "", nil); s != http.StatusBadRequest {
 		t.Errorf("sem arquivo: %d", s)
