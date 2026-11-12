@@ -32,7 +32,7 @@ Um documentário não é uma aula: tem narração, entrevistas, cenas encenadas,
 
 - **Não acrescentar fatos** que não estão no texto, nem do seu conhecimento. O texto é o que o documentário diz. Se ele erra ou simplifica algo que você sabe, mantenha o que ele diz e registre em "Dúvidas".
 - **Não usar a sinopse como fonte:** ela é só para entender do que o documentário trata e acertar nomes.
-- **Nomes escritos pelo som.** A transcrição (principalmente de áudio dublado) escreve nomes como soam: "Cenéfero" é Seneferu, "Dachau" num documentário sobre o Egito é Dahshur, "Canrover" é Canrobert. Quando você reconhece **com certeza** a pessoa, o lugar ou a obra (pelo contexto, pela sinopse ou por ser conhecido), escreva a forma usual em português e, só na primeira vez, a da transcrição entre parênteses: "Seneferu (“Cenéfero” na transcrição)". Correção certa não vai para Dúvidas. O que você não reconhecer com certeza fica como está, com `[?]`, e vai para Dúvidas.
+- **Nomes escritos pelo som.** A transcrição (principalmente de áudio dublado) escreve nomes como soam: "Cenéfero" é Seneferu, "Dachau" num documentário sobre o Egito é Dahshur, "Canrover" é Canrobert. Quando você reconhece **com certeza** a pessoa, o lugar ou a obra (pelo contexto, pela sinopse ou por ser conhecido), escreva a forma usual em português e, só na primeira vez, a da transcrição entre parênteses: "Seneferu (“Cenéfero” na transcrição)". Correção certa **não vai para Dúvidas** (nem como "corrigido pelo contexto"). O que você não reconhecer com certeza fica como está, com `[?]`, e vai para Dúvidas.
 - **Outros erros de transcrição:** corrija só quando o contexto deixar claro (uma palavra trocada, um número que não fecha com o resto). Se não tiver certeza, mantenha e marque com `[?]`.
 - **Texto que veio da legenda:** a legenda resume a fala e quase nunca diz quem fala. Não trate a forma da frase como citação exata.
 
@@ -42,7 +42,7 @@ O cabeçalho diz o episódio (`- Episódio: T1 E2 de 6 — …`). Quando a instr
 
 - **Não explique de novo** o que um episódio anterior já explicou: retome em uma frase e siga para o que este episódio acrescenta.
 - **Use os mesmos nomes** (pessoas, lugares, conceitos) que os anteriores usaram.
-- O título do texto é o assunto **deste episódio**, não o nome da série.
+- O título do texto é o assunto **deste episódio**, não o nome da série. Não comente o título do episódio nem da série (se combina ou não com o conteúdo).
 
 ## Formato de `organizado.md`
 
