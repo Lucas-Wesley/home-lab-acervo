@@ -21,10 +21,15 @@ func TestFalasDaLegenda(t *testing.T) {
 		"2\n00:00:04,000 --> 00:00:05,000\n[MÚSICA DRAMÁTICA]\n\n" +
 		"3\n00:00:06,2 --> 00:00:08,000\n♪ lá lá lá ♪\n\n" +
 		"4\n00:01:02,000 --> 00:01:04,000\n{\\an8}Khufu &amp; Khafre (aplausos)\n\n" +
-		"5\n00:00:05,500 --> 00:00:06,000\n1989\n"
+		"5\n00:00:05,500 --> 00:00:06,000\n1989\n\n" +
+		"6\n00:08:09,781 --> 00:08:12,125\n- DR. CRANE: Pearl Harbor\ninfuriated the American people.\n"
 	ts := falasDaLegenda([]byte(srt))
-	if len(ts) != 2 {
+	if len(ts) != 3 {
 		t.Fatalf("falas: %+v", ts)
+	}
+	// "08" e "09" não são octal.
+	if ts[2].Inicio != 489.781 || ts[2].Texto != "DR. CRANE: Pearl Harbor infuriated the American people." {
+		t.Errorf("fala do minuto 8: %+v", ts[2])
 	}
 	if ts[0].Inicio != 1 || ts[0].Texto != "NARRADOR: O Egito antigo durou três mil anos." {
 		t.Errorf("primeira fala: %+v", ts[0])

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -303,15 +304,15 @@ func falasDaLegenda(srt []byte) []trechoFalado {
 	return ts
 }
 
+// segundosDaLegenda: Atoi, e não Sscan, que lê "08" e "09" como octal (e erra).
 func segundosDaLegenda(h, m, s, ms string) float64 {
-	var hh, mm, ss, mil int
-	fmt.Sscan(h, &hh)
-	fmt.Sscan(m, &mm)
-	fmt.Sscan(s, &ss)
+	hh, _ := strconv.Atoi(h)
+	mm, _ := strconv.Atoi(m)
+	ss, _ := strconv.Atoi(s)
 	for len(ms) < 3 {
 		ms += "0"
 	}
-	fmt.Sscan(ms, &mil)
+	mil, _ := strconv.Atoi(ms[:3])
 	return float64(hh*3600+mm*60+ss) + float64(mil)/1000
 }
 
