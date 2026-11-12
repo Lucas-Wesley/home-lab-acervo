@@ -99,8 +99,9 @@ func TestDocumentarioDoStreaming(t *testing.T) {
 			json.NewEncoder(w).Encode(map[string]any{"language": "en", "segments": []map[string]any{
 				{"start": 0.0, "text": " Uma série sobre as pirâmides do Egito."}, // a dica repetida sobre a abertura
 				{"start": 3.0, "text": " The pyramid was built for Khufu."},
-				{"start": 9.0, "text": " Thank you for watching!", "no_speech_prob": 0.9}, // a trilha: o Whisper inventa
-				{"start": 15.0, "text": " Workers lived nearby."},
+				{"start": 9.0, "text": " Thank you for watching!", "no_speech_prob": 0.9, "avg_logprob": -1.4}, // a trilha: o Whisper inventa
+				{"start": 15.0, "text": " Workers lived nearby.", "no_speech_prob": 0.87, "avg_logprob": -0.2}, // fala com chiado: fica
+				{"start": 20.0, "text": " stress stress stress stress stress", "compression_ratio": 3.1},
 			}})
 		default:
 			http.NotFound(w, r)
@@ -167,7 +168,7 @@ func TestDocumentarioDoStreaming(t *testing.T) {
 	e.pedir("GET", "/api/referencias/"+id2, nil, &d2)
 	cru := d2.Textos["cru"]
 	if !strings.Contains(cru, "- Texto: transcrição do áudio (Whisper large-v3-turbo (servidor))") || !strings.Contains(cru, "Khufu") ||
-		!strings.Contains(cru, "Workers lived nearby.") || strings.Contains(cru, "Thank you for watching") || strings.Contains(cru, "] Uma série sobre") {
+		!strings.Contains(cru, "Workers lived nearby.") || strings.Contains(cru, "Thank you for watching") || strings.Contains(cru, "stress") || strings.Contains(cru, "] Uma série sobre") {
 		t.Errorf("cru do ep2:\n%s", cru)
 	}
 	if p, _ := prompt.Load().(string); !strings.Contains(p, "O Segredo das Pirâmides") || !strings.Contains(p, "Os construtores") {

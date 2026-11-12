@@ -405,6 +405,9 @@ type trechoFalado struct {
 	// SemFala: o Whisper acha que ali não há fala (no_speech_prob alto) ou repetiu demais
 	// (compression_ratio alto). Sobre música, ele inventa texto assim; o Reel descarta esses trechos.
 	SemFala bool
+	// Os números de onde SemFala sai (D50): o documentário usa a regra do próprio Whisper, que só
+	// chama de silêncio quando também a confiança no texto é baixa.
+	ProbSemFala, LogProb, Compressao float64
 }
 
 // extrairPodcast é a etapa "extrair" de um podcast: acha, baixa, transcreve e grava cru.md.
@@ -609,6 +612,7 @@ func (a *app) pedirTranscricao(ctx context.Context, base, modelo, arquivo, idiom
 			Texto      string  `json:"text"`
 			SemFala    float64 `json:"no_speech_prob"`
 			Compressao float64 `json:"compression_ratio"`
+			LogProb    float64 `json:"avg_logprob"`
 		} `json:"segments"`
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
@@ -617,7 +621,8 @@ func (a *app) pedirTranscricao(ctx context.Context, base, modelo, arquivo, idiom
 	var ts []trechoFalado
 	for _, s := range r.Segmentos {
 		if t := strings.TrimSpace(s.Texto); t != "" {
-			ts = append(ts, trechoFalado{Inicio: s.Inicio, Texto: t, Idioma: r.Idioma, SemFala: s.SemFala >= 0.5 || s.Compressao > 2.4})
+			ts = append(ts, trechoFalado{Inicio: s.Inicio, Texto: t, Idioma: r.Idioma, SemFala: s.SemFala >= 0.5 || s.Compressao > 2.4,
+				ProbSemFala: s.SemFala, LogProb: s.LogProb, Compressao: s.Compressao})
 		}
 	}
 	return ts, nil

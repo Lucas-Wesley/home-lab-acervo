@@ -259,11 +259,13 @@ func (a *app) extrairDocumentario(ctx context.Context, ref *referencia, pasta st
 			return err
 		}
 		d.Transcrito = quem
-		// Documentário tem trilha e silêncio: sobre a música, o Whisper inventa frases (como no Reel)
-		// ou repete a dica que recebeu (a sinopse).
+		// Documentário tem trilha e silêncio: sobre a música, o Whisper inventa frases ou repete a dica
+		// que recebeu (a sinopse). Mas fala com chiado e efeitos sonoros (entrevistas antigas, guerra)
+		// também tem no_speech_prob alto: só sai o que tem também baixa confiança no texto, como o
+		// próprio Whisper faz (no Reel, calibrado com música, vale o corte mais forte).
 		dica := comparavelDaDica(promptDoDocumentario(d))
 		for _, t := range ts {
-			if !t.SemFala && !repeteADica(t.Texto, dica) {
+			if !semFalaNoDocumentario(t) && !repeteADica(t.Texto, dica) {
 				trechos = append(trechos, t)
 			}
 		}
@@ -283,6 +285,11 @@ func (a *app) extrairDocumentario(ctx context.Context, ref *referencia, pasta st
 // promptDoDocumentario ajuda o Whisper com os nomes: o documentário, o episódio e as sinopses.
 func promptDoDocumentario(d documentario) string {
 	return cortar(strings.Join(strings.Fields(strings.Join(naoVazios(d.Nome, d.TituloEpisodio, d.SinopseEpisodio, d.Sinopse), ". ")), " "), 600, false)
+}
+
+// semFalaNoDocumentario: a regra do Whisper (no_speech_prob > 0,6 e avg_logprob < −1) e a repetição.
+func semFalaNoDocumentario(t trechoFalado) bool {
+	return t.Compressao > 2.4 || (t.ProbSemFala > 0.6 && t.LogProb < -1)
 }
 
 // comparavelDaDica: minúsculas, só letras e números, um espaço entre as palavras.
