@@ -44,6 +44,31 @@ const FILTROS = {
 }
 const visiveis = computed(() => referencias.value.filter((r) => r.estado !== 'descartado' || filtro.value === 'descartadas').filter(FILTROS[filtro.value] ?? ((r) => r.estado === 'descartado')))
 
+// Documentário em episódios (D50): os episódios da mesma série viram um item só, no lugar do mais
+// recente, com os episódios em ordem embaixo.
+const itens = computed(() => {
+  const lista = []
+  const grupos = {}
+  for (const r of visiveis.value) {
+    const d = r.tipo === 'documentario' ? r.documentario : null
+    if (!d?.episodio) {
+      lista.push(r)
+      continue
+    }
+    if (!grupos[d.chave]) {
+      grupos[d.chave] = { grupo: true, chave: d.chave, nome: d.nome, ano: d.ano, refs: [] }
+      lista.push(grupos[d.chave])
+    }
+    grupos[d.chave].refs.push(r)
+  }
+  for (const g of Object.values(grupos)) {
+    g.refs.sort((a, b) => a.documentario.temporada - b.documentario.temporada || a.documentario.episodio - b.documentario.episodio)
+    g.capa = g.refs.find((r) => r.capa)?.id || ''
+    g.andando = g.refs.filter((r) => r.tarefa && r.tarefa.estado !== 'em_revisao').length
+  }
+  return lista
+})
+
 let relogio
 async function carregar() {
   try {
@@ -134,7 +159,25 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-if="visiveis.length" class="lista">
-    <a v-for="r in visiveis" :key="r.id" :href="`#/referencia/${r.id}`" class="referencia">
+    <template v-for="r in itens" :key="r.grupo ? `g:${r.chave}` : r.id">
+    <div v-if="r.grupo" class="grupo-doc">
+      <div class="referencia cabeca-grupo">
+        <span v-if="r.capa" class="miniatura com-capa" aria-hidden="true"><img :src="`/api/referencias/${r.capa}/capa`" alt="" loading="lazy" /></span>
+        <span v-else class="miniatura pesquisa" aria-hidden="true"><Icone nome="documentario" /></span>
+        <div class="info">
+          <strong>{{ r.nome }}</strong>
+          <span class="suave meta">{{ ['Documentário', r.ano, `${r.refs.length} ${r.refs.length === 1 ? 'episódio' : 'episódios'}`].filter(Boolean).join(' · ') }}</span>
+          <span v-if="r.andando" class="linha-estado"><span class="chip andando">{{ r.andando === 1 ? '1 episódio em andamento' : `${r.andando} episódios em andamento` }}</span></span>
+        </div>
+      </div>
+      <a v-for="ep in r.refs" :key="ep.id" :href="`#/referencia/${ep.id}`" class="episodio-doc">
+        <span class="num">T{{ ep.documentario.temporada }} E{{ ep.documentario.episodio }}</span>
+        <span class="titulo-ep">{{ ep.documentario.titulo_episodio || `Episódio ${ep.documentario.episodio}` }}</span>
+        <span class="chip" :class="classeDoEstado(ep)">{{ situacao(ep) || nomeDoEstado(ep) }}</span>
+        <span v-if="ep.erro" class="erro-texto">{{ ep.erro }}</span>
+      </a>
+    </div>
+    <a v-else :href="`#/referencia/${r.id}`" class="referencia">
       <span v-if="r.tipo === 'pesquisa'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="pesquisar" /></span>
       <span v-else-if="r.tipo === 'livro'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="livro" /></span>
       <span v-else-if="r.tipo === 'artigo'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="link" /></span>
@@ -144,6 +187,7 @@ onBeforeUnmount(() => {
       </span>
       <span v-else-if="marca(r)" class="miniatura marca" :class="marca(r)" aria-hidden="true"><Marca :nome="marca(r)" /></span>
       <span v-else-if="r.tipo === 'podcast'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="podcast" /></span>
+      <span v-else-if="r.tipo === 'documentario'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="documentario" /></span>
       <img v-else :src="`https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`" alt="" class="miniatura" loading="lazy" />
       <div class="info">
         <strong>{{ r.titulo || r.url }}</strong>
@@ -155,6 +199,7 @@ onBeforeUnmount(() => {
         <span v-if="r.erro" class="erro-texto">{{ r.erro }}</span>
       </div>
     </a>
+    </template>
     </div>
   </div>
 </template>
@@ -245,6 +290,52 @@ onBeforeUnmount(() => {
 .miniatura.pesquisa :deep(svg) {
   width: 22px;
   height: 22px;
+}
+
+/* Documentário em episódios (D50): o cabeçalho e os episódios em linhas finas. */
+.grupo-doc {
+  padding-bottom: 8px;
+}
+
+.cabeca-grupo {
+  padding-bottom: 6px;
+}
+
+.episodio-doc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  margin-left: 110px;
+  padding: 6px 0;
+  border-top: 1px solid var(--linha);
+  color: inherit;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.episodio-doc:hover .titulo-ep {
+  color: var(--azul);
+}
+
+.episodio-doc .num {
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.episodio-doc .titulo-ep {
+  flex: 1;
+  min-width: 0;
+}
+
+.episodio-doc .erro-texto {
+  flex-basis: 100%;
+}
+
+@media (max-width: 520px) {
+  .episodio-doc {
+    margin-left: 0;
+  }
 }
 
 /* Reel e podcast (D46): a capa, com o selo de onde veio; sem capa, o símbolo nas cores da marca. */

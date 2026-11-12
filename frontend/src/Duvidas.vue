@@ -28,7 +28,8 @@ const pedindo = ref(false)
 const decidindo = ref('') // id da dúvida cuja correção está sendo aprovada ou descartada
 let espera = null
 
-const temAudio = computed(() => ['video', 'podcast', 'reel'].includes(props.referencia.tipo))
+// Documentário (D50): só o que veio pelo áudio o guarda; o que veio pela legenda não tem o que ouvir.
+const temAudio = computed(() => ['video', 'podcast', 'reel'].includes(props.referencia.tipo) || props.referencia.documentario?.texto === 'audio')
 const itens = computed(() => {
   const porTexto = Object.fromEntries(resolvidas.value.map((d) => [d.texto, d]))
   return listaDeDuvidas(props.texto).map((texto) => ({ texto, d: porTexto[texto] }))

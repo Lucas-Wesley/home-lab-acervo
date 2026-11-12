@@ -140,12 +140,14 @@ func (a *app) extrair(ctx context.Context, t *tarefa, ref *referencia) (resultad
 	if err := os.MkdirAll(pasta, 0o755); err != nil {
 		return pronto, err
 	}
-	if ref.Tipo == "artigo" || ref.Tipo == "podcast" || ref.Tipo == "reel" {
+	if ref.Tipo == "artigo" || ref.Tipo == "podcast" || ref.Tipo == "reel" || ref.Tipo == "documentario" {
 		extrair := a.extrairPagina
 		if ref.Tipo == "podcast" {
 			extrair = a.extrairPodcast
 		} else if ref.Tipo == "reel" {
 			extrair = a.extrairReel
+		} else if ref.Tipo == "documentario" {
+			extrair = a.extrairDocumentario
 		}
 		if err := extrair(ctx, ref, pasta); err != nil {
 			return pronto, err
@@ -183,13 +185,22 @@ func (a *app) organizar(ctx context.Context, t *tarefa, ref *referencia) (result
 	os.Remove(filepath.Join(pasta, "organizado.md"))
 	os.Remove(filepath.Join(pasta, "traducao.md"))
 	regra := "organizar.md"
+	instrucao := "Leia cru.md nesta pasta e escreva organizado.md nesta pasta. Responda só 'ok' ao terminar."
 	if ref.Tipo == "artigo" {
 		regra = "organizar-artigo.md"
+	} else if ref.Tipo == "documentario" {
+		// D50: um episódio sabe o que os anteriores já explicaram.
+		regra = "organizar-documentario.md"
+		if outros := a.anterioresParaOrganizar(ctx, ref, pasta); outros != "" {
+			defer os.Remove(filepath.Join(pasta, outros))
+			instrucao = "Leia cru.md nesta pasta e escreva organizado.md nesta pasta. " + outros +
+				" tem o resumo e as seções dos episódios anteriores deste documentário. Responda só 'ok' ao terminar."
+		}
 	}
 	_, err := a.chamarClaude(ctx, pedidoClaude{
 		pasta:       pasta,
 		regra:       regra,
-		instrucao:   "Leia cru.md nesta pasta e escreva organizado.md nesta pasta. Responda só 'ok' ao terminar.",
+		instrucao:   instrucao,
 		ferramentas: ferramentasEscrita,
 	})
 	if err != nil {
@@ -295,6 +306,9 @@ func (a *app) sugerir(ctx context.Context, t *tarefa, ref *referencia) (resultad
 	if p, err := a.pedidoDe(ref); err == nil && p.ParaTema != "" {
 		// D49: a pesquisa foi pedida de dentro de um Tema.
 		pedido = fmt.Sprintf("\n\nO Lucas fez esta pesquisa para completar o Tema %s: sugira integrar nele, a menos que o texto trate de outro assunto.", p.ParaTema)
+	}
+	if ref.Tipo == "documentario" {
+		pedido = a.pedidoDeTemaDoDocumentario(ctx, ref) // D50: os episódios ficam juntos
 	}
 	r, err := a.chamarClaude(ctx, pedidoClaude{
 		pasta:  a.conteudo.raiz,

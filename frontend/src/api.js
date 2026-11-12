@@ -82,7 +82,8 @@ export function situacao(ref) {
   const t = ref.tarefa
   if (!t) return ''
   // Num podcast, extrair é baixar e transcrever o áudio: leva minutos (D39). Num Reel, também ler a tela (D40).
-  const extrair = { podcast: 'Transcrever o áudio', reel: 'Transcrever e ler a tela' }[ref.tipo]
+  // Num documentário (D50), ler a legenda é rápido; o áudio vai ao Whisper.
+  const extrair = { podcast: 'Transcrever o áudio', reel: 'Transcrever e ler a tela', documentario: ref.documentario?.texto === 'legenda' ? 'Ler a legenda' : 'Transcrever o áudio' }[ref.tipo]
   const nome = extrair && t.tipo === 'extrair' ? extrair : NOMES_TAREFA[t.tipo] || t.tipo
   if (t.estado === 'rodando') return `${nome}…`
   if (t.estado === 'na_fila') return `${nome}: na fila${t.posicao > 1 ? ` (${t.posicao}ª)` : ''}`

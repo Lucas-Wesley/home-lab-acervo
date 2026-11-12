@@ -28,10 +28,11 @@ type referencia struct {
 	AtualizadoEm string          `json:"atualizado_em"`
 	Tarefa       *tarefaAtiva    `json:"tarefa"`
 	Temas        []string        `json:"temas"`
-	Tipo         string          `json:"tipo"`     // video, artigo (D34), podcast (D39), reel (D40), pesquisa (D27) ou livro (D30)
+	Tipo         string          `json:"tipo"`     // video, artigo (D34), podcast (D39), reel (D40), documentario (D50), pesquisa (D27) ou livro (D30)
 	Pesquisa     json.RawMessage `json:"pesquisa"` // o pedido, o esboço e a coleta; null num vídeo
 	Livro        json.RawMessage `json:"livro"`    // o livro e os capítulos escolhidos (D30); null nos outros
-	Capa         bool            `json:"capa"`     // tem capa.jpg (D46): Reel e podcast
+	Capa         bool            `json:"capa"`     // tem capa.jpg (D46): Reel, podcast e documentário
+	Documentario json.RawMessage `json:"documentario"` // o que o Streaming mandou (D50); null nos outros
 }
 
 // tarefaAtiva é o que a lista mostra: o que está acontecendo com a Referência agora.
@@ -42,12 +43,12 @@ type tarefaAtiva struct {
 	Posicao int    `json:"posicao"` // 0 = rodando; 1 = a próxima...
 }
 
-const colunasReferencia = `id, url, COALESCE(video_id, ''), titulo, canal, duracao, idioma, estado, erro, sugestao, criado_em, atualizado_em, tipo, pesquisa, livro`
+const colunasReferencia = `id, url, COALESCE(video_id, ''), titulo, canal, duracao, idioma, estado, erro, sugestao, criado_em, atualizado_em, tipo, pesquisa, livro, documentario`
 
 func lerReferencia(row linha) (*referencia, error) {
 	var r referencia
-	var sug, pesquisa, livro string
-	err := row.Scan(&r.ID, &r.URL, &r.VideoID, &r.Titulo, &r.Canal, &r.Duracao, &r.Idioma, &r.Estado, &r.Erro, &sug, &r.CriadoEm, &r.AtualizadoEm, &r.Tipo, &pesquisa, &livro)
+	var sug, pesquisa, livro, doc string
+	err := row.Scan(&r.ID, &r.URL, &r.VideoID, &r.Titulo, &r.Canal, &r.Duracao, &r.Idioma, &r.Estado, &r.Erro, &sug, &r.CriadoEm, &r.AtualizadoEm, &r.Tipo, &pesquisa, &livro, &doc)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +61,10 @@ func lerReferencia(row linha) (*referencia, error) {
 	if livro == "" {
 		livro = "null"
 	}
+	if doc == "" {
+		doc = "null"
+	}
+	r.Documentario = json.RawMessage(doc)
 	r.Livro = json.RawMessage(livro)
 	r.Sugestao = json.RawMessage(sug)
 	r.Pesquisa = json.RawMessage(pesquisa)
@@ -84,7 +89,7 @@ func (a *app) completar(ctx context.Context, refs []*referencia) error {
 	porID := map[string]*referencia{}
 	for _, r := range refs {
 		porID[r.ID] = r
-		r.Capa = (r.Tipo == "reel" || r.Tipo == "podcast") && a.temCapa(r.ID)
+		r.Capa = (r.Tipo == "reel" || r.Tipo == "podcast" || r.Tipo == "documentario") && a.temCapa(r.ID)
 	}
 	posicao := 1
 	for _, t := range ativas {
@@ -217,6 +222,8 @@ type detalheReferencia struct {
 	*referencia
 	Textos  map[string]string `json:"textos"`
 	Tarefas []tarefa          `json:"tarefas"`
+	// Documentário em episódios (D50): os outros episódios dele no Acervo, em ordem.
+	Episodios []episodioLigado `json:"episodios,omitempty"`
 }
 
 func (a *app) handleReferencia(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +243,7 @@ func (a *app) handleReferencia(w http.ResponseWriter, r *http.Request) {
 		falha(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, detalheReferencia{ref, textos, tarefas})
+	writeJSON(w, http.StatusOK, detalheReferencia{ref, textos, tarefas, a.episodiosLigados(r.Context(), ref)})
 }
 
 func (a *app) referenciaDoPedido(w http.ResponseWriter, r *http.Request) (*referencia, bool) {

@@ -64,9 +64,12 @@ case "$prompt" in
   *"escreva organizado.md"*)
     [ -n "$CLAUDE_FALSO_FALHA" ] && { printf '{"result":"limite de uso atingido","is_error":true}\n'; exit 1; }
     extra=""; case "$prompt" in *"REGRA EDITADA"*) extra="Seguiu a regra editada no app." ;; esac
+    case "$prompt" in *"outros-episodios.md"*) [ -f outros-episodios.md ] && extra="$extra Leu $(grep -c '^## ' outros-episodios.md) episódio(s) anterior(es)." ;; esac
     printf '# Organizado\n\n> Texto de teste organizado, com conteúdo suficiente.\n\n## Seção\n\nConteúdo. %s\n' "$extra" > organizado.md; ok ;;
   *"escreva traducao.md"*)
     printf '# Traduzido\n\nTexto de teste traduzido para o português, com conteúdo suficiente.\n' > traducao.md; ok ;;
+  *"Os Temas do Acervo"*"ficam juntos"*)
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"acao":"novo","tema":"","titulo":"Tema de Teste","motivo":"Junto dos outros episódios.","outros":[]}}\n' ;;
   *"Os Temas do Acervo"*)
     printf '{"type":"result","result":"","is_error":false,"structured_output":{"acao":"novo","tema":"","titulo":"Tema de Teste","motivo":"Nenhum Tema parecido.","outros":[]}}\n' ;;
   *"decidiu criar o Tema"*)

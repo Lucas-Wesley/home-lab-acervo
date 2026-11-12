@@ -346,6 +346,8 @@ func (a *app) trechoDeAudio(ctx context.Context, ref *referencia, pasta string, 
 			return "", fmt.Errorf("o ffmpeg não cortou o trecho: %v %s", err, cortar(string(out), 200, false))
 		}
 		return saida, nil
+	case "documentario":
+		return a.trechoDoDocumentario(ctx, ref, base, inicio, fim)
 	}
 	return "", errors.New("esta Referência não tem áudio")
 }
@@ -370,7 +372,8 @@ func (a *app) resolverDuvidas(ctx context.Context, t *tarefa, ref *referencia) (
 	pastaRef := a.pastaReferencia(ref.ID)
 	cru, _ := os.ReadFile(filepath.Join(pastaRef, "cru.md"))
 	blocos := blocosDoCru(string(cru))
-	temAudio := (ref.Tipo == "video" || ref.Tipo == "podcast" || ref.Tipo == "reel") && (a.cfg.whisper != "" || a.cfg.whisperReserva != "")
+	temAudio := (ref.Tipo == "video" || ref.Tipo == "podcast" || ref.Tipo == "reel" || (ref.Tipo == "documentario" && a.audioDoDocumentario(ref.ID) != "")) &&
+		(a.cfg.whisper != "" || a.cfg.whisperReserva != "")
 
 	tmp, err := os.MkdirTemp("", "duvidas-")
 	if err != nil {

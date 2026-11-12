@@ -97,6 +97,8 @@ func abrirBanco(caminho string) (*sql.DB, error) {
 	}
 	for _, c := range [][3]string{
 		{"referencias", "livro", `TEXT NOT NULL DEFAULT ''`},
+		// Documentários do Streaming (D50): o que veio com o filme ou o episódio.
+		{"referencias", "documentario", `TEXT NOT NULL DEFAULT ''`},
 		// Conversar (D48): as mensagens novas ficam na mesma tabela das perguntas de antes.
 		{"perguntas", "modo", `TEXT NOT NULL DEFAULT 'verificar'`},
 		{"perguntas", "trecho", `TEXT NOT NULL DEFAULT ''`},
@@ -163,7 +165,8 @@ const tabelaReferencias = `CREATE TABLE IF NOT EXISTS referencias (
 	atualizado_em TEXT NOT NULL,
 	tipo          TEXT NOT NULL DEFAULT 'video',
 	pesquisa      TEXT NOT NULL DEFAULT '',
-	livro         TEXT NOT NULL DEFAULT ''
+	livro         TEXT NOT NULL DEFAULT '',
+	documentario  TEXT NOT NULL DEFAULT ''
 );`
 
 const esquema = tabelaReferencias + `

@@ -824,6 +824,9 @@ func notaDoTipo(ref *referencia) string {
 	if ref.Tipo == "reel" {
 		return notaDoReel(ref)
 	}
+	if ref.Tipo == "documentario" {
+		return notaDoDocumentario(ref)
+	}
 	if ref.Tipo != "pesquisa" {
 		return ""
 	}

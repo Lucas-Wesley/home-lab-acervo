@@ -36,6 +36,10 @@ defineProps({ nome: { type: String, required: true } })
       <rect x="9" y="9" width="11" height="11" rx="2" />
       <path d="M5.5 15H5a1.5 1.5 0 01-1.5-1.5v-9A1.5 1.5 0 015 3h9a1.5 1.5 0 011.5 1.5V5" />
     </template>
+    <template v-else-if="nome === 'documentario'">
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <path d="M7.5 5v14M16.5 5v14M3.5 9.5h4M3.5 14.5h4M16.5 9.5h4M16.5 14.5h4" />
+    </template>
     <template v-else-if="nome === 'podcast'">
       <rect x="9" y="3.5" width="6" height="11" rx="3" />
       <path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v2.5M9 20.5h6" />

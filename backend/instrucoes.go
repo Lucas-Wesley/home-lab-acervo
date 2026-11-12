@@ -25,6 +25,7 @@ type instrucao struct {
 // pesquisa de um trecho (D26).
 var instrucoes = []instrucao{
 	{Arquivo: "organizar.md", Nome: "Organizar a transcrição", Descricao: "Transforma a transcrição bruta num texto organizado: tira propaganda e conversa, junta cada assunto num lugar e mantém tudo o que é conteúdo."},
+	{Arquivo: "organizar-documentario.md", Nome: "Organizar um documentário", Descricao: "Tira de um documentário do Streaming o conhecimento que ele traz, como material de estudo: atribui as opiniões dos entrevistados, registra a leitura que ele defende e tira abertura, ganchos, cenas encenadas e narração de efeito. Num episódio, não repete o que os anteriores já explicaram."},
 	{Arquivo: "organizar-artigo.md", Nome: "Organizar um artigo", Descricao: "Faz o mesmo com o texto de uma página da web (artigo, blog): tira o que é do site e não do artigo e mantém tudo o que é conteúdo."},
 	{Arquivo: "ver-quadros.md", Nome: "Ler a tela de um Reel", Descricao: "Olha os quadros de um Reel do Instagram e escreve o que aparece na tela e não está na fala: texto sobreposto, listas, código, o que é mostrado."},
 	{Arquivo: "traduzir.md", Nome: "Traduzir", Descricao: "Passa o texto organizado para o português, quando o vídeo ou o artigo é em outra língua."},

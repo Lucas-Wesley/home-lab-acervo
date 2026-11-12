@@ -71,6 +71,13 @@ const cartoes = ref(null) // CartoesDaReferencia: o "Gerar flashcards" do menu a
 
 const ehPesquisa = computed(() => ref_.value?.tipo === 'pesquisa')
 const ehLivro = computed(() => ref_.value?.tipo === 'livro')
+// Documentário do Streaming (D50): os episódios dele ficam ligados.
+const documentario = computed(() => (ref_.value?.tipo === 'documentario' ? ref_.value.documentario : null))
+const episodios = computed(() => ref_.value?.episodios || [])
+const vizinhos = computed(() => {
+  const i = episodios.value.findIndex((e) => e.id === ref_.value?.id)
+  return { anterior: i > 0 ? episodios.value[i - 1] : null, proximo: i >= 0 && i < episodios.value.length - 1 ? episodios.value[i + 1] : null }
+})
 // D49: as buscas desta rodada da pesquisa que não trouxeram nada (a Wikipédia fora do ar, nenhum vídeo…).
 const NOMES_DAS_BUSCAS = { livros: 'Livros', capitulo: 'Capítulo', wikipedia: 'Wikipédia', youtube: 'YouTube', site: 'Site' }
 const buscasSemResultado = computed(() => {
@@ -260,6 +267,11 @@ onBeforeUnmount(() => {
           {{ descreverLivro(ref_.livro) }}<template v-if="ref_.livro.foco"> · foco: “{{ ref_.livro.foco }}”</template>
           · <a :href="ref_.url" target="_blank" rel="noopener">abrir na Biblioteca</a>
         </div>
+        <div v-else-if="documentario" class="suave meta">
+          {{ [ref_.canal, ref_.duracao, ref_.idioma && `idioma: ${ref_.idioma}`, documentario.texto === 'legenda' ? 'pela legenda' : 'pelo áudio'].filter(Boolean).join(' · ') }}
+          <template v-if="documentario.link"> · <a :href="documentario.link" target="_blank" rel="noopener">abrir no Streaming</a></template>
+          · <a :href="ref_.url" target="_blank" rel="noopener">TMDB</a>
+        </div>
         <div v-else class="suave meta">
           {{ [ref_.canal, ref_.duracao, ref_.idioma && `idioma: ${ref_.idioma}`].filter(Boolean).join(' · ') }}
           · <a :href="ref_.url" target="_blank" rel="noopener">{{ { artigo: 'abrir a página', reel: 'abrir no Instagram', podcast: ref_.url.includes('spotify') ? 'ouvir no Spotify' : 'ouvir no Apple Podcasts' }[ref_.tipo] || 'abrir no YouTube' }}</a>
@@ -270,6 +282,24 @@ onBeforeUnmount(() => {
           <a v-if="ref_.tarefa?.estado === 'em_revisao'" class="botao" :href="`#/revisao/${ref_.tarefa.id}`">Revisar proposta</a>
         </div>
       </header>
+
+      <nav v-if="episodios.length > 1" class="episodios-doc" aria-label="Episódios deste documentário">
+        <div class="cabeca-episodios">
+          <strong>{{ documentario.nome }}</strong>
+          <span class="suave">{{ episodios.length }} episódios no Acervo</span>
+        </div>
+        <ol>
+          <li v-for="e in episodios" :key="e.id" :class="{ atual: e.id === ref_.id }">
+            <a v-if="e.id !== ref_.id" :href="`#/referencia/${e.id}`"><span class="num">T{{ e.temporada }} E{{ e.episodio }}</span> {{ e.titulo }}</a>
+            <span v-else><span class="num">T{{ e.temporada }} E{{ e.episodio }}</span> {{ e.titulo }}</span>
+            <span v-if="e.estado !== 'organizado' && e.estado !== 'validado' && e.id !== ref_.id" class="suave estado-ep">{{ nomeDoEstado(e) }}</span>
+          </li>
+        </ol>
+        <div class="vizinhos">
+          <a v-if="vizinhos.anterior" :href="`#/referencia/${vizinhos.anterior.id}`">← Anterior</a>
+          <a v-if="vizinhos.proximo" class="proximo" :href="`#/referencia/${vizinhos.proximo.id}`">Próximo →</a>
+        </div>
+      </nav>
 
       <div v-if="ref_.erro" class="aviso erro">{{ ref_.erro }}</div>
       <div v-if="andando" class="aviso">
@@ -401,6 +431,61 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Episódios de um documentário (D50). */
+.episodios-doc {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+}
+
+.cabeca-episodios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.episodios-doc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.episodios-doc li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+}
+
+.episodios-doc li.atual {
+  font-weight: 600;
+}
+
+.episodios-doc .num {
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.estado-ep {
+  margin-left: auto;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.vizinhos {
+  display: flex;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.vizinhos .proximo {
+  margin-left: auto;
+}
+
 .voltar {
   display: inline-block;
   margin-bottom: 8px;
