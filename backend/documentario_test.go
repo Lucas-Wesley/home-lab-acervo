@@ -97,7 +97,8 @@ func TestDocumentarioDoStreaming(t *testing.T) {
 			prompt.Store(r.FormValue("prompt"))
 			idioma.Store(r.FormValue("language"))
 			json.NewEncoder(w).Encode(map[string]any{"language": "en", "segments": []map[string]any{
-				{"start": 0.0, "text": " The pyramid was built for Khufu."},
+				{"start": 0.0, "text": " Uma série sobre as pirâmides do Egito."}, // a dica repetida sobre a abertura
+				{"start": 3.0, "text": " The pyramid was built for Khufu."},
 				{"start": 9.0, "text": " Thank you for watching!", "no_speech_prob": 0.9}, // a trilha: o Whisper inventa
 				{"start": 15.0, "text": " Workers lived nearby."},
 			}})
@@ -112,7 +113,7 @@ func TestDocumentarioDoStreaming(t *testing.T) {
 	e.app.cfg.ffmpeg = "ffmpeg"
 
 	serie := documentario{
-		Chave: "serie/900", Nome: "O Segredo das Pirâmides", Original: "Secrets of the Pyramids", Ano: "2019", Idioma: "en",
+		Chave: "serie/900", Nome: "O Segredo das Pirâmides", Original: "Secrets of the Pyramids", Ano: "2019", Idioma: "en", Direcao: "Ana Diretora",
 		Sinopse: "Uma série sobre as pirâmides do Egito.", Temporada: 1, Episodios: 3, Capa: srv.URL + "/capa.jpg",
 		Link: "https://streaming.internal/#/titulo/serie/900", Origem: "assinatura",
 	}
@@ -135,7 +136,7 @@ func TestDocumentarioDoStreaming(t *testing.T) {
 		d1.Duracao != "44:00" || d1.URL != ep1.TMDB {
 		t.Errorf("metadados: %+v", d1.referencia)
 	}
-	for _, deve := range []string{"- Documentário: O Segredo das Pirâmides (Secrets of the Pyramids), 2019", "- Episódio: T1 E1 de 3 — A Grande Pirâmide",
+	for _, deve := range []string{"- Documentário: O Segredo das Pirâmides (Secrets of the Pyramids), 2019", "- Episódio: T1 E1 de 3 — A Grande Pirâmide", "- Direção: Ana Diretora",
 		"- Sinopse do episódio: Como Khufu ergueu Gizé.", "- Texto: legenda do vídeo (OpenSubtitles, en: Secrets.S01E01.WEB)", "[00:00] Fala número 0 sobre Gizé.",
 		"[00:30] Fala número 3", "- Streaming: https://streaming.internal/#/titulo/serie/900"} {
 		if !strings.Contains(d1.Textos["cru"], deve) {
@@ -166,7 +167,7 @@ func TestDocumentarioDoStreaming(t *testing.T) {
 	e.pedir("GET", "/api/referencias/"+id2, nil, &d2)
 	cru := d2.Textos["cru"]
 	if !strings.Contains(cru, "- Texto: transcrição do áudio (Whisper large-v3-turbo (servidor))") || !strings.Contains(cru, "Khufu") ||
-		!strings.Contains(cru, "Workers lived nearby.") || strings.Contains(cru, "Thank you for watching") {
+		!strings.Contains(cru, "Workers lived nearby.") || strings.Contains(cru, "Thank you for watching") || strings.Contains(cru, "] Uma série sobre") {
 		t.Errorf("cru do ep2:\n%s", cru)
 	}
 	if p, _ := prompt.Load().(string); !strings.Contains(p, "O Segredo das Pirâmides") || !strings.Contains(p, "Os construtores") {

@@ -13,7 +13,8 @@ Um documentário não é uma aula: tem narração, entrevistas, cenas encenadas,
 
 ## Quem diz o quê
 
-- **A narração** é a voz do documentário. O que ela afirma entra como fato, direto ("A pirâmide foi construída por volta de 2560 a.C."), com a marca de tempo no fim da seção.
+- **A narração** é a voz do documentário. O que ela afirma de fato (datas, nomes, o que aconteceu) entra direto, sem "segundo a narração" ("A pirâmide foi construída por volta de 2560 a.C."), com a marca de tempo no fim da seção.
+- **A interpretação do documentário** (um julgamento, uma causa disputada, o que alguém "quis" ou "sentiu") vai atribuída à **obra ou ao diretor**, e não ao tipo de material: "para o filme de Silvio Tendler, Vargas…", "o documentário sustenta que…" (o nome vem de `- Direção:` no cabeçalho). Nunca "a narração diz", "segundo a narração", "o vídeo mostra".
 - **Os entrevistados** (historiadores, cientistas, testemunhas): o que é **opinião, interpretação ou lembrança pessoal** vai atribuído ("segundo o egiptólogo Zahi Hawass, …"; "um sobrevivente conta que …"). Use o nome só quando o texto o disser ou o próprio entrevistado se apresentar; sem nome, pela função ("um arqueólogo entrevistado"). A transcrição não diz quem fala: não adivinhe.
 - **Hipóteses e teorias** ficam como hipóteses ("uma das hipóteses é…", "o documentário defende que…"), nunca como fato.
 - **O ponto de vista do documentário:** se ele defende uma leitura (uma tese, um lado de uma polêmica, uma teoria fora do consenso), diga isso no resumo do topo e trate essa leitura como do documentário. Não esconda nem combata: registre. O que for discutível vai também para "Dúvidas".

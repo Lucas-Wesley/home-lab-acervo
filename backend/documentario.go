@@ -30,6 +30,7 @@ type documentario struct {
 	Nome            string `json:"nome"`
 	Original        string `json:"original,omitempty"`
 	Ano             string `json:"ano,omitempty"`
+	Direcao         string `json:"direcao,omitempty"` // quem dirigiu (filme) ou criou (série)
 	Sinopse         string `json:"sinopse,omitempty"`
 	Idioma          string `json:"idioma,omitempty"` // o idioma original, do TMDB
 	Temporada       int    `json:"temporada,omitempty"`
@@ -258,9 +259,11 @@ func (a *app) extrairDocumentario(ctx context.Context, ref *referencia, pasta st
 			return err
 		}
 		d.Transcrito = quem
-		// Documentário tem trilha e silêncio: sobre a música, o Whisper inventa frases (como no Reel).
+		// Documentário tem trilha e silêncio: sobre a música, o Whisper inventa frases (como no Reel)
+		// ou repete a dica que recebeu (a sinopse).
+		dica := comparavelDaDica(promptDoDocumentario(d))
 		for _, t := range ts {
-			if !t.SemFala {
+			if !t.SemFala && !repeteADica(t.Texto, dica) {
 				trechos = append(trechos, t)
 			}
 		}
@@ -280,6 +283,19 @@ func (a *app) extrairDocumentario(ctx context.Context, ref *referencia, pasta st
 // promptDoDocumentario ajuda o Whisper com os nomes: o documentário, o episódio e as sinopses.
 func promptDoDocumentario(d documentario) string {
 	return cortar(strings.Join(strings.Fields(strings.Join(naoVazios(d.Nome, d.TituloEpisodio, d.SinopseEpisodio, d.Sinopse), ". ")), " "), 600, false)
+}
+
+// comparavelDaDica: minúsculas, só letras e números, um espaço entre as palavras.
+func comparavelDaDica(s string) string {
+	return strings.Join(strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r > 127)
+	}), " ")
+}
+
+// repeteADica: o trecho é um pedaço da dica dada ao Whisper (frases dela, não uma palavra solta).
+func repeteADica(texto, dica string) bool {
+	t := comparavelDaDica(texto)
+	return len(strings.Fields(t)) >= 4 && strings.Contains(dica, t)
 }
 
 var (
@@ -345,6 +361,9 @@ func documentarioParaCru(d documentario, trechos []trechoFalado) string {
 		nome += ", " + d.Ano
 	}
 	fmt.Fprintf(&s, "- Documentário: %s\n", nome)
+	if d.Direcao != "" {
+		fmt.Fprintf(&s, "- Direção: %s\n", d.Direcao)
+	}
 	if d.ehEpisodio() {
 		fmt.Fprintf(&s, "- Episódio: %s", d.rotuloDoEpisodio())
 		if d.TituloEpisodio != "" {
