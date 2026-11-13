@@ -253,6 +253,15 @@ CREATE TABLE IF NOT EXISTS simulados (
 	criado_em TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS simulados_tema ON simulados (tema);
+-- Exercícios feitos (D52): cada resposta, já conferida pelo app, para o sorteio e o progresso.
+CREATE TABLE IF NOT EXISTS exercicios_feitos (
+	tema      TEXT NOT NULL,
+	exercicio TEXT NOT NULL,
+	resposta  TEXT NOT NULL DEFAULT '',
+	certo     INTEGER NOT NULL,
+	criado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS exercicios_feitos_tema ON exercicios_feitos (tema);
 -- Dúvidas resolvidas pelo áudio e pela internet (D37): uma por item de "## Dúvidas".
 CREATE TABLE IF NOT EXISTS duvidas (
 	id            TEXT PRIMARY KEY,

@@ -214,3 +214,95 @@ func TestEstudarUmaReferencia(t *testing.T) {
 		t.Errorf("sobrou estudo da Referência excluída: %d", n)
 	}
 }
+
+// O simulado e os exercícios crescem (D52): "gerar mais" acrescenta sem repetir, com o foco do
+// Lucas; os exercícios que não dá para conferir saem; cada resposta de exercício e cada pergunta
+// corrigida entram no histórico, que o sorteio usa.
+func TestEstudoQueCresce(t *testing.T) {
+	e := novoAmbiente(t)
+	raiz := e.app.conteudo.raiz
+	os.MkdirAll(filepath.Join(raiz, "temas/clube"), 0o755)
+	os.WriteFile(filepath.Join(raiz, "temas/clube/indice.md"), []byte("# Clube\n\n## Fundação\n\nFundado em 1930.\n"), 0o644)
+
+	type resposta struct {
+		Partes    map[string]estudo `json:"partes"`
+		Historico struct {
+			Perguntas  map[string]historicoDoItem `json:"perguntas"`
+			Exercicios map[string]historicoDoItem `json:"exercicios"`
+		} `json:"historico"`
+	}
+	ler := func() resposta {
+		var x resposta
+		e.pedir("GET", "/api/estudos?tema=temas/clube", nil, &x)
+		return x
+	}
+	preparar := func(corpo map[string]any, parte string, quantos int) resposta {
+		t.Helper()
+		if s := e.pedir("POST", "/api/estudos", corpo, nil); s != http.StatusAccepted {
+			t.Fatalf("preparar %v: %d", corpo, s)
+		}
+		var r resposta
+		e.esperar(parte+" pronto", func() bool {
+			r = ler()
+			return r.Partes[parte].Estado == "pronto" && len(itensDoBanco(parte, r.Partes[parte].Resultado)) == quantos
+		})
+		return r
+	}
+
+	// "Mais" sem banco é o primeiro lote; foco e "mais" não valem para o resumo.
+	r := preparar(map[string]any{"tema": "temas/clube", "parte": "simulado", "mais": true}, "simulado", 6)
+	if s := e.pedir("POST", "/api/estudos", map[string]any{"tema": "temas/clube", "parte": "resumo", "foco": "x"}, nil); s != http.StatusBadRequest {
+		t.Errorf("foco no resumo: %d", s)
+	}
+	if s := e.pedir("POST", "/api/estudos", map[string]any{"tema": "temas/clube", "parte": "simulado", "foco": strings.Repeat("a", maxFoco+1)}, nil); s != http.StatusBadRequest {
+		t.Errorf("foco longo: %d", s)
+	}
+	r = preparar(map[string]any{"tema": "temas/clube", "parte": "simulado", "mais": true, "foco": "só a fundação"}, "simulado", 12)
+	var banco struct{ Perguntas []perguntaDoSimulado }
+	json.Unmarshal(r.Partes["simulado"].Resultado, &banco)
+	if banco.Perguntas[0].Pergunta != "Pergunta 1?" || banco.Perguntas[0].Lote != 1 || banco.Perguntas[6].Pergunta != "Pergunta nova com foco 1?" ||
+		banco.Perguntas[6].Lote != 2 || banco.Perguntas[6].ID == "" || banco.Perguntas[6].ID == banco.Perguntas[0].ID {
+		t.Errorf("banco depois de gerar mais: %+v", banco.Perguntas)
+	}
+	// Refazer começa outro banco.
+	r = preparar(map[string]any{"tema": "temas/clube", "parte": "simulado"}, "simulado", 6)
+
+	// Exercícios: só os que dá para conferir; o lote a mais não repete.
+	r = preparar(map[string]any{"tema": "temas/clube", "parte": "exercicios"}, "exercicios", 2)
+	r = preparar(map[string]any{"tema": "temas/clube", "parte": "exercicios", "mais": true}, "exercicios", 3)
+	var ex struct{ Exercicios []exercicio }
+	json.Unmarshal(r.Partes["exercicios"].Resultado, &ex)
+	if ex.Exercicios[0].Tipo != "completar" || len(ex.Exercicios[0].Aceitas) != 1 || ex.Exercicios[0].Opcoes == nil ||
+		ex.Exercicios[2].Enunciado != "Novo: inaugurado em ___." || ex.Exercicios[2].Lote != 2 {
+		t.Errorf("exercícios: %+v", ex.Exercicios)
+	}
+
+	// As respostas dos exercícios.
+	id := ex.Exercicios[0].ID
+	for _, certo := range []bool{false, true} {
+		if s := e.pedir("POST", "/api/exercicios/respostas", map[string]any{"tema": "temas/clube", "exercicio": id, "resposta": "1930", "certo": certo}, nil); s != http.StatusCreated {
+			t.Fatalf("responder: %d", s)
+		}
+	}
+	if s := e.pedir("POST", "/api/exercicios/respostas", map[string]any{"tema": "temas/clube", "exercicio": "nao-existe", "certo": true}, nil); s != http.StatusNotFound {
+		t.Errorf("exercício que não existe: %d", s)
+	}
+
+	// Um simulado corrigido entra no histórico das perguntas.
+	var sim simuladoFeito
+	e.pedir("POST", "/api/simulados", map[string]any{"tema": "temas/clube", "respostas": []respostaDoSimulado{
+		{Pergunta: "Pergunta 1?", Esperada: "Resposta 1.", Resposta: "1930"},
+		{Pergunta: "Pergunta 2?", Esperada: "Resposta 2.", Resposta: "não sei"},
+	}}, &sim)
+	e.esperar("simulado corrigido", func() bool {
+		e.pedir("GET", "/api/simulados/"+sim.ID, nil, &sim)
+		return sim.Estado == "pronto"
+	})
+	r = ler()
+	if h := r.Historico.Exercicios[id]; h.Vezes != 2 || h.Acertos != 1 || h.Ultima != "certo" {
+		t.Errorf("histórico do exercício: %+v", r.Historico.Exercicios)
+	}
+	if h := r.Historico.Perguntas["pergunta 1"]; h.Vezes != 1 || h.Ultima != "certa" || r.Historico.Perguntas["pergunta 2"].Ultima != "errada" {
+		t.Errorf("histórico das perguntas: %+v", r.Historico.Perguntas)
+	}
+}

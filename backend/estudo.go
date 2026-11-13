@@ -24,6 +24,9 @@ import (
 //     (regras/estudar-anteriores.md, com a internet para as fontes);
 //   - simulado: um banco de perguntas abertas (regras/estudar-simulado.md). O app sorteia algumas,
 //     o Lucas responde digitando ou falando, e a IA corrige (regras/corrigir-simulado.md).
+//   - exercicios: prática com resposta certa, corrigida na hora pelo app (regras/estudar-exercicios.md, D52).
+// O simulado e os exercícios crescem (D52): "gerar mais" acrescenta ao banco, com um foco opcional,
+// sem repetir o que já existe; o sorteio prefere o que nunca saiu e o que se errou.
 // Os flashcards saem do Tema (D28), dos conceitos anteriores ou do que se errou num simulado.
 // Cada parte guarda a versão do Tema de onde saiu: se o texto mudou, a aba avisa.
 
@@ -31,11 +34,17 @@ var partesDoEstudo = map[string]string{
 	"resumo":     "estudar-resumo.md",
 	"anteriores": "estudar-anteriores.md",
 	"simulado":   "estudar-simulado.md",
+	"exercicios": "estudar-exercicios.md",
 }
+
+// Partes que crescem com "gerar mais" (D52).
+var partesQueCrescem = map[string]bool{"simulado": true, "exercicios": true}
 
 const (
 	perguntasPorSimulado = 5
 	maxResposta          = 3000
+	maxFoco              = 1000
+	maxNoBanco           = 300 // perguntas ou exercícios num banco, somando os lotes
 )
 
 type estudo struct {
@@ -61,10 +70,26 @@ type conceitoAnterior struct {
 }
 
 type perguntaDoSimulado struct {
+	ID       string `json:"id,omitempty"`
 	Pergunta string `json:"pergunta"`
 	Esperada string `json:"esperada"`
 	Capitulo string `json:"capitulo"`
 	Nivel    string `json:"nivel"` // lembrar, entender, aplicar
+	Lote     int    `json:"lote,omitempty"`
+}
+
+// exercicio (D52): prática com uma resposta certa, que o app confere na hora.
+type exercicio struct {
+	ID         string   `json:"id"`
+	Tipo       string   `json:"tipo"`      // escolha (entre as opções) ou completar (a lacuna ___)
+	Enunciado  string   `json:"enunciado"` // a frase, com ___ no lugar da lacuna
+	Opcoes     []string `json:"opcoes"`    // na escolha; no completar, vazio
+	Resposta   string   `json:"resposta"`
+	Aceitas    []string `json:"aceitas"` // outras respostas certas, se houver
+	Explicacao string   `json:"explicacao"`
+	Assunto    string   `json:"assunto"` // a regra ou a ideia que o exercício treina
+	Capitulo   string   `json:"capitulo"`
+	Lote       int      `json:"lote,omitempty"`
 }
 
 const (
@@ -80,6 +105,12 @@ const (
 		`"pergunta":{"type":"string"},"esperada":{"type":"string"},"capitulo":{"type":"string"},` +
 		`"nivel":{"type":"string","enum":["lembrar","entender","aplicar"]}},` +
 		`"required":["pergunta","esperada","capitulo","nivel"]}}},"required":["perguntas"]}`
+
+	esquemaExercicios = `{"type":"object","properties":{"exercicios":{"type":"array","items":{"type":"object","properties":{` +
+		`"tipo":{"type":"string","enum":["escolha","completar"]},"enunciado":{"type":"string"},` +
+		`"opcoes":{"type":"array","items":{"type":"string"}},"resposta":{"type":"string"},"aceitas":{"type":"array","items":{"type":"string"}},` +
+		`"explicacao":{"type":"string"},"assunto":{"type":"string"},"capitulo":{"type":"string"}},` +
+		`"required":["tipo","enunciado","opcoes","resposta","aceitas","explicacao","assunto","capitulo"]}}},"required":["exercicios"]}`
 
 	esquemaCorrecao = `{"type":"object","properties":{"nota":{"type":"integer","minimum":0,"maximum":100},"comentario":{"type":"string"},` +
 		`"itens":{"type":"array","items":{"type":"object","properties":{"n":{"type":"integer"},` +
@@ -280,12 +311,25 @@ func (a *app) handleEstudos(w http.ResponseWriter, r *http.Request) {
 		falha(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"partes": partes, "simulados": simulados})
+	perguntas, err := a.historicoDoSimulado(r.Context(), tema)
+	if err != nil {
+		falha(w, err)
+		return
+	}
+	exercicios, err := a.historicoDosExercicios(r.Context(), tema)
+	if err != nil {
+		falha(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"partes": partes, "simulados": simulados,
+		"historico": map[string]any{"perguntas": perguntas, "exercicios": exercicios}})
 }
 
 type paramsEstudo struct {
 	Tema  string `json:"tema"`
 	Parte string `json:"parte"`
+	Mais  bool   `json:"mais,omitempty"` // acrescenta ao banco em vez de refazer (D52)
+	Foco  string `json:"foco,omitempty"` // em que focar o lote novo
 }
 
 // handlePrepararEstudo: POST /api/estudos {tema, parte} — prepara (ou refaz) uma parte na fila.
@@ -303,10 +347,28 @@ func (a *app) handlePrepararEstudo(w http.ResponseWriter, r *http.Request) {
 		erroJSON(w, http.StatusNotFound, naoEncontrado(p.Tema))
 		return
 	}
+	p.Foco = strings.TrimSpace(p.Foco)
+	if utf8.RuneCountInString(p.Foco) > maxFoco {
+		erroJSON(w, http.StatusBadRequest, fmt.Sprintf("O foco passou de %d caracteres.", maxFoco))
+		return
+	}
+	if (p.Mais || p.Foco != "") && !partesQueCrescem[p.Parte] {
+		erroJSON(w, http.StatusBadRequest, "Esta parte não aceita gerar mais.")
+		return
+	}
 	ctx := r.Context()
-	if partes, err := a.estudosDoTema(ctx, p.Tema); err == nil && partes[p.Parte].Estado == "processando" {
+	partes, err := a.estudosDoTema(ctx, p.Tema)
+	if err == nil && partes[p.Parte].Estado == "processando" {
 		erroJSON(w, http.StatusConflict, "Esta parte já está na fila.")
 		return
+	}
+	if p.Mais {
+		if partes[p.Parte].Estado != "pronto" {
+			p.Mais = false // ainda não há banco: o lote é o primeiro
+		} else if len(itensDoBanco(p.Parte, partes[p.Parte].Resultado)) >= maxNoBanco {
+			erroJSON(w, http.StatusBadRequest, fmt.Sprintf("O banco já tem %d itens. Refaça para começar outro.", maxNoBanco))
+			return
+		}
 	}
 	tarefa, err := a.fila.enfileirar(ctx, "", "estudar", p)
 	if err != nil {
@@ -319,7 +381,7 @@ func (a *app) handlePrepararEstudo(w http.ResponseWriter, r *http.Request) {
 		falha(w, err)
 		return
 	}
-	partes, err := a.estudosDoTema(ctx, p.Tema)
+	partes, err = a.estudosDoTema(ctx, p.Tema)
 	if err != nil {
 		falha(w, err)
 		return
@@ -376,8 +438,32 @@ func (a *app) estudar(ctx context.Context, t *tarefa) (resultado, error) {
 	case "simulado":
 		pedido.instrucao = inicio + " Monte o banco de perguntas do simulado sobre o Tema inteiro."
 		pedido.esquema = esquemaSimulado
+	case "exercicios":
+		pedido.instrucao = inicio + " Monte os exercícios de prática sobre o Tema inteiro."
+		pedido.esquema = esquemaExercicios
 	default:
 		return pronto, fmt.Errorf("parte desconhecida: %s", p.Parte)
+	}
+	// Gerar mais (D52): o banco atual vai num arquivo, para o lote novo não repetir nada dele.
+	var antes json.RawMessage
+	if p.Mais {
+		var guardado string
+		a.db.QueryRowContext(ctx, `SELECT resultado FROM estudos WHERE tema = ? AND parte = ?`, p.Tema, p.Parte).Scan(&guardado)
+		if guardado != "" {
+			antes = json.RawMessage(guardado)
+			var lista strings.Builder
+			lista.WriteString("# O que já existe no banco\n\nNão repita nada daqui, nem com outras palavras. Traga outros pontos, outros casos, outros ângulos.\n\n")
+			for _, it := range itensDoBanco(p.Parte, antes) {
+				fmt.Fprintf(&lista, "- %s\n", it)
+			}
+			if err := os.WriteFile(filepath.Join(pasta, "ja-existem.md"), []byte(lista.String()), 0o644); err != nil {
+				return pronto, err
+			}
+			pedido.instrucao += " Este é um lote a mais: o banco já tem o que está em ja-existem.md, nesta pasta (é só a lista, não faz parte do Tema). Não repita nada de lá."
+		}
+	}
+	if p.Foco != "" {
+		pedido.instrucao += "\n\nO Lucas pediu este foco para o lote (pode ser fala ditada; entenda a intenção). Siga-o, sem sair do que o Tema traz:\n\n" + p.Foco
 	}
 	r, err := a.chamarClaude(ctx, pedido)
 	if err != nil {
@@ -417,21 +503,226 @@ func (a *app) estudar(ctx context.Context, t *tarefa) (resultado, error) {
 		}
 		saida = s
 	case "simulado":
-		var s struct {
+		var s, velho struct {
 			Perguntas []perguntaDoSimulado `json:"perguntas"`
 		}
 		if err := dadosDaResposta(r, &s); err != nil {
 			return pronto, err
 		}
-		if len(s.Perguntas) == 0 {
-			return pronto, errors.New("o claude não devolveu perguntas")
+		json.Unmarshal(antes, &velho)
+		lote := 1
+		vistas := map[string]bool{}
+		for _, q := range velho.Perguntas {
+			vistas[comparavel(q.Pergunta)] = true
+			lote = max(lote, q.Lote+1)
 		}
+		novas := velho.Perguntas
+		for _, q := range s.Perguntas {
+			if strings.TrimSpace(q.Pergunta) == "" || vistas[comparavel(q.Pergunta)] {
+				continue
+			}
+			vistas[comparavel(q.Pergunta)] = true
+			q.ID, q.Lote = novoID(), lote
+			novas = append(novas, q)
+		}
+		if len(novas) == len(velho.Perguntas) {
+			return pronto, errors.New("o claude não devolveu perguntas novas")
+		}
+		s.Perguntas = novas
 		saida = s
+	case "exercicios":
+		var s, velho struct {
+			Exercicios []exercicio `json:"exercicios"`
+		}
+		if err := dadosDaResposta(r, &s); err != nil {
+			return pronto, err
+		}
+		json.Unmarshal(antes, &velho)
+		lote := 1
+		vistos := map[string]bool{}
+		for _, x := range velho.Exercicios {
+			vistos[comparavel(x.Enunciado)] = true
+			lote = max(lote, x.Lote+1)
+		}
+		novos := velho.Exercicios
+		for _, x := range s.Exercicios {
+			if !exercicioValido(&x) || vistos[comparavel(x.Enunciado)] {
+				continue
+			}
+			vistos[comparavel(x.Enunciado)] = true
+			x.ID, x.Lote = novoID(), lote
+			novos = append(novos, x)
+		}
+		if len(novos) == len(velho.Exercicios) {
+			return pronto, errors.New("o claude não devolveu exercícios novos")
+		}
+		s.Exercicios = novos
+		saida = s
+	}
+	if antes != nil {
+		// Um lote a mais não muda a versão: se o texto mudou, o aviso continua até refazer.
+		a.db.QueryRowContext(ctx, `SELECT versao FROM estudos WHERE tema = ? AND parte = ?`, p.Tema, p.Parte).Scan(&versao)
 	}
 	b, _ := json.Marshal(saida)
 	_, err = a.db.ExecContext(ctx, `UPDATE estudos SET resultado = ?, versao = ?, atualizado_em = ? WHERE tema = ? AND parte = ? AND tarefa_id = ?`,
 		string(b), versao, agora(), p.Tema, p.Parte, t.ID)
 	return pronto, err
+}
+
+// comparavel: o texto sem caixa, espaços e pontuação nas pontas, para achar repetidos.
+func comparavel(s string) string {
+	return strings.ToLower(strings.Join(strings.Fields(strings.Trim(s, " .?!…:;\n\t")), " "))
+}
+
+// exercicioValido limpa o exercício e diz se ele dá para conferir: a resposta certa tem de estar
+// entre as opções (na escolha) e a lacuna tem de existir (no completar).
+func exercicioValido(x *exercicio) bool {
+	x.Enunciado, x.Resposta = strings.TrimSpace(x.Enunciado), strings.TrimSpace(x.Resposta)
+	if x.Enunciado == "" || x.Resposta == "" {
+		return false
+	}
+	if x.Aceitas == nil {
+		x.Aceitas = []string{}
+	}
+	switch x.Tipo {
+	case "escolha":
+		achou := false
+		for _, o := range x.Opcoes {
+			achou = achou || strings.TrimSpace(o) == x.Resposta
+		}
+		return achou && len(x.Opcoes) >= 2
+	case "completar":
+		x.Opcoes = []string{}
+		return strings.Contains(x.Enunciado, "___")
+	}
+	return false
+}
+
+// itensDoBanco: o texto de cada pergunta ou exercício já preparado.
+func itensDoBanco(parte string, resultado json.RawMessage) []string {
+	var s struct {
+		Perguntas  []perguntaDoSimulado `json:"perguntas"`
+		Exercicios []exercicio          `json:"exercicios"`
+	}
+	json.Unmarshal(resultado, &s)
+	var lista []string
+	if parte == "simulado" {
+		for _, q := range s.Perguntas {
+			lista = append(lista, q.Pergunta)
+		}
+	} else {
+		for _, x := range s.Exercicios {
+			lista = append(lista, x.Enunciado)
+		}
+	}
+	return lista
+}
+
+// ---------- O histórico (D52): o que já saiu e o que se errou ----------
+
+type historicoDoItem struct {
+	Vezes   int    `json:"vezes"`
+	Acertos int    `json:"acertos"`
+	Ultima  string `json:"ultima"` // a última avaliação: certa, parcial, errada… (no exercício, certo ou errado)
+	Quando  string `json:"quando"`
+}
+
+// historicoDoSimulado: por pergunta (o texto comparável), quantas vezes saiu nos simulados
+// corrigidos e como foi a última.
+func (a *app) historicoDoSimulado(ctx context.Context, tema string) (map[string]historicoDoItem, error) {
+	lista, err := a.simuladosDoTema(ctx, tema, 500)
+	if err != nil {
+		return nil, err
+	}
+	saida := map[string]historicoDoItem{}
+	for i := len(lista) - 1; i >= 0; i-- { // do mais velho ao mais novo
+		s := lista[i]
+		if s.Correcao == nil {
+			continue
+		}
+		for _, it := range s.Correcao.Itens {
+			if it.N < 1 || it.N > len(s.Respostas) {
+				continue
+			}
+			k := comparavel(s.Respostas[it.N-1].Pergunta)
+			h := saida[k]
+			h.Vezes++
+			if it.Avaliacao == "certa" {
+				h.Acertos++
+			}
+			h.Ultima, h.Quando = it.Avaliacao, s.CriadoEm
+			saida[k] = h
+		}
+	}
+	return saida, nil
+}
+
+// historicoDosExercicios: por exercício (o id), quantas vezes foi feito e se acertou da última.
+func (a *app) historicoDosExercicios(ctx context.Context, tema string) (map[string]historicoDoItem, error) {
+	rows, err := a.db.QueryContext(ctx, `SELECT exercicio, certo, criado_em FROM exercicios_feitos WHERE tema = ? ORDER BY criado_em, rowid`, tema)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	saida := map[string]historicoDoItem{}
+	for rows.Next() {
+		var id, quando string
+		var certo bool
+		if err := rows.Scan(&id, &certo, &quando); err != nil {
+			return nil, err
+		}
+		h := saida[id]
+		h.Vezes++
+		h.Ultima, h.Quando = "errado", quando
+		if certo {
+			h.Acertos++
+			h.Ultima = "certo"
+		}
+		saida[id] = h
+	}
+	return saida, rows.Err()
+}
+
+// handleResponderExercicio: POST /api/exercicios/respostas {tema, exercicio, resposta, certo} —
+// guarda o que o Lucas respondeu num exercício (o app já conferiu, D52).
+func (a *app) handleResponderExercicio(w http.ResponseWriter, r *http.Request) {
+	var p struct {
+		Tema      string `json:"tema"`
+		Exercicio string `json:"exercicio"`
+		Resposta  string `json:"resposta"`
+		Certo     bool   `json:"certo"`
+	}
+	if !lerCorpo(w, r, &p) {
+		return
+	}
+	p.Tema = strings.TrimSuffix(p.Tema, "/")
+	if _, err := a.temaDoEstudo(r.Context(), p.Tema); err != nil {
+		erroJSON(w, http.StatusNotFound, naoEncontrado(p.Tema))
+		return
+	}
+	partes, err := a.estudosDoTema(r.Context(), p.Tema)
+	if err != nil {
+		falha(w, err)
+		return
+	}
+	var banco struct {
+		Exercicios []exercicio `json:"exercicios"`
+	}
+	json.Unmarshal(partes["exercicios"].Resultado, &banco)
+	existe := false
+	for _, x := range banco.Exercicios {
+		existe = existe || x.ID == p.Exercicio
+	}
+	if !existe {
+		erroJSON(w, http.StatusNotFound, "Exercício não encontrado.")
+		return
+	}
+	if _, err := a.db.ExecContext(r.Context(), `INSERT INTO exercicios_feitos (tema, exercicio, resposta, certo, criado_em) VALUES (?, ?, ?, ?, ?)`,
+		p.Tema, p.Exercicio, cortar(p.Resposta, 500, false), p.Certo, agora()); err != nil {
+		falha(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]bool{"ok": true})
 }
 
 // ---------- O simulado ----------
@@ -754,7 +1045,7 @@ func (a *app) tarefaDeEstudo(r *http.Request, t tarefa) tarefaComTitulo {
 		}
 		return tarefaComTitulo{t, "(Tema apagado)", ""}
 	}
-	nomes := map[string]string{"resumo": "resumo", "anteriores": "conceitos anteriores", "simulado": "perguntas do simulado"}
+	nomes := map[string]string{"resumo": "resumo", "anteriores": "conceitos anteriores", "simulado": "perguntas do simulado", "exercicios": "exercícios"}
 	if n := nomes[p.Parte]; n != "" {
 		titulo += " · " + n
 	}

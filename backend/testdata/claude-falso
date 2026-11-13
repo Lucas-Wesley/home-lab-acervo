@@ -20,8 +20,15 @@ case "$prompt" in
     printf '{"type":"result","result":"","is_error":false,"structured_output":{"conceitos":[{"nome":"Conceito base","tipo":"base","por_que":"Ajuda.","explicacao":"Explicação base (ferramentas: %s).","tema":"temas/outro","fontes":[{"titulo":"Fonte","url":"https://exemplo.com"}]},{"nome":"Vizinho","tipo":"vizinho","por_que":"Contexto.","explicacao":"Explicação vizinha.","tema":"temas/nao-existe","fontes":[]}]}}\n' "$ferramentas" ;;
   *"Monte o banco de perguntas do simulado"*)
     itens=""
-    for n in 1 2 3 4 5 6; do itens="$itens{\"pergunta\":\"Pergunta $n?\",\"esperada\":\"Resposta $n.\",\"capitulo\":\"Fundação\",\"nivel\":\"entender\"},"; done
+    nome="Pergunta"; [ -f ja-existem.md ] && nome="Pergunta nova"
+    case "$prompt" in *"foco para o lote"*) nome="$nome com foco";; esac
+    for n in 1 2 3 4 5 6; do itens="$itens{\"pergunta\":\"$nome $n?\",\"esperada\":\"Resposta $n.\",\"capitulo\":\"Fundação\",\"nivel\":\"entender\"},"; done
+    # Num lote a mais, uma repetida (o servidor descarta).
+    [ -f ja-existem.md ] && itens="$itens{\"pergunta\":\"pergunta 1\",\"esperada\":\"R.\",\"capitulo\":\"Fundação\",\"nivel\":\"lembrar\"},"
     printf '{"type":"result","result":"","is_error":false,"structured_output":{"perguntas":[%s]}}\n' "${itens%,}" ;;
+  *"Monte os exercícios de prática"*)
+    nome="Fundado em ___."; [ -f ja-existem.md ] && nome="Novo: inaugurado em ___."
+    printf '{"type":"result","result":"","is_error":false,"structured_output":{"exercicios":[{"tipo":"completar","enunciado":"%s","opcoes":[],"resposta":"1930","aceitas":["em 1930"],"explicacao":"Porque sim.","assunto":"datas","capitulo":"Fundação"},{"tipo":"escolha","enunciado":"O clube é de ___.","opcoes":["1930","1940"],"resposta":"1930","aceitas":[],"explicacao":"Fundação.","assunto":"datas","capitulo":"Fundação"},{"tipo":"escolha","enunciado":"Sem a resposta nas opções ___","opcoes":["x","y"],"resposta":"z","aceitas":[],"explicacao":".","assunto":"","capitulo":""},{"tipo":"completar","enunciado":"Sem lacuna","opcoes":[],"resposta":"x","aceitas":[],"explicacao":".","assunto":"","capitulo":""}]}}\n' "$nome" ;;
   *"Corrija o simulado em simulado.md"*)
     n=$(grep -c '^## Pergunta ' simulado.md)
     voz=""; grep -q '(falada' simulado.md && voz=" Teve resposta falada."

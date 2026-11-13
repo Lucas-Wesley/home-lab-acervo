@@ -1,5 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import Exercicios from './Exercicios.vue'
+import GerarMais from './GerarMais.vue'
 import Icone from './Icone.vue'
 import Info from './Info.vue'
 import Simulado from './Simulado.vue'
@@ -9,10 +11,10 @@ import { renderizar } from './markdown.js'
 import { enderecoDePesquisa } from './pesquisa.js'
 
 // Aba Estudar de um Tema ou de uma Referência (D41): resumo inteligente, conceitos anteriores,
-// simulado e flashcards. Cada parte é preparada pela IA na fila, a partir do Tema inteiro (com os
+// exercícios (D52), simulado e flashcards. Cada parte é preparada pela IA na fila, a partir do Tema inteiro (com os
 // subtemas) ou do texto da Referência, e fica guardada; quando o texto muda, a parte avisa.
-// A aba abre só com os quatro cartões; o escolhido abre embaixo, e o simulado, em tela própria,
-// porque responder pede foco e a tela inteira.
+// A aba abre só com os cartões; o escolhido abre embaixo, e os exercícios e o simulado, em tela
+// própria, porque responder pede foco e a tela inteira. Os dois crescem com "gerar mais" (D52).
 const props = defineProps({
   local: { type: String, required: true }, // temas/<pasta> ou referencias/<id>
   titulo: { type: String, required: true },
@@ -26,10 +28,12 @@ const doTexto = computed(() => (ehReferencia.value ? 'o texto' : 'o Tema'))
 const SECOES = computed(() => [
   { id: 'resumo', nome: 'Resumo inteligente', icone: 'resumo', descricao: `${ehReferencia.value ? 'O texto' : 'O Tema'} inteiro em poucos minutos: a ideia central, o essencial, como as partes se ligam e o que costuma confundir.` },
   { id: 'anteriores', nome: 'Conceitos anteriores', icone: 'camadas', descricao: `O que ajuda a entender ${doTexto.value} e não está explicado nele: a base que ele supõe e os assuntos ao redor.` },
-  { id: 'simulado', nome: 'Simulado', icone: 'simulado', descricao: `Perguntas sorteadas ${ehReferencia.value ? 'do texto' : 'do Tema'} para ver se você entendeu. Responda escrevendo ou falando; a IA corrige.` },
+  { id: 'exercicios', nome: 'Exercícios', icone: 'exercicios', descricao: `Prática com resposta certa: completar a frase ou escolher a opção, num caso novo. A correção é na hora, com o porquê. Os que você nunca fez e os que errou vêm primeiro; "Gerar mais" traz um lote novo, com o foco que você quiser.` },
+  { id: 'simulado', nome: 'Simulado', icone: 'simulado', descricao: `Perguntas de teoria ${ehReferencia.value ? 'do texto' : 'do Tema'}, sobretudo o porquê, para ver se você entendeu. Responda escrevendo ou falando; a IA corrige. As que nunca saíram e as que você errou vêm primeiro; "Gerar mais" acrescenta perguntas novas ao banco.` },
   { id: 'flashcards', nome: 'Flashcards', icone: 'cartoes', descricao: `Padrão: perguntas de resposta curta. Leitura: em geral um cartão só, com um resumo ${ehReferencia.value ? 'do texto' : 'do Tema'} para reler; mais de um só se ${ehReferencia.value ? 'ele' : 'o Tema'} muda de assunto. A proposta vai para o app Flashcards, e você aprova antes de os cartões entrarem no baralho.` },
 ])
-const PREPARAR = { resumo: 'Preparar o resumo', anteriores: 'Achar os conceitos anteriores', simulado: 'Preparar as perguntas' }
+const PREPARAR = { resumo: 'Preparar o resumo', anteriores: 'Achar os conceitos anteriores', exercicios: 'Preparar os exercícios', simulado: 'Preparar as perguntas' }
+const TELA_PROPRIA = ['exercicios', 'simulado']
 
 const dados = ref(null) // { partes: { resumo, anteriores, simulado }, simulados }
 const erro = ref('')
@@ -43,6 +47,9 @@ const parte = computed(() => partes.value[aberta.value])
 const processando = computed(() => Object.values(partes.value).some((p) => p.estado === 'processando') || dados.value?.simulados?.some((s) => s.estado === 'processando'))
 const conceitos = computed(() => partes.value.anteriores?.resultado?.conceitos ?? [])
 const banco = computed(() => partes.value.simulado?.resultado?.perguntas ?? [])
+const exercicios = computed(() => partes.value.exercicios?.resultado?.exercicios ?? [])
+const historico = computed(() => dados.value?.historico ?? { perguntas: {}, exercicios: {} })
+const origemDoTexto = computed(() => (ehReferencia.value ? { referencia: props.local.slice('referencias/'.length) } : { arquivo: `${props.local}/indice.md`, capitulo: '' }))
 const textoResumo = computed(() => partes.value.resumo?.resultado?.texto ?? '')
 
 function mensagem(e) {
@@ -64,6 +71,11 @@ function situacao(id) {
     const nota = dados.value.simulados.find((s) => s.correcao)?.correcao.nota
     texto = `${banco.value.length} perguntas${nota !== undefined ? ` · última nota ${nota}` : ''}`
   }
+  if (id === 'exercicios') {
+    const feitos = exercicios.value.filter((x) => historico.value.exercicios[x.id]?.vezes)
+    const certos = feitos.filter((x) => historico.value.exercicios[x.id].ultima === 'certo').length
+    texto = `${exercicios.value.length} exercícios${feitos.length ? ` · ${certos} de ${feitos.length} certos` : ''}`
+  }
   return p.desatualizado ? { texto: `${texto} · o texto mudou`, classe: 'mudou' } : { texto }
 }
 
@@ -78,11 +90,14 @@ async function carregar() {
   if (processando.value) espera = setTimeout(carregar, 4000)
 }
 
-async function preparar(id) {
+async function preparar(id, extra = {}) {
+  // Refazer o simulado ou os exercícios troca o banco inteiro: confirmar.
+  const quantos = id === 'simulado' ? banco.value.length : id === 'exercicios' ? exercicios.value.length : 0
+  if (!extra.mais && quantos && !confirm(`Trocar ${id === 'simulado' ? `as ${quantos} perguntas` : `os ${quantos} exercícios`} por um banco novo? Para acrescentar sem perder nada, use "Gerar mais".`)) return
   pedindo.value = id
   erro.value = ''
   try {
-    await api('/api/estudos', { metodo: 'POST', corpo: { tema: props.local, parte: id } })
+    await api('/api/estudos', { metodo: 'POST', corpo: { tema: props.local, parte: id, ...extra } })
     await carregar()
   } catch (e) {
     erro.value = mensagem(e)
@@ -93,8 +108,9 @@ async function preparar(id) {
 
 const raiz = ref(null)
 function abrir(id) {
-  aberta.value = aberta.value === id && id !== 'simulado' ? '' : id
-  if (id === 'simulado') raiz.value?.scrollIntoView({ block: 'start' })
+  const propria = TELA_PROPRIA.includes(id)
+  aberta.value = aberta.value === id && !propria ? '' : id
+  if (propria) raiz.value?.scrollIntoView({ block: 'start' })
 }
 
 // ---------- Ouvir o resumo ----------
@@ -136,8 +152,7 @@ watch([aberta, textoResumo], parar)
 
 // Flashcards do Tema (ou do texto da Referência) inteiro: padrão (perguntas) ou de leitura.
 function gerarCartoes(tipo) {
-  const origem = ehReferencia.value ? { referencia: props.local.slice('referencias/'.length) } : { arquivo: `${props.local}/indice.md`, capitulo: '' }
-  emit('flashcards', { origem, titulo: tipo === 'leitura' ? 'de leitura' : '', tipo })
+  emit('flashcards', { origem: origemDoTexto.value, titulo: tipo === 'leitura' ? 'de leitura' : '', tipo })
 }
 
 // Flashcards de um conceito só (D49): a explicação dele vira os cartões.
@@ -162,29 +177,39 @@ onBeforeUnmount(() => {
     <p v-if="!dados && !erro" class="suave">Carregando…</p>
 
     <template v-if="dados">
-      <!-- O simulado, em tela própria -->
-      <section v-if="aberta === 'simulado'" class="parte tela-simulado">
+      <!-- Os exercícios e o simulado, em tela própria -->
+      <section v-if="TELA_PROPRIA.includes(aberta)" class="parte tela-simulado">
         <button class="botao discreto voltar-estudar" @click="aberta = ''"><Icone nome="voltar" /> Estudar</button>
         <header>
-          <h2>Simulado <Info>{{ secao.descricao }}</Info></h2>
+          <h2>{{ secao.nome }} <Info>{{ secao.descricao }}</Info></h2>
         </header>
-        <p v-if="parte.estado === 'processando'" class="chip andando">{{ parte.resultado ? 'Refazendo…' : 'Preparando…' }} (na fila)</p>
+        <p v-if="parte.estado === 'processando'" class="chip andando">{{ parte.resultado ? 'Atualizando o banco…' : 'Preparando…' }} (na fila)</p>
         <p v-else-if="parte.estado === 'falhou'" class="aviso erro">{{ parte.erro }}</p>
-        <p v-if="parte.desatualizado && parte.estado !== 'processando'" class="aviso">{{ ehReferencia ? 'O texto' : 'O Tema' }} mudou desde que as perguntas foram preparadas. Refaça para valer o texto de agora.</p>
+        <p v-if="parte.desatualizado && parte.estado !== 'processando'" class="aviso">{{ ehReferencia ? 'O texto' : 'O Tema' }} mudou desde que {{ aberta === 'simulado' ? 'as perguntas foram preparadas' : 'os exercícios foram preparados' }}. Refaça para valer o texto de agora.</p>
         <Simulado
-          v-if="banco.length"
+          v-if="aberta === 'simulado' && banco.length"
           :tema="local"
           :banco="banco"
           :simulados="dados.simulados"
+          :historico="historico.perguntas"
           :flashcards="flashcards"
           @entregue="carregar"
           @flashcards="emit('flashcards', $event)"
         />
-        <div v-if="parte.estado !== 'processando'" class="linha-acoes">
-          <button v-if="!parte.resultado" class="botao principal" :disabled="!!pedindo" @click="preparar('simulado')">{{ PREPARAR.simulado }}</button>
-          <button v-else class="botao discreto refazer" :disabled="!!pedindo" @click="preparar('simulado')">
-            Refazer as perguntas<span v-if="parte.atualizado_em" class="meta"> · preparadas em {{ quando(parte.atualizado_em) }}</span>
-          </button>
+        <Exercicios v-if="aberta === 'exercicios' && exercicios.length" :tema="local" :banco="exercicios" :historico="historico.exercicios" @respondido="carregar" />
+        <div v-if="parte.estado !== 'processando'" class="linha-acoes acoes-do-banco">
+          <button v-if="!parte.resultado" class="botao principal" :disabled="!!pedindo" @click="preparar(aberta)">{{ PREPARAR[aberta] }}</button>
+          <template v-else>
+            <GerarMais
+              :rotulo="aberta === 'simulado' ? 'Gerar mais perguntas' : 'Gerar mais exercícios'"
+              :origem="origemDoTexto"
+              :ocupado="!!pedindo"
+              @gerar="(foco) => preparar(aberta, { mais: true, foco })"
+            />
+            <button class="botao discreto refazer" :disabled="!!pedindo" @click="preparar(aberta)">
+              Refazer do zero<span v-if="parte.atualizado_em" class="meta"> · atualizado em {{ quando(parte.atualizado_em) }}</span>
+            </button>
+          </template>
         </div>
       </section>
 
@@ -195,7 +220,7 @@ onBeforeUnmount(() => {
             :key="s.id"
             class="cartao-estudo"
             :class="{ aberta: aberta === s.id }"
-            :aria-expanded="s.id === 'simulado' ? undefined : aberta === s.id"
+            :aria-expanded="TELA_PROPRIA.includes(s.id) ? undefined : aberta === s.id"
             @click="abrir(s.id)"
           >
             <span class="icone-cartao"><Icone :nome="s.icone" /></span>
@@ -287,7 +312,7 @@ onBeforeUnmount(() => {
 /* Os quatro cartões */
 .cartoes {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -365,7 +390,7 @@ onBeforeUnmount(() => {
   color: var(--vermelho);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .cartoes {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -373,6 +398,20 @@ onBeforeUnmount(() => {
   .cartao-estudo {
     aspect-ratio: 1.3;
   }
+
+  /* Cinco cartões em duas colunas: o último ocupa a linha inteira. */
+  .cartao-estudo:last-child {
+    grid-column: 1 / -1;
+    aspect-ratio: auto;
+    min-height: 96px;
+  }
+}
+
+.acoes-do-banco {
+  align-items: flex-start;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--linha);
 }
 
 /* A parte aberta */

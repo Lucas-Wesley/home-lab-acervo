@@ -11,7 +11,7 @@ func TestInstrucaoEditadaNoAppValeNaProximaEtapa(t *testing.T) {
 
 	var lista []instrucao
 	e.pedir("GET", "/api/instrucoes", nil, &lista)
-	if len(lista) != 22 || lista[0].Arquivo != "organizar.md" || lista[0].Editada {
+	if len(lista) != 23 || lista[0].Arquivo != "organizar.md" || lista[0].Editada {
 		t.Fatalf("lista: %+v", lista)
 	}
 

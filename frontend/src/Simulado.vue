@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import Icone from './Icone.vue'
 import { api } from './api.js'
+import { comparavel, escolher } from './estudo.js'
 import { juntar, ouvir, temVoz } from './voz.js'
 
 // Simulado (D41): sorteia perguntas do banco do Tema, uma por vez; o Lucas responde digitando ou
@@ -10,6 +11,7 @@ const props = defineProps({
   tema: { type: String, required: true },
   banco: { type: Array, required: true }, // [{ pergunta, esperada, capitulo, nivel }]
   simulados: { type: Array, required: true }, // os últimos, o mais novo primeiro
+  historico: { type: Object, default: () => ({}) }, // pergunta (comparável) → { vezes, ultima, quando } (D52)
   flashcards: { type: Boolean, default: false },
 })
 const emit = defineEmits(['entregue', 'flashcards'])
@@ -35,20 +37,15 @@ let espera = null
 const pergunta = computed(() => rodada.value?.[atual.value])
 const respondidas = computed(() => rodada.value?.filter((x) => x.resposta.trim()).length ?? 0)
 
-function sortear(lista, n) {
-  const copia = [...lista]
-  for (let i = copia.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copia[i], copia[j]] = [copia[j], copia[i]]
-  }
-  return copia.slice(0, n)
-}
+// O que o banco já deu: perguntas nunca sorteadas e as que se errou da última vez (D52).
+const nuncaFeitas = computed(() => props.banco.filter((p) => !props.historico[comparavel(p.pergunta)]?.vezes).length)
+const erradas = computed(() => props.banco.filter((p) => ['errada', 'parcial', 'em_branco'].includes(props.historico[comparavel(p.pergunta)]?.ultima)).length)
 
 function comecar() {
   pararDeOuvir()
   aberto.value = null
   erro.value = ''
-  rodada.value = sortear(props.banco, quantas.value).map((p) => ({ ...p, resposta: '', por_voz: false }))
+  rodada.value = escolher(props.banco, quantas.value, props.historico, (p) => comparavel(p.pergunta)).map((p) => ({ ...p, resposta: '', por_voz: false }))
   atual.value = 0
 }
 
@@ -208,7 +205,10 @@ onBeforeUnmount(() => {
 
     <!-- Começar -->
     <template v-else>
-      <p class="suave">{{ banco.length }} perguntas no banco; cada simulado sorteia algumas. Responda escrevendo ou falando{{ temVoz ? '' : ' (pelo ditado do teclado)' }}: a IA corrige e diz o que faltou.</p>
+      <p class="suave">
+        {{ banco.length }} perguntas no banco<template v-if="nuncaFeitas < banco.length">: {{ nuncaFeitas }} nunca saíram<template v-if="erradas">, {{ erradas }} para acertar</template></template>.
+        Cada simulado traz primeiro as que nunca saíram e as que você errou. Responda escrevendo ou falando{{ temVoz ? '' : ' (pelo ditado do teclado)' }}: a IA corrige e diz o que faltou.
+      </p>
       <div class="linha-acoes">
         <label class="quantas">
           <span class="suave">Perguntas</span>

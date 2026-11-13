@@ -79,7 +79,7 @@ test('do vídeo ao Tema, com revisão', async ({ page }) => {
   await expect(page).toHaveURL(/#\/ler\/temas\/tema-de-teste\/indice\.md$/)
 })
 
-// Estudar (D41): a aba abre só com os quatro cartões; resumo (ouvido pela voz do aparelho, falsa
+// Estudar (D41): a aba abre só com os cartões; resumo (ouvido pela voz do aparelho, falsa
 // aqui), conceitos anteriores e o simulado em tela própria, respondido por voz (o ditado do
 // navegador também é falso: devolve uma frase fixa).
 async function vozesFalsas(page) {
@@ -129,7 +129,7 @@ test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ 
   await expect(page).toHaveURL(/indice\.md\?estudar$/)
 
   // Só os cartões, nada aberto.
-  await expect(page.getByRole('group', { name: 'Partes do estudo' }).getByRole('button')).toHaveCount(4)
+  await expect(page.getByRole('group', { name: 'Partes do estudo' }).getByRole('button')).toHaveCount(5)
   await expect(cartaoDoEstudo(page, 'Resumo inteligente')).toContainText('Ainda não preparado')
   await expect(page.getByRole('button', { name: 'Preparar o resumo' })).toHaveCount(0)
 
@@ -198,6 +198,57 @@ test('estuda o Tema: resumo, conceitos anteriores e simulado por voz', async ({ 
   await page.reload()
   await cartaoDoEstudo(page, 'Simulado').click()
   await expect(page.getByText(/5 perguntas/)).toBeVisible()
+
+  // D52: gerar mais acrescenta ao banco, com um foco; as perguntas que saíram contam.
+  await expect(page.getByText(/6 perguntas no banco: 1 nunca saíram/)).toBeVisible()
+  await page.getByRole('button', { name: 'Gerar mais perguntas' }).click()
+  await page.getByLabel('Foco do lote (opcional)').fill('só a fundação')
+  await page.getByRole('button', { name: 'Gerar', exact: true }).click()
+  await expect(page.getByText(/12 perguntas no banco: 7 nunca saíram/)).toBeVisible({ timeout: 15000 })
+})
+
+// Exercícios (D52): prática com resposta certa, conferida na hora, com o porquê; o resultado
+// mostra o que rever, e o cartão, quantos acertou. "Gerar mais" acrescenta sem repetir.
+test('pratica os exercícios do Tema', async ({ page }) => {
+  await page.goto('/#/ler/temas/tema-de-teste/indice.md?estudar')
+  await cartaoDoEstudo(page, 'Exercícios').click()
+  await expect(page.getByRole('group', { name: 'Partes do estudo' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Preparar os exercícios' }).click()
+  await expect(page.getByText(/2 exercícios no banco/)).toBeVisible({ timeout: 15000 })
+  await page.getByRole('button', { name: 'Praticar', exact: true }).click()
+
+  // A ordem é sorteada: responde certo o primeiro e errado o segundo, seja qual for o tipo.
+  async function responder(certo) {
+    const campo = page.getByPlaceholder('O que vai na lacuna')
+    if (await campo.count()) {
+      await campo.fill(certo ? 'em 1930' : '1920')
+      await page.getByRole('button', { name: 'Conferir' }).click()
+    } else {
+      await page.locator('.opcoes').getByRole('button', { name: certo ? '1930' : '1940' }).click()
+    }
+  }
+  await responder(true)
+  await expect(page.locator('.retorno')).toContainText('Certo')
+  await page.getByRole('button', { name: 'Próximo' }).click()
+  await responder(false)
+  await expect(page.locator('.retorno')).toContainText('A resposta é 1930.')
+  await page.getByRole('button', { name: 'Ver o resultado' }).click()
+  await expect(page.locator('.nota strong')).toHaveText('1')
+  await expect(page.getByRole('button', { name: 'Refazer os que errei' })).toBeVisible()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/exercicios.png`, fullPage: true })
+  await page.locator('.exercicios').getByRole('button', { name: 'Voltar', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Os que errei (1)' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Gerar mais exercícios' }).click()
+  await page.getByRole('button', { name: 'Gerar', exact: true }).click()
+  await expect(page.getByText(/3 exercícios no banco/)).toBeVisible({ timeout: 15000 })
+
+  await page.getByRole('button', { name: 'Estudar', exact: true }).last().click()
+  await expect(cartaoDoEstudo(page, 'Exercícios')).toContainText('3 exercícios · 1 de 2 certos')
+  if (process.env.CAPTURAS) {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.screenshot({ path: `${process.env.CAPTURAS}/estudar-cinco-cartoes.png` })
+  }
 })
 
 // D49: do Tema, a pesquisa já vem com o assunto e o Tema a completar; as buscas sem resultado
@@ -238,7 +289,7 @@ test('estuda uma Referência', async ({ page }) => {
   await page.locator('.referencia', { hasText: 'Vídeo AAAAAAAAAAA' }).click()
   await page.locator('.abas').getByRole('button', { name: 'Estudar' }).click()
   await expect(page).toHaveURL(/#\/referencia\/[^?]+\?estudar$/)
-  await expect(page.getByRole('group', { name: 'Partes do estudo' }).getByRole('button')).toHaveCount(4)
+  await expect(page.getByRole('group', { name: 'Partes do estudo' }).getByRole('button')).toHaveCount(5)
   await expect(cartaoDoEstudo(page, 'Flashcards')).toBeVisible()
 
   await cartaoDoEstudo(page, 'Resumo inteligente').click()

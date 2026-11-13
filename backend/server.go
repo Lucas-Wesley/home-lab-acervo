@@ -57,6 +57,7 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("POST /api/estudos", a.handlePrepararEstudo)
 	mux.HandleFunc("POST /api/simulados", a.handleEntregarSimulado)
 	mux.HandleFunc("GET /api/simulados/{id}", a.handleSimulado)
+	mux.HandleFunc("POST /api/exercicios/respostas", a.handleResponderExercicio)
 	mux.HandleFunc("POST /api/perguntas", a.handlePerguntar)
 	mux.HandleFunc("POST /api/perguntas/{id}/refazer", a.handleRefazerPergunta)
 	mux.HandleFunc("DELETE /api/perguntas/{id}", a.handleApagarPergunta)
