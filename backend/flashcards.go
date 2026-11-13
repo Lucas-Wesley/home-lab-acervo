@@ -30,6 +30,9 @@ import (
 // O Flashcards recusa acima disso; aqui a mensagem já sugere mandar por capítulo.
 const maxTextoFlashcards = 150_000
 
+// maxInstrucaoFlashcards (D51): o foco dos cartões, o mesmo teto da instrução no Flashcards.
+const maxInstrucaoFlashcards = 3000
+
 // Seções que só listam fontes: não viram cartão.
 var semCartoes = map[string]bool{"Citados": true, "Referências": true}
 
@@ -54,7 +57,8 @@ type textoParaCartoes struct {
 	Texto     string         `json:"texto"`
 	Link      string         `json:"link"`
 	Secoes    []secaoComLink `json:"secoes,omitempty"`
-	Tipo      string         `json:"tipo,omitempty"` // D47: "leitura", ou vazio para perguntas
+	Tipo      string         `json:"tipo,omitempty"`      // D47: "leitura", ou vazio para perguntas
+	Instrucao string         `json:"instrucao,omitempty"` // D51: o foco e o jeito dos cartões, escrito ou falado
 }
 
 // secaoComLink: um capítulo do texto e onde abri-lo no Acervo.
@@ -450,13 +454,19 @@ func (a *app) handleEnviarFlashcards(w http.ResponseWriter, r *http.Request) {
 	var corpo struct {
 		origemDosCartoes
 		escolhaDeBaralho
-		Tipo string `json:"tipo"` // D47: "basico" (perguntas, o padrão) ou "leitura"
+		Tipo      string `json:"tipo"`      // D47: "basico" (perguntas, o padrão) ou "leitura"
+		Instrucao string `json:"instrucao"` // D51: o foco e o jeito dos cartões
 	}
 	if !lerCorpo(w, r, &corpo) {
 		return
 	}
 	if corpo.Tipo != "" && corpo.Tipo != "basico" && corpo.Tipo != "leitura" {
 		erroJSON(w, http.StatusBadRequest, "Tipo de flashcards inválido.")
+		return
+	}
+	instrucao := strings.TrimSpace(corpo.Instrucao)
+	if utf8.RuneCountInString(instrucao) > maxInstrucaoFlashcards {
+		erroJSON(w, http.StatusBadRequest, fmt.Sprintf("O foco vai até %d caracteres.", maxInstrucaoFlashcards))
 		return
 	}
 	alvo, t, ok := a.texto(w, r, corpo.origemDosCartoes)
@@ -471,6 +481,7 @@ func (a *app) handleEnviarFlashcards(w http.ResponseWriter, r *http.Request) {
 	if corpo.Tipo == "leitura" {
 		t.Tipo = corpo.Tipo
 	}
+	t.Instrucao = instrucao
 	e, err := a.enviarFlashcards(r.Context(), alvo, t)
 	if err != nil {
 		erroJSON(w, http.StatusBadGateway, err.Error())

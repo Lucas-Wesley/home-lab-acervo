@@ -120,6 +120,8 @@ watch(() => props.referencia.estado, carregar)
     </p>
 
     <template v-else-if="g.estado === 'em_revisao'">
+      <p v-if="g.instrucao" class="suave"><strong>Você pediu:</strong> {{ g.instrucao }}</p>
+      <p v-if="g.proposta.entendimento" class="entendimento"><strong>A IA entendeu:</strong> {{ g.proposta.entendimento }}</p>
       <p v-if="g.proposta.observacoes" class="suave"><strong>Da IA:</strong> {{ g.proposta.observacoes }}</p>
       <label v-if="!g.baralho_id" class="grupo">
         <span class="suave">Baralho novo</span>
@@ -174,6 +176,13 @@ watch(() => props.referencia.estado, carregar)
 .cartoes-ref {
   display: grid;
   gap: 10px;
+}
+
+.entendimento {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--raio-p);
+  background: var(--marca-fundo);
 }
 
 .cabeca {

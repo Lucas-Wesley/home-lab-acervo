@@ -289,6 +289,9 @@ test('gera flashcards de um capítulo, escolhendo o baralho, e o link do cartão
   await baralho.selectOption({ label: 'Baralho novo…' })
   await expect(janela.getByLabel('Nome do baralho novo')).toHaveValue('Tema de Teste')
   await janela.getByLabel('Nome do baralho novo').fill('Revisão do Tema')
+  // O foco (D51): escrito ou falado; o microfone fica no campo.
+  await expect(janela.getByRole('button', { name: 'Falar em vez de escrever' })).toBeVisible()
+  await janela.getByLabel('Foco e jeito dos cartões').fill('  só as datas, o nome na frente  ')
   await janela.getByRole('button', { name: 'Gerar flashcards' }).click()
   await expect(page.getByText('Enviado ao Flashcards.')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Abrir no Flashcards' })).toHaveAttribute('href', 'https://flashcards.lan/#/geracao/7')
@@ -296,6 +299,7 @@ test('gera flashcards de um capítulo, escolhendo o baralho, e o link do cartão
   const enviado = await (await request.get('http://localhost:8097/ultimo')).json()
   expect(enviado.baralho).toBe('Revisão do Tema')
   expect(enviado.baralho_id).toBeUndefined()
+  expect(enviado.instrucao).toBe('só as datas, o nome na frente')
   expect(enviado.link).toBe('https://acervo.lan/#/ler/temas/tema-de-teste/indice.md?capitulo=Segundo%20cap%C3%ADtulo')
 
   // O link que o cartão guarda abre a página já no capítulo.

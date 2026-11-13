@@ -7,7 +7,7 @@ o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
 **Comece lendo:**
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **a fonte da verdade do projeto.** Conceitos, fluxo
-  completo, decisões (D1–D50), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
+  completo, decisões (D1–D51), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
 
 ## Em uma frase
 Duas áreas: **Acervo** (base permanente por **Temas**, Markdown multi-arquivo, cumulativa) e
@@ -52,8 +52,8 @@ disponível pra inferência local (Whisper) quando precisar.
   de uma série ficam ligados pela chave do TMDB. Nos testes, o pedido é montado no próprio teste (`documentario_test.go`).
 - **Artigos** (D34): o servidor lê a página sem IA (`artigo.go`), sem nada específico de um site;
   o que sobrar do site, a etapa de organizar tira (`regras/organizar-artigo.md`).
-- **Flashcards** (D28, D31): o Acervo só manda o texto (com o baralho escolhido e o link de cada capítulo) ao app Flashcards (`FLASHCARDS_URL`); a IA e as regras dos
-  cartões ficam lá (`flashcards/regras/gerar-do-texto.md`).
+- **Flashcards** (D28, D31): o Acervo só manda o texto (com o baralho escolhido, o link de cada capítulo e o foco do Lucas, D51) ao app Flashcards (`FLASHCARDS_URL`); a IA e as regras dos
+  cartões ficam lá (`flashcards/regras/gerar-do-texto.md`). O foco falado é transcrito aqui (`falar.go`), com os nomes do texto como dica ao Whisper.
 - **As instruções em vigor podem estar editadas no app** (D25). Antes de mudar `regras/`, ler as
   versões do servidor (`GET https://192.168.1.20:8444/api/instrucoes/<arquivo>`, com
   `--cacert ../certs/homelab-ca.crt`). Se uma estiver editada, levar a edição para `regras/` e só
