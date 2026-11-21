@@ -10,6 +10,7 @@ defineProps({ nome: { type: String, required: true } })
     <path v-else-if="nome === 'menu'" d="M4 7h16M4 12h16M4 17h16" />
     <path v-else-if="nome === 'pontos'" d="M5.5 12h.01M12 12h.01M18.5 12h.01" stroke-width="2.6" />
     <path v-else-if="nome === 'nota'" d="M5 19l1-4L16.5 4.5a2.1 2.1 0 013 3L9 18l-4 1z" />
+    <path v-else-if="nome === 'lixeira'" d="M4.5 7h15M9.5 7V5a1 1 0 011-1h3a1 1 0 011 1v2M6.5 7l.9 12a1.5 1.5 0 001.5 1.4h6.2a1.5 1.5 0 001.5-1.4l.9-12M10 11v5.5M14 11v5.5" />
     <path v-else-if="nome === 'fechar'" d="M6 6l12 12M18 6L6 18" />
     <path v-else-if="nome === 'expandir'" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
     <path v-else-if="nome === 'recolher'" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" />

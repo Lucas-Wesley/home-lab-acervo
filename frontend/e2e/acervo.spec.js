@@ -519,6 +519,26 @@ test('exclui uma Referência pelo menu', async ({ page }) => {
   await expect(page.locator('.referencia', { hasText: 'SSSSSSSSSSS' })).toHaveCount(0)
 })
 
+test('exclui uma Referência pela lixeira da lista, só depois de confirmar', async ({ page }) => {
+  await page.goto('/#/referencias')
+  await page.getByRole('button', { name: 'Mais opções' }).click()
+  await page.getByRole('menuitem', { name: 'Link de vídeo' }).click()
+  await page.getByLabel('Link do vídeo').fill('https://www.youtube.com/watch?v=SSSSSSSSSSS')
+  await page.getByRole('button', { name: 'Adicionar' }).click()
+  const linha = page.locator('.linha-com-excluir', { hasText: 'SSSSSSSSSSS' })
+  await expect(linha.getByText('Não foi possível extrair a legenda')).toBeVisible({ timeout: 15000 })
+
+  // Cancelar a confirmação não exclui.
+  page.once('dialog', (d) => d.dismiss())
+  await linha.getByRole('button', { name: 'Excluir Referência' }).click()
+  await expect(linha).toHaveCount(1)
+
+  page.once('dialog', (d) => d.accept())
+  await linha.getByRole('button', { name: 'Excluir Referência' }).click()
+  await expect(linha).toHaveCount(0)
+  await expect(page).toHaveURL(/#\/referencias$/)
+})
+
 test('link compartilhado pelo celular vai para a fila numa tela curta, sem abrir o app', async ({ page }) => {
   await page.goto('/compartilhar?title=Um%20v%C3%ADdeo&text=' + encodeURIComponent('Veja isto https://youtu.be/CCCCCCCCCCC?si=x'))
   await expect(page.getByRole('status')).toHaveText('Vídeo enviado para a fila.')

@@ -104,6 +104,29 @@ function marca(r) {
   return ''
 }
 
+// Excluir pela lista, com confirmação: o mesmo DELETE da página da Referência.
+const excluindo = ref('')
+const rodando = (r) => r.tarefa && (r.tarefa.estado === 'rodando' || r.tarefa.estado === 'na_fila')
+
+async function excluir(r) {
+  if (rodando(r)) {
+    erro.value = 'Há uma tarefa em andamento para esta Referência: cancele na Fila antes de excluir.'
+    return
+  }
+  const nome = r.titulo || r.documentario?.titulo_episodio || r.url || 'esta Referência'
+  if (!confirm(`Excluir "${nome}"?\n\nO texto e o histórico dela somem; o que já entrou nos Temas continua no Acervo.`)) return
+  excluindo.value = r.id
+  erro.value = ''
+  try {
+    await api(`/api/referencias/${encodeURIComponent(r.id)}`, { metodo: 'DELETE' })
+    referencias.value = referencias.value.filter((x) => x.id !== r.id)
+  } catch (e) {
+    erro.value = e.message
+  } finally {
+    excluindo.value = ''
+  }
+}
+
 function classeDoEstado(r) {
   if (r.estado === 'erro') return 'erro'
   if (r.estado === 'integrado') return 'ok'
@@ -170,14 +193,18 @@ onBeforeUnmount(() => {
           <span v-if="r.andando" class="linha-estado"><span class="chip andando">{{ r.andando === 1 ? '1 episódio em andamento' : `${r.andando} episódios em andamento` }}</span></span>
         </div>
       </div>
-      <a v-for="ep in r.refs" :key="ep.id" :href="`#/referencia/${ep.id}`" class="episodio-doc">
+      <div v-for="ep in r.refs" :key="ep.id" class="linha-com-excluir">
+      <a :href="`#/referencia/${ep.id}`" class="episodio-doc">
         <span class="num">T{{ ep.documentario.temporada }} E{{ ep.documentario.episodio }}</span>
         <span class="titulo-ep">{{ ep.documentario.titulo_episodio || `Episódio ${ep.documentario.episodio}` }}</span>
         <span class="chip" :class="classeDoEstado(ep)">{{ situacao(ep) || nomeDoEstado(ep) }}</span>
         <span v-if="ep.erro" class="erro-texto">{{ ep.erro }}</span>
       </a>
+      <button class="botao icone excluir" aria-label="Excluir episódio" title="Excluir" :disabled="excluindo === ep.id" @click="excluir(ep)"><Icone nome="lixeira" /></button>
+      </div>
     </div>
-    <a v-else :href="`#/referencia/${r.id}`" class="referencia">
+    <div v-else class="linha-com-excluir">
+    <a :href="`#/referencia/${r.id}`" class="referencia">
       <span v-if="r.tipo === 'pesquisa'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="pesquisar" /></span>
       <span v-else-if="r.tipo === 'livro'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="livro" /></span>
       <span v-else-if="r.tipo === 'artigo'" class="miniatura pesquisa" aria-hidden="true"><Icone nome="link" /></span>
@@ -199,6 +226,8 @@ onBeforeUnmount(() => {
         <span v-if="r.erro" class="erro-texto">{{ r.erro }}</span>
       </div>
     </a>
+    <button class="botao icone excluir" aria-label="Excluir Referência" title="Excluir" :disabled="excluindo === r.id" @click="excluir(r)"><Icone nome="lixeira" /></button>
+    </div>
     </template>
     </div>
   </div>
@@ -267,6 +296,45 @@ onBeforeUnmount(() => {
   text-decoration: none;
 }
 
+/* Excluir pela lista: a lixeira à direita de cada item, a página continua no link. */
+.linha-com-excluir {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.linha-com-excluir > a {
+  flex: 1;
+  min-width: 0;
+}
+
+.linha-com-excluir > .episodio-doc {
+  border-top: 0;
+}
+
+.linha-com-excluir:has(> .episodio-doc) {
+  margin-left: 110px;
+  border-top: 1px solid var(--linha);
+}
+
+.linha-com-excluir:has(> .episodio-doc) > .episodio-doc {
+  margin-left: 0;
+}
+
+.botao.icone.excluir {
+  flex: none;
+  margin-top: 10px;
+  color: var(--texto-fraco);
+}
+
+.linha-com-excluir:has(> .episodio-doc) > .botao.icone.excluir {
+  margin-top: 0;
+}
+
+.botao.icone.excluir:hover {
+  color: var(--perigo);
+}
+
 .referencia:hover strong {
   color: var(--azul);
 }
@@ -333,7 +401,8 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 520px) {
-  .episodio-doc {
+  .episodio-doc,
+  .linha-com-excluir:has(> .episodio-doc) {
     margin-left: 0;
   }
 }
