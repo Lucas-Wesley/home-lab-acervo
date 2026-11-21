@@ -51,6 +51,8 @@ func newServer(db *sql.DB, web fs.FS, a *app, version string) http.Handler {
 	mux.HandleFunc("PUT /api/detalhes/{id}", a.handlePedirDetalhe)
 	mux.HandleFunc("POST /api/detalhes/{id}/refazer", a.handleRefazerDetalhe)
 	mux.HandleFunc("DELETE /api/detalhes/{id}", a.handleApagarDetalhe)
+	mux.HandleFunc("GET /api/detalhes/{id}", a.handleDetalhe)                     // D54: a Biblioteca acompanha a sua
+	mux.HandleFunc("POST /api/detalhes/{id}/referencia", a.handleVirarReferencia) // D54
 
 	mux.HandleFunc("GET /api/perguntas", a.handlePerguntas)
 	mux.HandleFunc("GET /api/estudos", a.handleEstudos)
@@ -312,6 +314,8 @@ func (a *app) tarefaDeDetalhe(r *http.Request, t tarefa) tarefaComTitulo {
 	link := "#/ler/" + d.Local
 	if partes := strings.Split(d.Local, "/"); partes[0] == "referencias" {
 		link = "#/referencia/" + partes[1]
+	} else if partes[0] == "livros" {
+		link = a.cfg.bibliotecaLink + "/#/livro/" + partes[1]
 	}
 	return tarefaComTitulo{t, "“" + cortar(d.Trecho, 80, false) + "”", link}
 }

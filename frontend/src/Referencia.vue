@@ -14,6 +14,7 @@ import { descreverLivro, descreverPesquisa } from './pesquisa.js'
 import { marcar, usarDetalhes } from './detalhes.js'
 import { duvidas, renderizar, tituloDoTexto } from './markdown.js'
 import { trocarEndereco } from './rolagem.js'
+import { usarAbas } from './abas.js'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -103,6 +104,20 @@ const nomeDoCru = computed(() => (ehPesquisa.value ? 'Material coletado' : ehLiv
 const doMenu = computed(() => ({ cru: nomeDoCru.value, historico: 'Histórico' })[aba.value])
 const semTexto = (a) => ['historico', 'duvidas', 'conversar', 'estudar'].includes(a)
 const abaAtual = computed(() => aba.value || abas.value[0]?.[0])
+// D53: barra de abas presa no topo, deslizar para trocar e cada aba com a sua rolagem. Conversar,
+// Estudar e Dúvidas ficam montadas depois de abertas, para nada se perder ao ir e voltar.
+const raizEl = ref(null)
+const marcoAbas = ref(null)
+const barraAbas = ref(null)
+const { vistas } = usarAbas({
+  atual: () => abaAtual.value,
+  lista: () => abas.value.map(([chave]) => chave),
+  ir: (chave) => (aba.value = chave),
+  marco: marcoAbas,
+  barra: barraAbas,
+  raiz: raizEl,
+})
+const montada = (chave) => vistas.value.has(chave) && !!textoPrincipal.value
 const htmlDaAba = computed(() => {
   const r = ref_.value
   if (!r) return ''
@@ -229,7 +244,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="pagina">
+  <div ref="raizEl" class="pagina">
     <a href="#/referencias" class="voltar suave">← Referências</a>
     <div v-if="erro" class="aviso erro">{{ erro }}</div>
 
@@ -258,7 +273,9 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div v-if="ehPesquisa" class="suave meta">
-          {{ descreverPesquisa(ref_.pesquisa) }}<template v-if="ref_.pesquisa.tema !== ref_.titulo"> · pedido: “{{ ref_.pesquisa.tema }}”</template>
+          <!-- D54: veio de um "Mais informações", num texto do Acervo ou num livro da Biblioteca. -->
+          <template v-if="ref_.pesquisa.origem">Mais informações sobre um trecho de <a :href="ref_.pesquisa.origem.link" :target="ref_.pesquisa.origem.tipo === 'livro' ? '_blank' : null" rel="noopener">{{ ref_.pesquisa.origem.titulo }}</a><template v-if="ref_.pesquisa.origem.autor">, de {{ ref_.pesquisa.origem.autor }}</template></template>
+          <template v-else>{{ descreverPesquisa(ref_.pesquisa) }}<template v-if="ref_.pesquisa.tema !== ref_.titulo"> · pedido: “{{ ref_.pesquisa.tema }}”</template></template>
           <template v-if="ref_.pesquisa.foco"> · a mais: “{{ ref_.pesquisa.foco }}”</template>
           <template v-if="ref_.pesquisa.para_tema"> · para o Tema <a :href="`#/ler/${ref_.pesquisa.para_tema}/indice.md`">{{ temaPorCaminho(ref_.pesquisa.para_tema)?.titulo ?? ref_.pesquisa.para_tema }}</a></template>
           <template v-if="ref_.pesquisa.relacionados?.length"> · comparada com: {{ ref_.pesquisa.relacionados.map((t) => temaPorCaminho(t)?.titulo ?? t).join(', ') }}</template>
@@ -383,7 +400,8 @@ onBeforeUnmount(() => {
         </div>
       </form>
 
-      <nav v-if="abas.length" class="abas">
+      <div v-if="abas.length" ref="marcoAbas" class="marco-abas" aria-hidden="true" />
+      <nav v-if="abas.length" ref="barraAbas" class="abas" aria-label="Abas da Referência">
         <button v-for="[chave, nome] in abas" :key="chave" :class="{ ativa: abaAtual === chave }" @click="aba = chave">{{ nome }}</button>
       </nav>
 
@@ -392,17 +410,20 @@ onBeforeUnmount(() => {
         <button class="botao discreto" @click="aba = null">Voltar ao texto</button>
       </p>
 
-      <Duvidas v-if="abaAtual === 'duvidas'" :referencia="ref_" :texto="textoPrincipal" @perguntar="perguntarSobre" @aprofundar="aprofundarSobre" @mudou="carregar" />
-      <Conversa
-        v-else-if="abaAtual === 'conversar'"
-        :key="perguntasVersao"
-        :local="`referencias/${ref_.id}`"
-        :titulo="ref_.titulo"
-        :trecho="trechoDaConversa"
-        @sem-trecho="trechoDaConversa = null"
-        @mudou="carregar"
-      />
-      <template v-else-if="abaAtual === 'estudar'">
+      <div v-if="montada('duvidas')" v-show="abaAtual === 'duvidas'">
+        <Duvidas :referencia="ref_" :texto="textoPrincipal" @perguntar="perguntarSobre" @aprofundar="aprofundarSobre" @mudou="carregar" />
+      </div>
+      <div v-if="montada('conversar')" v-show="abaAtual === 'conversar'">
+        <Conversa
+          :key="perguntasVersao"
+          :local="`referencias/${ref_.id}`"
+          :titulo="ref_.titulo"
+          :trecho="trechoDaConversa"
+          @sem-trecho="trechoDaConversa = null"
+          @mudou="carregar"
+        />
+      </div>
+      <div v-if="montada('estudar')" v-show="abaAtual === 'estudar'">
         <div v-if="avisoDoEstudo" class="aviso ok">{{ avisoDoEstudo }}</div>
         <Estudar :local="`referencias/${ref_.id}`" :titulo="ref_.titulo || ref_.url" :flashcards="!!cartoes?.disponivel" @flashcards="flashcardsDoEstudo" />
         <EnviarFlashcards
@@ -411,8 +432,8 @@ onBeforeUnmount(() => {
           @fechar="envioDoEstudo = null"
           @enviado="envioDoEstudo = null; avisoDoEstudo = 'Enviado ao Flashcards. A IA está montando os cartões; a proposta fica em Pedidos à IA, para você aprovar.'"
         />
-      </template>
-      <ul v-else-if="abaAtual === 'historico'" class="historico">
+      </div>
+      <ul v-if="abaAtual === 'historico'" class="historico">
         <li v-for="t in ref_.tarefas" :key="t.id">
           <span>{{ NOMES_TAREFA[t.tipo] || t.tipo }}</span>
           <span class="chip" :class="{ erro: t.estado === 'falhou', ok: t.estado === 'concluida' }">{{ NOMES_ESTADO_TAREFA[t.estado] || t.estado }}</span>
@@ -576,12 +597,26 @@ onBeforeUnmount(() => {
   font-size: 0.85rem;
 }
 
+/* D53: a barra de abas fica presa no topo durante a rolagem. */
+.marco-abas {
+  height: 0;
+  margin-top: 18px;
+}
+
 .abas {
+  position: sticky;
+  top: 0;
+  z-index: 4;
   display: flex;
   gap: 4px;
   overflow-x: auto;
-  margin: 18px 0 20px;
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--margem)) 20px;
+  padding: env(safe-area-inset-top) var(--margem) 0;
   border-bottom: 1px solid var(--linha);
+  background: var(--vidro);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
 }
 
 .abas button {

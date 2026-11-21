@@ -36,10 +36,10 @@ let tempoDoRecado
 const m = computed(() => props.detalhes.atual.value)
 const explicacao = computed(() => (m.value?.explicacao ? renderizar(m.value.explicacao) : ''))
 
-function mostrarRecado(texto, erro = false) {
-  recado.value = { texto, erro }
+function mostrarRecado(texto, erro = false, link = '') {
+  recado.value = { texto, erro, link }
   clearTimeout(tempoDoRecado)
-  tempoDoRecado = setTimeout(() => (recado.value = null), 3500)
+  tempoDoRecado = setTimeout(() => (recado.value = null), link ? 7000 : 3500)
 }
 
 const limiteX = (x) => Math.min(Math.max(x, MARGEM), innerWidth - LARGURA_BARRA - MARGEM)
@@ -165,6 +165,27 @@ async function integrar(modo) {
   }
 }
 
+// Virar Referência (D54): a explicação e as fontes viram uma Referência própria, ligada a este texto.
+const virando = ref(false)
+async function virarReferencia() {
+  virando.value = true
+  try {
+    const r = await api(`/api/detalhes/${m.value.id}/referencia`, { metodo: 'POST', corpo: {} })
+    await props.detalhes.carregar()
+    mostrarRecado(r.ja_existia ? 'Esta pesquisa já era uma Referência.' : 'Virou uma Referência.', false, `#/referencia/${r.referencia.id}`)
+  } catch (e) {
+    mostrarRecado(e.status === 0 ? 'Sem conexão com a rede de casa.' : e.message, true)
+  } finally {
+    virando.value = false
+  }
+}
+
+function abrirReferencia(link) {
+  fecharModal()
+  recado.value = null
+  location.hash = link
+}
+
 function apagar() {
   if (confirm('Apagar esta marcação e a explicação?')) agir(() => props.detalhes.apagar(m.value.id))
 }
@@ -265,6 +286,21 @@ onBeforeUnmount(() => {
                 <button class="botao" :disabled="integrando" @click="integrar('adaptado')">Só o que serve ao texto</button>
               </div>
             </section>
+            <section class="integrar virar">
+              <h3>Virar referência</h3>
+              <template v-if="m.referencia">
+                <p class="suave">Esta pesquisa já é uma Referência à parte, com as fontes e o link de volta para cá.</p>
+                <div class="linha-acoes">
+                  <button class="botao" @click="abrirReferencia(`#/referencia/${m.referencia}`)">Abrir a referência</button>
+                </div>
+              </template>
+              <template v-else>
+                <p class="suave">O texto e as fontes viram uma Referência à parte, com o trecho como título e o link de volta para cá. Ela segue o caminho de sempre: sugerir Tema, criar ou integrar.</p>
+                <div class="linha-acoes">
+                  <button class="botao" :disabled="virando" @click="virarReferencia">{{ virando ? 'Criando…' : 'Virar referência' }}</button>
+                </div>
+              </template>
+            </section>
           </template>
         </div>
 
@@ -275,7 +311,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="recado" class="recado-detalhe" :class="{ erro: recado.erro }" role="status">{{ recado.texto }}</div>
+    <div v-if="recado" class="recado-detalhe" :class="{ erro: recado.erro }" role="status">
+      {{ recado.texto }}
+      <a v-if="recado.link" :href="recado.link" @click.prevent="abrirReferencia(recado.link)">Abrir</a>
+    </div>
   </Teleport>
 </template>
 
@@ -520,6 +559,12 @@ onBeforeUnmount(() => {
   font-size: 0.88rem;
   box-shadow: var(--sombra);
   transform: translateX(-50%);
+}
+
+.recado-detalhe a {
+  margin-left: 10px;
+  color: inherit;
+  font-weight: 650;
 }
 
 .recado-detalhe.erro {

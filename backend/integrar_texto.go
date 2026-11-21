@@ -104,6 +104,10 @@ func (a *app) handleIntegrarDetalhe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	local := d.Local
+	if strings.HasPrefix(local, "livros/") {
+		erroJSON(w, http.StatusBadRequest, "O texto de um livro não muda: a pesquisa pode virar uma Referência.")
+		return
+	}
 	params := paramsIntegrarTexto{Origem: "detalhe", ID: d.ID, Titulo: d.Titulo, Modo: corpo.Modo}
 	if strings.HasPrefix(local, "temas/") {
 		params.Arquivo = local

@@ -305,6 +305,56 @@ test('estuda uma Referência', async ({ page }) => {
   await expect(cartaoDoEstudo(page, 'Resumo inteligente')).toContainText('min de leitura')
 })
 
+// D53: a barra de abas fica presa no topo; deslizar para o lado troca de aba, e cada aba volta
+// para onde estava.
+async function deslizar(page, de, para) {
+  await page.evaluate(([de, para]) => {
+    const alvo = document.elementFromPoint(de, 160) || document.body
+    const toque = (x) => new Touch({ identifier: 1, target: alvo, clientX: x, clientY: 160 })
+    alvo.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [toque(de)], changedTouches: [toque(de)] }))
+    alvo.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [], changedTouches: [toque(para)] }))
+  }, [de, para])
+}
+
+test('abas da Referência: presas no topo, deslizar troca, e cada uma guarda a rolagem', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 420 })
+  await page.goto('/#/referencias')
+  await page.locator('.referencia', { hasText: 'Vídeo AAAAAAAAAAA' }).click()
+  const abas = page.locator('.abas')
+  await expect(abas.getByRole('button', { name: 'Conversar' })).toBeVisible()
+  // Um texto longo: cada parágrafo bem alto.
+  await page.addStyleTag({ content: 'article.texto p, article.texto li { margin-bottom: 300px }' })
+  await page.evaluate(() => window.scrollTo(0, 900))
+  const y = await page.evaluate(() => window.scrollY)
+  expect(y).toBeGreaterThan(400)
+  expect((await abas.boundingBox()).y).toBeLessThan(2)
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/abas-presas.png` })
+
+  // O gesto que começa na borda (o voltar do Android) e o curto não trocam de aba.
+  await deslizar(page, 5, 300)
+  await deslizar(page, 300, 260)
+  await expect(abas.locator('.ativa')).not.toHaveText('Conversar')
+  const antes = await abas.locator('.ativa').textContent()
+
+  // Para a esquerda: a próxima aba, que abre logo abaixo da barra.
+  const nomes = await abas.getByRole('button').allTextContents()
+  const proxima = nomes[nomes.indexOf(antes) + 1]
+  await deslizar(page, 320, 120)
+  await expect(abas.locator('.ativa')).toHaveText(proxima)
+  expect((await abas.boundingBox()).y).toBeLessThan(2)
+
+  // Para a direita: de volta, no mesmo ponto do texto.
+  await deslizar(page, 80, 300)
+  await expect(abas.locator('.ativa')).toHaveText(antes)
+  await page.evaluate((y) => window.scrollTo(0, y), y)
+  await abas.getByRole('button', { name: 'Conversar' }).click()
+  await page.getByLabel('Mensagem').fill('Rascunho que não pode sumir')
+  await abas.getByRole('button', { name: antes }).click()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(y)
+  await abas.getByRole('button', { name: 'Conversar' }).click()
+  await expect(page.getByLabel('Mensagem')).toHaveValue('Rascunho que não pode sumir')
+})
+
 test('lê o Tema numa página só, com sumário de capítulos', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('2 capítulos')).toBeVisible()
@@ -577,6 +627,21 @@ test('Mais informações: seleciona um trecho, a IA pesquisa e o trecho vira lin
   // A instrução nova aparece em Ajustes.
   await page.goto('/#/ajustes/instrucoes')
   await expect(page.getByRole('link', { name: /^Mais informações/ })).toBeVisible()
+
+  // Virar referência (D54): a pesquisa vira uma Referência à parte, com o link de volta ao Tema.
+  await page.goto('/#/ler/temas/tema-de-teste/indice.md')
+  await marca.click()
+  await modal.getByRole('button', { name: 'Virar referência' }).click()
+  const recado = page.getByRole('status').filter({ hasText: 'Virou uma Referência.' })
+  await expect(recado).toBeVisible()
+  await expect(modal.getByRole('button', { name: 'Abrir a referência' })).toBeVisible()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/virar-referencia.png` })
+  await recado.getByRole('link', { name: 'Abrir' }).click()
+  await expect(page).toHaveURL(/#\/referencia\/[a-f0-9]+$/)
+  await expect(page.locator('header h1')).toHaveText('Tordesilhas')
+  await expect(page.locator('.meta').getByRole('link', { name: 'Tema de Teste' })).toHaveAttribute('href', '#/ler/temas/tema-de-teste/indice.md')
+  await expect(page.locator('article.texto')).toContainText('Explicação de teste.')
+  await expect(page.locator('article.texto').getByRole('link', { name: 'Fonte A' })).toBeVisible()
 
   await page.goto('/#/ler/temas/tema-de-teste/indice.md')
   await marca.click()

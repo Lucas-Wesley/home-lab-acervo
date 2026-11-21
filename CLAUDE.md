@@ -7,7 +7,7 @@ o produto é a base. É o **2º app a ser desenvolvido** (ver ROADMAP do Hub).
 
 **Comece lendo:**
 - [`docs/DECISOES.md`](docs/DECISOES.md) — **a fonte da verdade do projeto.** Conceitos, fluxo
-  completo, decisões (D1–D52), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
+  completo, decisões (D1–D54), pontos difíceis/riscos, o que foi adiado e o que está em aberto.
 - [`docs/TRILHAS.md`](docs/TRILHAS.md) — o plano das trilhas de aprendizado (fases 0 a 5); continuar por ele.
 
 ## Em uma frase
@@ -51,6 +51,9 @@ disponível pra inferência local (Whisper) quando precisar.
 - **Documentários** (D50): chegam do Streaming por `POST /api/documentarios`, com a legenda no idioma
   original ou o áudio (que fica guardado para as Dúvidas); regra `regras/organizar-documentario.md`. Os episódios
   de uma série ficam ligados pela chave do TMDB. Nos testes, o pedido é montado no próprio teste (`documentario_test.go`).
+- **"Mais informações" da Biblioteca** (D54): a Biblioteca pesquisa trechos de livro por aqui
+  (`PUT /api/detalhes/{id}` com `local` `livros/<id>`, `GET /api/detalhes/{id}`, `POST …/refazer`,
+  `POST …/referencia`); mudar essas rotas é mudar a Biblioteca também (R39 de lá).
 - **Artigos** (D34): o servidor lê a página sem IA (`artigo.go`), sem nada específico de um site;
   o que sobrar do site, a etapa de organizar tira (`regras/organizar-artigo.md`).
 - **Flashcards** (D28, D31): o Acervo só manda o texto (com o baralho escolhido, o link de cada capítulo e o foco do Lucas, D51) ao app Flashcards (`FLASHCARDS_URL`); a IA e as regras dos

@@ -30,7 +30,8 @@ type marcacao struct {
 	TarefaID     int64        `json:"tarefa_id"`
 	CriadoEm     string       `json:"criado_em"`
 	AtualizadoEm string       `json:"atualizado_em"`
-	Integracao   *pendencia   `json:"integracao"` // a proposta de Integrar ao texto, enquanto não decidida (D44)
+	Integracao   *pendencia   `json:"integracao"`           // a proposta de Integrar ao texto, enquanto não decidida (D44)
+	Referencia   string       `json:"referencia,omitempty"` // D54: a Referência que esta pesquisa virou
 }
 
 type consultada struct {
@@ -39,8 +40,9 @@ type consultada struct {
 }
 
 var (
-	idDeDetalhe    = regexp.MustCompile(`^[A-Za-z0-9-]{8,64}$`)
-	localDeDetalhe = regexp.MustCompile(`^(temas/[^?#]+\.md|referencias/[A-Za-z0-9_-]+/(organizado|traducao|cru|duvidas))$`)
+	idDeDetalhe = regexp.MustCompile(`^[A-Za-z0-9-]{8,64}$`)
+	// livros/<id>: um trecho de livro da Biblioteca (D54), que pesquisa por aqui.
+	localDeDetalhe = regexp.MustCompile(`^(temas/[^?#]+\.md|referencias/[A-Za-z0-9_-]+/(organizado|traducao|cru|duvidas)|livros/[A-Za-z0-9_-]{1,64})$`)
 )
 
 const (
@@ -118,8 +120,14 @@ func (a *app) handleDetalhes(w http.ResponseWriter, r *http.Request) {
 		falha(w, err)
 		return
 	}
+	viraram, err := a.referenciasDeDetalhes(r.Context())
+	if err != nil {
+		falha(w, err)
+		return
+	}
 	for i := range lista {
 		lista[i].Integracao = pendentes[lista[i].ID]
+		lista[i].Referencia = viraram[lista[i].ID]
 	}
 	writeJSON(w, http.StatusOK, lista)
 }
@@ -273,10 +281,14 @@ func (a *app) detalhar(ctx context.Context, t *tarefa) (resultado, error) {
 	if titulo == "" {
 		titulo = d.Local
 	}
+	lendo := "o texto"
+	if strings.HasPrefix(d.Local, "livros/") {
+		lendo = "o livro" // D54: um trecho de livro da Biblioteca
+	}
 	r, err := a.chamarClaude(ctx, pedidoClaude{
 		pasta: pasta,
 		regra: "detalhar.md",
-		instrucao: fmt.Sprintf("O Lucas está lendo o texto %q e selecionou um trecho para saber mais.\n\n"+
+		instrucao: fmt.Sprintf("O Lucas está lendo "+lendo+" %q e selecionou um trecho para saber mais.\n\n"+
 			"Trecho selecionado: %q\n\nO texto em volta (o trecho está entre ⟦ ⟧):\n\n…%s⟦%s⟧%s…\n\n"+
 			"Pesquise sobre o trecho, no sentido em que ele aparece no texto, e devolva a explicação "+
 			"em Markdown e as fontes que você consultou.",

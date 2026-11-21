@@ -10,6 +10,7 @@ import { enderecoDePesquisa } from './pesquisa.js'
 import { capitulos, eLinkInterno, inserirCapitulo, relativo, renderizar, resolver, tituloDoTexto, trocarCapitulo } from './markdown.js'
 import { marcar, usarDetalhes } from './detalhes.js'
 import { baixarTema, Conflito, descartarPendente, estaBaixado, lerArquivo, salvar } from './offline.js'
+import { usarAbas } from './abas.js'
 import { guardarPosicao, podeVoltar, posicaoGuardada, trocarEndereco, voltandoNoHistorico } from './rolagem.js'
 
 const props = defineProps({ caminho: { type: String, required: true } })
@@ -82,6 +83,27 @@ const temAbas = computed(() => eIndice.value && !!arquivo.value?.tema && modo.va
 // Conversar (D48) também nos capítulos separados: a conversa é a do Tema, e o trecho diz o arquivo.
 const temConversa = computed(() => !!arquivo.value?.tema && modo.value === 'ler')
 const arquivoNoTema = computed(() => (arquivo.value?.tema && caminhoArquivo.startsWith(`${arquivo.value.tema}/`) ? caminhoArquivo.slice(arquivo.value.tema.length + 1) : ''))
+// D53: a aba na tela (Estudar só no índice do Tema), a barra presa logo abaixo do cabeçalho,
+// deslizar para trocar e cada aba com a sua rolagem; o texto, a conversa e o estudo ficam montados.
+const abaVisivel = computed(() => {
+  if (abaTema.value === 'conversar' && temConversa.value) return 'conversar'
+  if (abaTema.value === 'estudar' && temAbas.value) return 'estudar'
+  return 'ler'
+})
+const leitorEl = ref(null)
+const cabecalhoEl = ref(null)
+const marcoAbas = ref(null)
+const barraAbas = ref(null)
+const alturaCabecalho = ref(56)
+let observador = null
+const { vistas } = usarAbas({
+  atual: () => abaVisivel.value,
+  lista: () => (temConversa.value && !conflito.value ? ['ler', 'conversar', ...(temAbas.value ? ['estudar'] : [])] : []),
+  ir: (aba) => trocarAba(aba),
+  marco: marcoAbas,
+  barra: barraAbas,
+  raiz: leitorEl,
+})
 function conversarSobre(trecho) {
   trechoDaConversa.value = { trecho, arquivo: arquivoNoTema.value }
   trocarAba('conversar')
@@ -244,7 +266,6 @@ function gerarFlashcards(capitulo) {
 function trocarAba(aba) {
   abaTema.value = aba
   trocarEndereco(aba === 'ler' ? `#/ler/${caminhoArquivo}` : `#/ler/${caminhoArquivo}?${aba}`)
-  window.scrollTo(0, 0)
 }
 
 // Flashcards pedidos na aba Estudar: do Tema, dos conceitos anteriores ou do que se errou.
@@ -429,6 +450,7 @@ async function baixar() {
 }
 
 function aoRolar() {
+  if (abaVisivel.value !== 'ler') return
   guardarPosicao(caminhoArquivo, window.scrollY)
   marcarCapituloAtual()
 }
@@ -456,13 +478,20 @@ onMounted(() => {
   carregarFlashcards()
   if (modo.value === 'editar' || eIndice.value) carregarTemas()
   window.addEventListener('scroll', aoRolar, { passive: true })
+  if (typeof ResizeObserver === 'function' && cabecalhoEl.value) {
+    observador = new ResizeObserver(() => (alturaCabecalho.value = cabecalhoEl.value?.offsetHeight || 56))
+    observador.observe(cabecalhoEl.value)
+  }
 })
-onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', aoRolar)
+  observador?.disconnect()
+})
 </script>
 
 <template>
-  <div class="leitor">
-    <header class="barra">
+  <div ref="leitorEl" class="leitor" :style="{ '--altura-cabecalho': `${alturaCabecalho}px` }">
+    <header ref="cabecalhoEl" class="barra">
       <button class="botao icone" aria-label="Voltar" @click="voltar"><Icone nome="voltar" /></button>
       <nav class="migalhas" aria-label="Onde estou">
         <a href="#/">Acervo</a>
@@ -508,10 +537,11 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <a v-if="linkDosCartoes" :href="linkDosCartoes" target="_blank" rel="noopener">Abrir no Flashcards</a>
       </div>
 
-      <nav v-if="temConversa && !conflito" class="abas" aria-label="Ler, conversar ou estudar">
-        <button :class="{ ativa: abaTema === 'ler' }" @click="trocarAba('ler')">Ler</button>
-        <button :class="{ ativa: abaTema === 'conversar' }" @click="trocarAba('conversar')">Conversar</button>
-        <button v-if="temAbas" :class="{ ativa: abaTema === 'estudar' }" @click="trocarAba('estudar')">Estudar</button>
+      <div v-if="temConversa && !conflito" ref="marcoAbas" aria-hidden="true" />
+      <nav v-if="temConversa && !conflito" ref="barraAbas" class="abas" aria-label="Ler, conversar ou estudar">
+        <button :class="{ ativa: abaVisivel === 'ler' }" @click="trocarAba('ler')">Ler</button>
+        <button :class="{ ativa: abaVisivel === 'conversar' }" @click="trocarAba('conversar')">Conversar</button>
+        <button v-if="temAbas" :class="{ ativa: abaVisivel === 'estudar' }" @click="trocarAba('estudar')">Estudar</button>
       </nav>
 
       <section v-if="conflito" class="conflito">
@@ -546,24 +576,25 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
         <p class="suave dica">Markdown: <code>## Capítulo</code>, <code>### Seção</code>, <code>**negrito**</code>, <code>[texto](arquivo.md)</code>. Cmd/Ctrl+S salva.</p>
       </template>
 
-      <template v-else-if="arquivo && temConversa && abaTema === 'conversar'">
-        <h1 class="titulo-estudar">{{ tituloDoTema }}</h1>
-        <Conversa
-          :local="arquivo.tema"
-          :titulo="tituloDoTema"
-          :trecho="trechoDaConversa"
-          @sem-trecho="trechoDaConversa = null"
-          @mudou="carregar({ manterPosicao: true })"
-        />
-      </template>
-
-      <template v-else-if="arquivo && temAbas && abaTema === 'estudar'">
-        <h1 class="titulo-estudar">{{ tituloDoTema }}</h1>
-        <Estudar :local="arquivo.tema" :titulo="tituloDoTema" :flashcards="flashcards.disponivel" @flashcards="flashcardsDoEstudo" />
-        <EnviarFlashcards v-if="envioAberto" v-bind="envioAberto" @fechar="envioAberto = null" @enviado="flashcardsEnviados" />
-      </template>
-
       <template v-else-if="arquivo">
+        <div v-if="temConversa && vistas.has('conversar')" v-show="abaVisivel === 'conversar'">
+          <h1 class="titulo-estudar">{{ tituloDoTema }}</h1>
+          <Conversa
+            :local="arquivo.tema"
+            :titulo="tituloDoTema"
+            :trecho="trechoDaConversa"
+            @sem-trecho="trechoDaConversa = null"
+            @mudou="carregar({ manterPosicao: true })"
+          />
+        </div>
+
+        <div v-if="temAbas && vistas.has('estudar')" v-show="abaVisivel === 'estudar'">
+          <h1 class="titulo-estudar">{{ tituloDoTema }}</h1>
+          <Estudar :local="arquivo.tema" :titulo="tituloDoTema" :flashcards="flashcards.disponivel" @flashcards="flashcardsDoEstudo" />
+        </div>
+        <EnviarFlashcards v-if="envioAberto" v-bind="envioAberto" @fechar="envioAberto = null" @enviado="flashcardsEnviados" />
+
+        <div v-show="abaVisivel === 'ler'">
         <article ref="introEl" class="texto" @click="aoClicarNoTexto" v-html="partes.intro" />
 
         <nav v-if="eIndice && capitulosDaPagina.length > 1" class="sumario" aria-label="Capítulos">
@@ -581,7 +612,6 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
 
         <article ref="corpoEl" class="texto" :class="{ 'com-acoes': podeMexerNosCapitulos }" @click="aoClicarNoTexto" v-html="partes.corpo" />
         <CamadaDetalhes :detalhes="detalhes" :raizes="() => [introEl, corpoEl]" :titulo="tituloAtual" :sem-lugar="partes.semLugar" @conversar="conversarSobre" />
-        <EnviarFlashcards v-if="envioAberto" v-bind="envioAberto" @fechar="envioAberto = null" @enviado="flashcardsEnviados" />
 
         <nav v-if="vizinhos.anterior || vizinhos.proximo" class="vizinhos">
           <a v-if="vizinhos.anterior" href="#" class="cartao" @click.prevent="abrirCapituloDoTema(vizinhos.anterior)">
@@ -631,6 +661,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
           <button class="botao" @click="novoCapitulo"><Icone nome="mais" /> Novo capítulo</button>
           <button class="botao" @click="novoSubtema"><Icone nome="mais" /> Novo subtema</button>
           <a class="botao" :href="enderecoDePesquisa('', arquivo.tema)"><Icone nome="pesquisar" /> Pesquisar para este Tema</a>
+        </div>
         </div>
       </template>
     </div>
@@ -769,11 +800,19 @@ onBeforeUnmount(() => window.removeEventListener('scroll', aoRolar))
   text-align: right;
 }
 
+/* D53: presa logo abaixo do cabeçalho do leitor durante a rolagem. */
 .abas {
+  position: sticky;
+  top: var(--altura-cabecalho, 56px);
+  z-index: 4;
   display: flex;
   gap: 4px;
-  margin: 0 0 20px;
+  margin: 0 -20px 20px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--linha);
+  background: var(--vidro);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
 }
 
 .abas button {

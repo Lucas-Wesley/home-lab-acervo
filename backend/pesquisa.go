@@ -74,10 +74,11 @@ type pedidoPesquisa struct {
 	Capitulos     []capituloPesquisa `json:"capitulos"` // D49: capítulos inteiros dos livros marcados (D38)
 	Paginas       []paginaPesquisa   `json:"paginas"`   // D49: páginas da internet escolhidas no esboço
 	Coleta        []coletado         `json:"coleta"`
-	Rodada        int                `json:"rodada"`       // 1 na primeira; cada "aprofundar" soma uma (0 = pesquisa antiga, a 1ª)
-	Foco          string             `json:"foco"`         // o que o Lucas quer a mais, ao aprofundar
-	Anteriores    []pergunta         `json:"anteriores"`   // as perguntas das rodadas anteriores
-	Relacionados  []string           `json:"relacionados"` // Temas do Acervo sobre o assunto
+	Rodada        int                `json:"rodada"`           // 1 na primeira; cada "aprofundar" soma uma (0 = pesquisa antiga, a 1ª)
+	Foco          string             `json:"foco"`             // o que o Lucas quer a mais, ao aprofundar
+	Anteriores    []pergunta         `json:"anteriores"`       // as perguntas das rodadas anteriores
+	Relacionados  []string           `json:"relacionados"`     // Temas do Acervo sobre o assunto
+	Origem        *origemDePesquisa  `json:"origem,omitempty"` // D54: veio de um "Mais informações"
 }
 
 // pergunta do esboço, com as palavras de busca de cada fonte (vazias quando a fonte não foi escolhida).
