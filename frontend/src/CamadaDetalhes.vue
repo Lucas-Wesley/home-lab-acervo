@@ -19,13 +19,17 @@ const emit = defineEmits(['conversar'])
 
 const MARGEM = 16
 const LARGURA_BARRA = 152
+const ALTURA_BARRA = 44
+const SOBRE_ALCA = 14 // o quanto a alça de arrastar escapa para cima da barra
 
-const barra = ref(null) // { x, y, acima }
+const barra = ref(null) // { x, y }
 const recado = ref(null)
 const ocupado = ref(false)
 const caixa = ref(null)
 let selecao = null
 let intervalo = null
+let arraste = null // { id, dx, dy } enquanto o dedo segura a alça
+let arrastado = false // o usuário moveu a barra: não recentralizar sozinho
 let espera
 let tempoDoRecado
 
@@ -38,19 +42,20 @@ function mostrarRecado(texto, erro = false) {
   tempoDoRecado = setTimeout(() => (recado.value = null), 3500)
 }
 
-// No celular a barra vai abaixo da seleção: em cima fica o menu do próprio sistema.
+const limiteX = (x) => Math.min(Math.max(x, MARGEM), innerWidth - LARGURA_BARRA - MARGEM)
+const limiteY = (y) => Math.min(Math.max(y, MARGEM + SOBRE_ALCA), innerHeight - ALTURA_BARRA - MARGEM)
+
+// A barra fica no centro da seleção, longe das bordas onde o menu do sistema aparece. Depois que o
+// usuário a arrasta pela alça, scroll e resize só a mantêm dentro da tela, sem recentralizar.
 function posicionar() {
   if (!intervalo) return
   const r = intervalo.getBoundingClientRect()
   if (!r.width && !r.height) return
-  const toque = matchMedia('(pointer: coarse)').matches
-  const folga = toque ? 30 : 10
-  const cabeAbaixo = r.bottom + folga + 48 < innerHeight
-  const meio = r.left + r.width / 2
-  barra.value = {
-    x: Math.min(Math.max(meio - LARGURA_BARRA / 2, MARGEM), innerWidth - LARGURA_BARRA - MARGEM),
-    y: cabeAbaixo ? r.bottom + folga : Math.max(r.top - folga - 44, MARGEM),
-  }
+  const meioX = r.left + r.width / 2
+  const meioY = r.top + r.height / 2
+  barra.value = arrastado && barra.value
+    ? { x: limiteX(barra.value.x), y: limiteY(barra.value.y) }
+    : { x: limiteX(meioX - LARGURA_BARRA / 2), y: limiteY(meioY - ALTURA_BARRA / 2) }
 }
 
 function aoMudarSelecao() {
@@ -61,10 +66,12 @@ function aoMudarSelecao() {
     const achado = m.value ? null : trechoDaSelecao(props.raizes(), atual)
     if (!achado) {
       barra.value = null
+      arrastado = false
       return
     }
     selecao = achado
     intervalo = atual
+    arrastado = false
     posicionar()
   }, 120)
 }
@@ -72,7 +79,26 @@ function aoMudarSelecao() {
 function esconder() {
   barra.value = null
   intervalo = null
+  arraste = null
+  arrastado = false
   getSelection()?.removeAllRanges()
+}
+
+// Arrastar pela alça: a barra segue o dedo e fica onde ele soltar.
+function comecarArrastar(evento) {
+  if (!barra.value) return
+  evento.currentTarget.setPointerCapture(evento.pointerId)
+  arraste = { id: evento.pointerId, dx: evento.clientX - barra.value.x, dy: evento.clientY - barra.value.y }
+  arrastado = true
+}
+
+function arrastarBarra(evento) {
+  if (!barra.value || arraste?.id !== evento.pointerId) return
+  barra.value = { x: limiteX(evento.clientX - arraste.dx), y: limiteY(evento.clientY - arraste.dy) }
+}
+
+function soltarArraste(evento) {
+  if (arraste?.id === evento.pointerId) arraste = null
 }
 
 async function pedirMais() {
@@ -196,6 +222,7 @@ onBeforeUnmount(() => {
 
   <Teleport to="body">
     <div v-if="barra" class="barra-selecao" role="toolbar" aria-label="Seleção" :style="{ left: `${barra.x}px`, top: `${barra.y}px` }" @mousedown.prevent>
+      <span class="alca" aria-hidden="true" @pointerdown.prevent="comecarArrastar" @pointermove="arrastarBarra" @pointerup="soltarArraste" @pointercancel="soltarArraste"><Icone nome="arrastar" /></span>
       <button type="button" aria-label="Mais informações" title="Mais informações" @click="pedirMais"><Icone nome="info" /></button>
       <button type="button" aria-label="Conversar sobre o trecho" title="Conversar sobre o trecho" @click="conversar"><Icone nome="pergunta" /></button>
       <button type="button" aria-label="Copiar" title="Copiar" @click="copiar"><Icone nome="copiar" /></button>
@@ -262,6 +289,33 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: var(--destaque);
   box-shadow: var(--sombra);
+  user-select: none;
+}
+
+.barra-selecao .alca {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--destaque);
+  color: var(--destaque-texto);
+  box-shadow: var(--sombra);
+  cursor: grab;
+  touch-action: none;
+  transform: translateX(-50%);
+}
+
+.barra-selecao .alca:active {
+  cursor: grabbing;
+}
+
+.barra-selecao .alca :deep(svg) {
+  width: 13px;
+  height: 13px;
 }
 
 .barra-selecao button {

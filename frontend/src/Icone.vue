@@ -84,5 +84,6 @@ defineProps({ nome: { type: String, required: true } })
     <path v-else-if="nome === 'exercicios'" d="M4 20h4L18.5 9.5l-4-4L4 16zM12.5 7.5l4 4M14 20h6" />
     <path v-else-if="nome === 'pausar'" d="M9 6v12M15 6v12" stroke-width="2.4" />
     <path v-else-if="nome === 'ouvir'" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11" />
+    <path v-else-if="nome === 'arrastar'" d="M9.5 6.5h.01M14.5 6.5h.01M9.5 12h.01M14.5 12h.01M9.5 17.5h.01M14.5 17.5h.01" stroke-width="3.4" />
   </svg>
 </template>
